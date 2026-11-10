@@ -1,0 +1,388 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AbandonedWell Energy AI</title>
+  <meta name="description" content="Sàng lọc giếng dầu khí ngừng khai thác để chuyển đổi sang khai thác địa nhiệt / Screening abandoned oil & gas wells for geothermal repurposing.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230f4c75'/%3E%3Crect x='13' y='6' width='6' height='20' fill='%23cfe3f5'/%3E%3Cpath d='M16 24V9' stroke='%23e07b1f' stroke-width='2.5'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="wrap topbar-in">
+    <a class="brand" href="#overview">
+      <svg width="30" height="30" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="7" fill="#0f4c75"/><rect x="13" y="6" width="6" height="20" fill="#cfe3f5"/><path d="M16 24V9" stroke="#e07b1f" stroke-width="2.5"/></svg>
+      <span><b>AbandonedWell</b> Energy AI<small data-i18n="brand.tag"></small></span>
+    </a>
+    <nav class="nav" id="nav">
+      <a href="#problem" data-i18n="nav.problem"></a>
+      <a href="#solution" data-i18n="nav.solution"></a>
+      <a href="#tool" data-i18n="nav.tool"></a>
+      <a href="#sensitivity" data-i18n="nav.sens"></a>
+      <a href="#plan" data-i18n="nav.plan"></a>
+      <a href="#team" data-i18n="nav.team"></a>
+      <a href="#refs" data-i18n="nav.refs"></a>
+    </nav>
+    <div class="lang" role="group" aria-label="Language">
+      <button data-lang="vi">VI</button><button data-lang="en">EN</button>
+    </div>
+    <button class="menu-btn" id="menuBtn" aria-label="Menu">☰</button>
+  </div>
+</header>
+
+<main>
+<!-- HERO -->
+<section id="overview" class="hero">
+  <div class="wrap hero-grid">
+    <div>
+      <p class="kicker" data-i18n="hero.kicker"></p>
+      <h1 data-i18n="hero.title"></h1>
+      <p class="lead" data-i18n="hero.lead"></p>
+      <div class="btns">
+        <a class="btn primary" href="#tool" data-i18n="hero.cta"></a>
+        <a class="btn ghost" href="#solution" data-i18n="hero.cta2"></a>
+      </div>
+    </div>
+    <div class="stats">
+      <div class="stat"><b class="num-loc" data-vi="~1.000" data-en="~1,000"></b><span data-i18n="hero.s1"></span></div>
+      <div class="stat"><b>20+</b><span data-i18n="hero.s2"></span></div>
+      <div class="stat"><b class="num-loc" data-vi="2,8–3,6" data-en="2.8–3.6"></b><em>°C/100 m</em><span data-i18n="hero.s3"></span></div>
+      <div class="stat accent"><b>370–480</b><em>kWth</em><span data-i18n="hero.s4"></span></div>
+    </div>
+  </div>
+</section>
+
+<!-- PROBLEM -->
+<section id="problem">
+  <div class="wrap">
+    <h2 data-i18n="problem.title"></h2>
+    <p class="sub" data-i18n="problem.sub"></p>
+    <div class="cards4">
+      <div class="card"><span class="ic">💸</span><h3 data-i18n="problem.c1t"></h3><p data-i18n="problem.c1"></p></div>
+      <div class="card"><span class="ic">🌡️</span><h3 data-i18n="problem.c2t"></h3><p data-i18n="problem.c2"></p></div>
+      <div class="card"><span class="ic">🔍</span><h3 data-i18n="problem.c3t"></h3><p data-i18n="problem.c3"></p></div>
+      <div class="card"><span class="ic">⚖️</span><h3 data-i18n="problem.c4t"></h3><p data-i18n="problem.c4"></p></div>
+    </div>
+    <div class="two">
+      <div class="panel">
+        <h3 data-i18n="problem.tblTitle"></h3>
+        <div class="tscroll"><table class="tbl">
+          <thead><tr><th data-i18n="problem.th1"></th><th data-i18n="problem.th2"></th><th data-i18n="problem.th3"></th></tr></thead>
+          <tbody>
+            <tr><td data-i18n="ev.1"></td><td data-i18n="ev.1v"></td><td>[2]</td></tr>
+            <tr><td data-i18n="ev.2"></td><td data-i18n="ev.2v"></td><td>[2]</td></tr>
+            <tr><td data-i18n="ev.3"></td><td data-i18n="ev.3v"></td><td>[2]</td></tr>
+            <tr><td data-i18n="ev.4"></td><td data-i18n="ev.4v"></td><td>[5]</td></tr>
+            <tr><td data-i18n="ev.5"></td><td data-i18n="ev.5v"></td><td>[6]</td></tr>
+            <tr><td data-i18n="ev.6"></td><td data-i18n="ev.6v"></td><td>[13]</td></tr>
+          </tbody>
+        </table></div>
+      </div>
+      <div class="panel">
+        <h3 data-i18n="who.title"></h3>
+        <ul class="who">
+          <li><b data-i18n="who.1t"></b><span data-i18n="who.1"></span></li>
+          <li><b data-i18n="who.2t"></b><span data-i18n="who.2"></span></li>
+          <li><b data-i18n="who.3t"></b><span data-i18n="who.3"></span></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SOLUTION -->
+<section id="solution" class="alt">
+  <div class="wrap">
+    <h2 data-i18n="sol.title"></h2>
+    <p class="sub" data-i18n="sol.sub"></p>
+    <div class="two diagram-row">
+      <div class="panel">
+        <h3 data-i18n="sol.principle"></h3>
+        <svg class="diagram" viewBox="0 0 680 500" role="img">
+          <rect x="0" y="0" width="680" height="60" fill="#d4ead0"/>
+          <rect x="0" y="60" width="680" height="120" fill="#ece0bf"/>
+          <rect x="0" y="180" width="680" height="140" fill="#dcc497"/>
+          <rect x="0" y="320" width="680" height="180" fill="#c39a78"/>
+          <text x="12" y="36" class="dg" data-i18n="dg.surface"></text>
+          <text x="668" y="125" class="dg end" data-i18n="dg.neogene"></text>
+          <text x="668" y="255" class="dg end" data-i18n="dg.oligo"></text>
+          <text x="668" y="415" class="dg end" data-i18n="dg.base"></text>
+          <rect x="250" y="10" width="56" height="450" fill="#8a8f96"/>
+          <rect x="267" y="10" width="22" height="430" fill="#d6e8f8"/>
+          <rect x="250" y="452" width="56" height="26" fill="#3d4247"/>
+          <text x="316" y="470" class="dg sm" data-i18n="dg.plug"></text>
+          <defs>
+            <marker id="ab" markerWidth="8" markerHeight="8" refX="4" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#1f6fb2"/></marker>
+            <marker id="ar" markerWidth="8" markerHeight="8" refX="4" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#d1452b"/></marker>
+          </defs>
+          <path class="flow-down" d="M258 30 V425" stroke="#1f6fb2" stroke-width="3" marker-end="url(#ab)"/>
+          <path class="flow-down" d="M298 30 V425" stroke="#1f6fb2" stroke-width="3" marker-end="url(#ab)"/>
+          <path class="flow-up" d="M278 430 V24" stroke="#d1452b" stroke-width="4" marker-end="url(#ar)"/>
+          <path d="M284 30 H390" stroke="#d1452b" stroke-width="3"/>
+          <rect x="390" y="14" width="140" height="34" rx="4" fill="#fff" stroke="#333"/>
+          <text x="460" y="36" class="dg mid sm" data-i18n="dg.hx"></text>
+          <path d="M530 31 H545" stroke="#333" stroke-width="2"/>
+          <rect x="545" y="14" width="128" height="34" rx="4" fill="#fde6c8" stroke="#333"/>
+          <text x="609" y="36" class="dg mid xs" data-i18n="dg.use"></text>
+          <text x="120" y="210" class="dg mid blue" data-i18n="dg.down" data-wrap="22"></text>
+          <text x="450" y="190" class="dg mid red" data-i18n="dg.up" data-wrap="26"></text>
+          <g stroke="#b3261e" stroke-width="2" marker-end="url(#ar)">
+            <path d="M170 350 H240"/><path d="M170 380 H240"/><path d="M170 410 H240"/>
+            <path d="M390 350 H316"/><path d="M390 380 H316"/><path d="M390 410 H316"/>
+          </g>
+          <text x="90" y="372" class="dg mid red" data-i18n="dg.heat" data-wrap="16"></text>
+        </svg>
+        <p class="note" data-i18n="sol.principleText"></p>
+      </div>
+      <div class="panel">
+        <h3 data-i18n="sol.arch"></h3>
+        <ol class="modules">
+          <li><span>1</span><div><b data-i18n="mod.1t"></b><p data-i18n="mod.1"></p></div></li>
+          <li><span>2</span><div><b data-i18n="mod.2t"></b><p data-i18n="mod.2"></p></div></li>
+          <li><span>3</span><div><b data-i18n="mod.3t"></b><p data-i18n="mod.3"></p></div></li>
+          <li><span>4</span><div><b data-i18n="mod.4t"></b><p data-i18n="mod.4"></p></div></li>
+        </ol>
+        <div class="io">
+          <div><b data-i18n="sol.in"></b><p data-i18n="sol.inList"></p></div>
+          <div><b data-i18n="sol.out"></b><p data-i18n="sol.outList"></p></div>
+        </div>
+      </div>
+    </div>
+    <div class="two">
+      <div class="panel">
+        <h3 data-i18n="new.title"></h3>
+        <ul class="ticks">
+          <li data-i18n="new.1"></li><li data-i18n="new.2"></li><li data-i18n="new.3"></li><li data-i18n="new.4"></li>
+        </ul>
+      </div>
+      <div class="panel">
+        <h3 data-i18n="cmp.title"></h3>
+        <div class="tscroll"><table class="tbl cmp">
+          <thead><tr><th data-i18n="cmp.c0"></th><th data-i18n="cmp.c1"></th><th data-i18n="cmp.c2"></th><th data-i18n="cmp.c3"></th><th class="us">AbandonedWell Energy AI</th></tr></thead>
+          <tbody id="cmpBody"></tbody>
+        </table></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- TOOL -->
+<section id="tool">
+  <div class="wrap">
+    <h2 data-i18n="tool.title"></h2>
+    <p class="sub" data-i18n="tool.sub"></p>
+
+    <div class="panel">
+      <div class="panel-head">
+        <h3 data-i18n="tool.data"></h3>
+        <div class="btnrow">
+          <button class="btn sm" id="btnDemo" data-i18n="tool.loadDemo"></button>
+          <label class="btn sm"><span data-i18n="tool.upload"></span><input type="file" id="fileCsv" accept=".csv,text/csv" hidden></label>
+          <button class="btn sm ghost" id="btnTemplate" data-i18n="tool.template"></button>
+          <button class="btn sm ghost" id="btnAdd" data-i18n="tool.addRow"></button>
+          <button class="btn sm ghost danger" id="btnClear" data-i18n="tool.clear"></button>
+        </div>
+      </div>
+      <p class="hint" data-i18n="tool.demoNote"></p>
+      <div class="tscroll"><table class="tbl edit" id="wellTable">
+        <thead><tr>
+          <th data-i18n="col.id"></th><th data-i18n="col.name"></th><th data-i18n="col.loc"></th><th data-i18n="col.depth"></th>
+          <th data-i18n="col.g"></th><th data-i18n="col.bht"></th><th data-i18n="col.horner"></th><th data-i18n="col.integ"></th><th data-i18n="col.dist"></th><th></th>
+        </tr></thead>
+        <tbody></tbody>
+      </table></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><h3 data-i18n="tool.params"></h3>
+        <div class="btnrow"><button class="btn sm ghost" id="btnReset" data-i18n="tool.reset"></button></div></div>
+      <div class="params">
+        <fieldset><legend data-i18n="tool.tech"></legend>
+          <label><span data-i18n="p.retro"></span><select id="p_retro"><option value="coax" data-i18n="p.retroCoax"></option><option value="soon" disabled data-i18n="p.retroSoon"></option></select></label>
+          <label><span data-i18n="p.m"></span><input type="number" id="p_m" step="0.5" min="0.5"></label>
+          <label><span data-i18n="p.Tin"></span><input type="number" id="p_Tin" step="1"></label>
+          <label><span data-i18n="p.years"></span><input type="number" id="p_years" step="1" min="1"></label>
+          <label><span data-i18n="p.T0"></span><input type="number" id="p_T0" step="1"></label>
+          <label><span data-i18n="p.k"></span><input type="number" id="p_k" step="0.1" min="0.5"></label>
+          <label><span data-i18n="p.Rw"></span><input type="number" id="p_Rw" step="0.01" min="0"></label>
+          <label><span data-i18n="p.upLoss"></span><input type="number" id="p_upLoss" step="1" min="0" max="50"></label>
+          <label><span data-i18n="p.sigmaG"></span><input type="number" id="p_sigmaG" step="0.05" min="0"></label>
+        </fieldset>
+        <fieldset><legend data-i18n="tool.econ"></legend>
+          <label class="wide"><span data-i18n="p.purpose"></span><select id="p_purpose"><option value="hp" data-i18n="p.purpHP"></option><option value="res" data-i18n="p.purpRes"></option><option value="custom" data-i18n="p.purpCustom"></option></select></label>
+          <label><span data-i18n="p.heatPrice"></span><input type="number" id="p_heatPrice" step="10" min="0"></label>
+          <label><span data-i18n="p.capexOn"></span><input type="number" id="p_capexOn" step="0.5" min="0"></label>
+          <label><span data-i18n="p.capexOff"></span><input type="number" id="p_capexOff" step="0.5" min="0"></label>
+          <label><span data-i18n="p.pipe"></span><input type="number" id="p_pipe" step="0.1" min="0"></label>
+          <label><span data-i18n="p.opex"></span><input type="number" id="p_opex" step="0.5" min="0"></label>
+          <label><span data-i18n="p.pump"></span><input type="number" id="p_pump" step="1" min="0"></label>
+          <label><span data-i18n="p.hours"></span><input type="number" id="p_hours" step="100" min="0" max="8760"></label>
+          <label><span data-i18n="p.rate"></span><input type="number" id="p_rate" step="0.5" min="0"></label>
+          <label><span data-i18n="p.life"></span><input type="number" id="p_life" step="1" min="1" max="50"></label>
+          <p class="hint wide" data-i18n="p.econNote"></p>
+        </fieldset>
+        <fieldset><legend data-i18n="tool.score"></legend>
+          <label><span data-i18n="p.wT"></span><input type="number" id="w_thermal" step="0.05" min="0"></label>
+          <label><span data-i18n="p.wI"></span><input type="number" id="w_integrity" step="0.05" min="0"></label>
+          <label><span data-i18n="p.wD"></span><input type="number" id="w_distance" step="0.05" min="0"></label>
+          <label><span data-i18n="p.wE"></span><input type="number" id="w_econ" step="0.05" min="0"></label>
+          <label><span data-i18n="p.threshold"></span><input type="number" id="p_threshold" step="5" min="0" max="100"></label>
+          <button class="btn primary big" id="btnRun" data-i18n="tool.run"></button>
+        </fieldset>
+      </div>
+    </div>
+
+    <div class="kpis">
+      <div class="kpi"><span data-i18n="kpi.n"></span><b id="k_n">–</b></div>
+      <div class="kpi"><span><span data-i18n="kpi.pass"></span> ≥ <i id="k_thr">60</i></span><b id="k_pass">–</b></div>
+      <div class="kpi"><span data-i18n="kpi.q"></span><b id="k_q">–</b></div>
+      <div class="kpi"><span data-i18n="kpi.e"></span><b id="k_e">–</b></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><h3 data-i18n="tool.rank"></h3>
+        <div class="btnrow"><button class="btn sm ghost" id="btnExport" data-i18n="tool.exportCsv"></button></div></div>
+      <p class="warn" id="invalidMsg" hidden></p>
+      <div class="tscroll"><table class="tbl rank" id="rankTable">
+        <thead><tr>
+          <th data-i18n="r.rank"></th><th data-i18n="r.well"></th><th class="n" data-i18n="r.depth"></th><th class="n" data-i18n="r.g"></th><th data-i18n="r.src"></th>
+          <th class="n" data-i18n="r.tb"></th><th class="n" data-i18n="r.tout"></th><th class="n" data-i18n="r.q"></th><th class="n" data-i18n="r.p1090"></th>
+          <th data-i18n="r.integ"></th><th class="n" data-i18n="r.npv"></th><th data-i18n="r.use"></th><th data-i18n="r.score"></th><th></th>
+        </tr></thead>
+        <tbody><tr><td colspan="14" class="empty" data-i18n="tool.empty"></td></tr></tbody>
+      </table></div>
+    </div>
+  </div>
+</section>
+
+<!-- SENSITIVITY -->
+<section id="sensitivity" class="alt">
+  <div class="wrap">
+    <h2 data-i18n="sens.title"></h2>
+    <p class="sub" data-i18n="sens.sub"></p>
+    <div class="two">
+      <div class="panel">
+        <h3 data-i18n="sens.map"></h3>
+        <div id="heatmap" class="heatmap"></div>
+      </div>
+      <div class="panel">
+        <h3 data-i18n="sens.t41"></h3>
+        <div class="tscroll"><table class="tbl" id="t41">
+          <thead><tr><th class="n" data-i18n="ch.depth"></th><th class="n">G (°C/100 m)</th><th class="n" data-i18n="r.tb"></th><th class="n" data-i18n="r.tout"></th><th class="n" data-i18n="r.q"></th><th class="n" data-i18n="sens.e"></th></tr></thead>
+          <tbody></tbody>
+        </table></div>
+        <p class="note" data-i18n="sens.insight"></p>
+        <div class="chart-box sm"><canvas id="chFlowRef"></canvas></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PLAN -->
+<section id="plan">
+  <div class="wrap">
+    <h2 data-i18n="plan.title"></h2>
+    <div class="stages" id="stages">
+      <div class="stage done"><b data-i18n="st.1"></b><span data-i18n="st.1s"></span></div>
+      <div class="stage now"><b data-i18n="st.2"></b><span data-i18n="st.2s"></span></div>
+      <div class="stage"><b data-i18n="st.3"></b><span data-i18n="st.3s"></span></div>
+      <div class="stage"><b data-i18n="st.4"></b><span data-i18n="st.4s"></span></div>
+      <div class="stage"><b data-i18n="st.5"></b><span data-i18n="st.5s"></span></div>
+    </div>
+    <div class="cards3">
+      <div class="card year"><h3 data-i18n="plan.y1"></h3><p data-i18n="plan.y1t"></p></div>
+      <div class="card year"><h3 data-i18n="plan.y2"></h3><p data-i18n="plan.y2t"></p></div>
+      <div class="card year"><h3 data-i18n="plan.y3"></h3><p data-i18n="plan.y3t"></p></div>
+    </div>
+    <div class="two">
+      <div class="panel">
+        <h3 data-i18n="plan.12"></h3>
+        <div class="tscroll"><table class="tbl"><thead><tr><th data-i18n="plan.th1"></th><th data-i18n="plan.th2"></th><th data-i18n="plan.th3"></th></tr></thead>
+          <tbody id="planBody"></tbody></table></div>
+      </div>
+      <div class="panel">
+        <h3 data-i18n="budget.title"></h3>
+        <div class="tscroll"><table class="tbl"><thead><tr><th data-i18n="bd.th1"></th><th class="n" data-i18n="bd.th2"></th><th data-i18n="bd.th3"></th></tr></thead>
+          <tbody id="budgetBody"></tbody></table></div>
+        <h3 class="mt" data-i18n="biz.title"></h3>
+        <ul class="ticks"><li data-i18n="biz.1"></li><li data-i18n="biz.2"></li><li data-i18n="biz.3"></li></ul>
+      </div>
+    </div>
+    <div class="panel">
+      <h3 data-i18n="risk.title"></h3>
+      <div class="tscroll"><table class="tbl"><thead><tr><th data-i18n="rk.th1"></th><th data-i18n="rk.th2"></th><th data-i18n="rk.th3"></th><th data-i18n="rk.th4"></th></tr></thead>
+        <tbody id="riskBody"></tbody></table></div>
+    </div>
+  </div>
+</section>
+
+<!-- TEAM -->
+<section id="team" class="alt">
+  <div class="wrap">
+    <h2 data-i18n="team.title"></h2>
+    <div class="team">
+      <div class="member lead"><div class="av">NT</div><b>Nguyễn Duy Tính</b><small>K12GE</small><em data-i18n="team.lead"></em><p data-i18n="team.leadT"></p></div>
+      <div class="member"><div class="av">?</div><b data-i18n="team.tbd"></b><em data-i18n="team.r2"></em><p data-i18n="team.r2t"></p></div>
+      <div class="member"><div class="av">?</div><b data-i18n="team.tbd"></b><em data-i18n="team.r3"></em><p data-i18n="team.r3t"></p></div>
+      <div class="member"><div class="av">?</div><b data-i18n="team.tbd"></b><em data-i18n="team.r4"></em><p data-i18n="team.r4t"></p></div>
+      <div class="member"><div class="av">?</div><b data-i18n="team.tbd"></b><em data-i18n="team.r5"></em><p data-i18n="team.r5t"></p></div>
+    </div>
+  </div>
+</section>
+
+<!-- REFS -->
+<section id="refs">
+  <div class="wrap">
+    <h2 data-i18n="refs.title"></h2>
+    <ol class="refs">
+      <li>Báo Đại Đoàn Kết (2024), "Giếng khoan GK-61 – khởi nguồn dòng khí công nghiệp", daidoanket.vn.</li>
+      <li>Phạm Trung Linh (2021), <i>Preparations for decommissioning challenges in Vietnam</i>, Ban Khai thác Dầu khí – Tập đoàn Dầu khí Việt Nam.</li>
+      <li>Bộ Công Thương (2020), Thông tư số 17/2020/TT-BCT quy định về bảo quản và hủy bỏ giếng khoan dầu khí.</li>
+      <li>Thủ tướng Chính phủ (2017), Quyết định số 49/2017/QĐ-TTg về thu dọn công trình, thiết bị và phương tiện phục vụ hoạt động dầu khí.</li>
+      <li>Bùi Thị Luận (2009), "Đới trưởng thành của vật liệu hữu cơ và quá trình sinh dầu khí ở bể Cửu Long", <i>Tạp chí Phát triển KH&amp;CN</i>, 12(06).</li>
+      <li>R. Funnell, R. Allis, T. Huyen (1997), "Thermal regimes in two Vietnamese basins: Cuu Long and Nam Con Son, and implications for hydrocarbon generation", <i>Proc. Indonesian Petroleum Association</i>.</li>
+      <li>Y.-L. Nian, W.-L. Cheng (2018), "Insights into geothermal utilization of abandoned oil and gas wells", <i>Renewable and Sustainable Energy Reviews</i>, 87, 44–60.</li>
+      <li>Journal of Petroleum Technology (2024), "Study outlines challenges of repurposing oil and gas wells for geothermal applications" (SPE 215751).</li>
+      <li>H. J. Ramey (1962), "Wellbore heat transmission", <i>Journal of Petroleum Technology</i>, 14(4), 427–435.</li>
+      <li>T. Moussa, H. Dehghanpour (2022), "Evaluating geothermal energy production from suspended oil and gas wells by using data mining", <i>Renewable Energy</i>, 196, 1294–1307.</li>
+      <li>H.-Y. Lin, K.-C. Shih, L.-D. Chen (2026), "Techno-economic analysis of repurposing abandoned oil wells for geothermal energy extraction using physics-informed neural networks", ASME ES2026-184639.</li>
+      <li>ThinkGeoEnergy (2025), "Project InnerSpace highlights geothermal potential in Asia with GeoMap", 16/01/2025.</li>
+      <li>Bộ Công Thương (2025), "Điều chỉnh giá bán lẻ điện bình quân từ ngày 10/5/2025", moit.gov.vn.</li>
+      <li>Trần Văn Trị, Vũ Khúc (chủ biên) (2009), <i>Địa chất và tài nguyên Việt Nam</i>, NXB KHTN&amp;CN, 541–547.</li>
+      <li>W. E. Harrison, K. V. Luza, M. L. Prater, P. K. Cheung (1983), <i>Geothermal resource assessment in Oklahoma</i>, Oklahoma Geological Survey Special Paper 83-1 — <span data-i18n="ref.harrison"></span></li>
+    </ol>
+  </div>
+</section>
+</main>
+
+<footer class="footer">
+  <div class="wrap">
+    <p><b>AbandonedWell Energy AI</b> · <span data-i18n="foot.uni"></span></p>
+    <p class="hint" data-i18n="foot.note"></p>
+  </div>
+</footer>
+
+<!-- WELL REPORT MODAL -->
+<div class="modal" id="modal" hidden>
+  <div class="modal-box" role="dialog" aria-modal="true">
+    <div class="modal-head">
+      <h3><span data-i18n="det.title"></span>: <span id="m_name"></span></h3>
+      <div class="btnrow">
+        <button class="btn sm" id="btnPrint" data-i18n="det.print"></button>
+        <button class="btn sm ghost" id="btnClose" data-i18n="det.close"></button>
+      </div>
+    </div>
+    <div class="modal-body" id="m_body"></div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="js/i18n.js"></script>
+<script src="js/model.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
