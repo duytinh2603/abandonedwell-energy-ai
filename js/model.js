@@ -78,6 +78,7 @@
    */
   function normaliseWell(raw, T0) {
     const w = {
+      uid: raw.uid,
       id: String(raw.id || '').trim(),
       name: String(raw.name || raw.id || '').trim(),
       field: String(raw.field || '').trim(),
