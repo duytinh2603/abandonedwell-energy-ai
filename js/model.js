@@ -97,14 +97,18 @@
     if (!isFinite(w.distance)) w.distance = 5;
     if (!isFinite(w.depth) || w.depth <= 0) { w.warnings.push('depth'); }
 
+    // A downhole temperature must exceed the surface temperature; 0 or tiny values are typos
+    // (e.g. a gradient typed into the BHT box) and must not override a valid gradient.
+    const plausible = (T) => isFinite(T) && T > T0 + 5 && T < 400;
     let Tstatic = NaN;
     if ([w.bht1, w.dt1, w.bht2, w.dt2, w.tc].every(isFinite)) {
       const h = hornerStatic(w.bht1, w.dt1, w.bht2, w.dt2, w.tc);
-      if (h !== null) { Tstatic = h; w.gSource = 'horner'; }
+      if (h !== null && plausible(h) && plausible(w.bht1) && plausible(w.bht2) && w.dt1 > 0 && w.dt2 > 0 && w.tc > 0) { Tstatic = h; w.gSource = 'horner'; }
+      else w.warnings.push('hornerIgnored');
     }
     if (!isFinite(Tstatic) && isFinite(w.bht)) {
-      Tstatic = w.bht + harrisonCorrection(w.depth);
-      w.gSource = 'bht';
+      if (plausible(w.bht)) { Tstatic = w.bht + harrisonCorrection(w.depth); w.gSource = 'bht'; }
+      else w.warnings.push('bhtIgnored');
     }
     if (isFinite(Tstatic) && isFinite(w.depth) && w.depth > 0) {
       w.Tstatic = Tstatic;
@@ -115,7 +119,7 @@
       w.G = NaN; w.gSource = 'none'; w.warnings.push('gradient');
     }
     if (isFinite(w.G) && (w.G < 1 || w.G > 8)) w.warnings.push('gRange');
-    w.valid = isFinite(w.G) && isFinite(w.depth) && w.depth > 0;
+    w.valid = isFinite(w.G) && w.G > 0 && isFinite(w.depth) && w.depth > 0;
     return w;
   }
 

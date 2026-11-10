@@ -152,7 +152,8 @@
     const dc = w.curves[0];
     if (dc) {
       const st = L.curveStats(dc.data);
-      if (isFinite(st.max)) w.depth_m = Math.round(st.max * 10) / 10;
+      // only fill depth when the well has none: a TD entered from reports (often TVD) must not be replaced by the log bottom (MD)
+      if (isFinite(st.max) && !(w.depth_m > 0)) w.depth_m = Math.round(st.max * 10) / 10;
       const tc = w.curves.find((c) => c.family === 'Temperature');
       if (tc) {
         const g = L.gradientFromLog(dc.data, tc.data, tc.unit);
@@ -555,6 +556,7 @@
         <div class="kpi"><span>${t('kpi.e')}</span><b>${fmt(qPass * P.eco.hours / 1e6, 1)} GWh</b></div>
       </div>
       ${res.invalid.length ? `<div class="warnbox">${esc(t('rank.invalid', { n: res.invalid.length, list: res.invalid.map((w) => w.name || w.id || '?').join(', ') }))}</div>` : ''}
+      ${(() => { const bad = res.ranked.concat(res.invalid).filter((w) => w.warnings.includes('bhtIgnored') || w.warnings.includes('hornerIgnored')); return bad.length ? `<div class="warnbox">${esc(t('rank.bhtIgnored', { list: bad.map((w) => w.name || w.id || '?').join(', '), t0: fmt(modelParams().T0) }))}</div>` : ''; })()}
       <div class="tscroll"><table class="tbl" id="rankTbl"><thead><tr>
         <th>${t('r.rank')}</th><th>${t('r.well')}</th><th class="n">${t('r.depth')}</th><th class="n">${t('r.g')}</th><th>${t('r.src')}</th><th class="n">${t('r.tb')}</th><th class="n">${t('r.tout')}</th><th class="n">${t('r.q')}</th><th class="n">${t('r.p1090')}</th><th>${t('r.integ')}</th><th class="n">${t('r.npv')}</th><th>${t('r.use')}</th><th>${t('r.score')}</th>
       </tr></thead><tbody>${res.ranked.map((w, i) => {
