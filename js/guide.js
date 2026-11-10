@@ -2,10 +2,10 @@
 window.GUIDE = {
   vi: `
 <h2>Hướng dẫn sử dụng AbandonedWell Energy AI</h2>
-<p class="muted">Phiên bản web v0.3 · Công cụ sàng lọc giếng dầu khí ngừng khai thác để cải tạo thành giếng địa nhiệt.</p>
+<p class="muted">Phiên bản web v0.4 · Công cụ sàng lọc giếng dầu khí ngừng khai thác để cải tạo thành giếng địa nhiệt.</p>
 <nav class="toc"><b>Mục lục</b><ol>
 <li><a href="#g1">Giao diện</a></li><li><a href="#g2">Tạo và quản lý dự án</a></li><li><a href="#g3">Nhập dữ liệu (LAS, CSV, nhập tay)</a></li>
-<li><a href="#g4">Thuộc tính giếng và nguồn gradient</a></li><li><a href="#g5">Biểu đồ log</a></li><li><a href="#g6">Sàng lọc và xếp hạng</a></li>
+<li><a href="#g4">Thuộc tính giếng và nguồn gradient</a></li><li><a href="#g4b">Học máy – mô hình nhiệt độ</a></li><li><a href="#g5">Biểu đồ log</a></li><li><a href="#g6">Sàng lọc và xếp hạng</a></li>
 <li><a href="#g7">Báo cáo giếng</a></li><li><a href="#g8">Phương án sử dụng (ORC, nhiệt trực tiếp, vỉa chứa)</a></li><li><a href="#g9">Độ nhạy</a></li>
 <li><a href="#g10">Thông số dự án</a></li><li><a href="#g11">Bảo mật dữ liệu</a></li><li><a href="#g12">Xử lý sự cố</a></li><li><a href="#g13">Giới hạn của mô hình</a></li></ol></nav>
 
@@ -40,8 +40,12 @@ window.GUIDE = {
 </ul>
 <h4>CSV danh sách giếng (Dữ liệu → Nhập CSV)</h4>
 <p>Cột: <code>id,name,location,depth_m,gradient_c100m,bht_c,bht1_c,dt1_h,bht2_c,dt2_h,tc_h,integrity,distance_km</code> · location: onshore | offshore · integrity: good | fair | poor. Tải mẫu ở Trợ giúp → Định dạng dữ liệu.</p>
+<h4>Khảo sát độ lệch giếng (Dữ liệu → Nhập độ lệch giếng)</h4>
+<p>Chọn giếng trước, rồi chọn tệp văn bản 3 cột <b>MD, góc nghiêng, phương vị</b> (cách nhau bởi khoảng trắng, tab hoặc dấu phẩy). Web tính TVD bằng phương pháp độ cong tối thiểu, điền MD/TVD nếu còn trống; nếu đã có TVD từ báo cáo thì giữ nguyên và báo chênh lệch.</p>
+<h4>Số liệu nhiệt độ thử vỉa (Dữ liệu → Nhập DST)</h4>
+<p>CSV có cột <code>well,tvd_m,temp_c,label</code> (hoặc <code>md_m</code> thay cho <code>tvd_m</code> – web đổi sang TVD theo khảo sát độ lệch). Web tìm giếng theo tên, thêm điểm đo và tính lại gradient theo DST.</p>
 <h4>Nhập tay</h4>
-<p>Trang chủ → Giếng mới, rồi điền ở khung Thuộc tính.</p>
+<p>Trang chủ → Giếng mới, rồi điền ở khung Thuộc tính. <b>Hoàn tác</b> (Trang chủ, hoặc Ctrl+Z) quay lại thay đổi gần nhất, tối đa 30 bước.</p>
 <h4>Công cụ</h4>
 <p><b>Đổi giá trị Null</b>: coi một giá trị (vd −999,25) là thiếu trên mọi đường cong của giếng. <b>Xuất LAS/CSV</b>: lưu lại dữ liệu đã chỉnh. <b>Xóa mục chọn</b>: xóa giếng hoặc đường cong.</p>
 
@@ -56,6 +60,15 @@ window.GUIDE = {
 <li><b>BHT đơn</b>: hiệu chỉnh thực nghiệm Harrison (1983), sai số ±10–15 °C.</li>
 <li>BHT/Horner nhỏ hơn T₀ + 5 °C (vd ô BHT = 0) bị bỏ qua kèm cảnh báo vàng ở bảng xếp hạng.</li>
 <li>Nguồn gradient hiển thị ở cột “Nguồn G”: Thử vỉa (DST) · Horner · BHT hiệu chỉnh · Log nhiệt độ · Gradient chung của mỏ · Nhập tay.</li>
+</ul>
+
+<h3 id="g4b">4b. Học máy – mô hình nhiệt độ</h3>
+<p><b>Địa nhiệt → Mô hình học máy</b>. Mô hình hồi quy ridge có ràng buộc vật lý dự đoán <b>gradient biểu kiến</b> từ chiều sâu và giá trị trung bình của log GR, DT, RHOB, NPHI phía trên mỗi điểm, nên nhiệt độ luôn tăng theo chiều sâu.</p>
+<ul>
+<li><b>Dữ liệu huấn luyện:</b> mọi nhiệt độ đo trong dự án – điểm DST, nhiệt độ vỉa tĩnh Horner, BHT đã hiệu chỉnh. Cần ít nhất 6 điểm ở 2 giếng.</li>
+<li><b>Kiểm chứng:</b> bỏ ra từng giếng, huấn luyện trên các giếng còn lại rồi dự đoán giếng đó; so với cách dùng một gradient trung bình cho cả mỏ. Web nói rõ học máy tốt hơn hay chưa.</li>
+<li><b>Khoảng tin cậy P10–P90</b> từ 60 mô hình huấn luyện trên mẫu lấy lại (bootstrap) cộng sai số còn lại.</li>
+<li><b>Áp dụng cho giếng chưa có số đo</b>: chỉ điền gradient cho giếng đang dùng gradient chung của mỏ hoặc chưa có gradient; giếng có số đo hay gradient nhập tay được giữ nguyên. Nguồn G hiện “Học máy (ML)”.</li>
 </ul>
 
 <h3 id="g5">5. Biểu đồ log</h3>
@@ -78,10 +91,12 @@ window.GUIDE = {
 <li><b>Nhiệt trực tiếp – thay bơm nhiệt</b> (mọi mức nhiệt) và <b>sấy, công nghiệp</b> (cần nước ≥ T sấy, mặc định 60 °C).</li>
 <li><b>Phát điện ORC/Kalina</b> theo từng chất công tác: R134a, R1233zd(E), R245fa, isobutane, isopentane, n-pentane, Kalina, ethanol. Hiệu suất = hệ số exergy × Carnot; bảng nêu lý do không khả thi (nguồn quá nguội, ngưng chân không…) và cảnh báo an toàn (dễ cháy, độc, GWP).</li>
 <li><b>Bậc thang</b>: ORC trước, nước sau ORC dùng tiếp cho sấy/sưởi.</li>
-<li>Hai nguồn: <b>vòng kín</b> (giếng đồng trục) và <b>vòng hở</b> (khai thác chất lưu vỉa rồi bơm ép).</li>
+<li>Ba nguồn: <b>vòng kín</b> (giếng đồng trục), <b>vòng hở</b> (khai thác chất lưu vỉa rồi bơm ép) và <b>nước khai thác kèm</b> ở giàn đang hoạt động (nhóm “Nước khai thác kèm” trong Thuộc tính giếng: lưu lượng và nhiệt độ; không tính vốn cải tạo giếng).</li>
+<li>Giếng ngoài khơi tính điện theo <b>giá trị điện trên giàn</b> (thay điện tuabin khí/diesel), đặt riêng trong thông số dự án.</li>
 </ul>
 <h4>Vỉa chứa – khai thác vòng hở</h4>
 <p>Nhập ở Thuộc tính giếng: diện tích (km²), chiều dày hiệu dụng (m), độ rỗng (%), độ sâu vỉa TVDss, nhiệt độ vỉa (để trống = theo gradient), lưu lượng (kg/s = m³/ngđ ÷ 86,4). Web tính nhiệt tại chỗ theo phương pháp thể tích, nhiệt thu hồi (Rf), <b>công suất vỉa duy trì được</b> trong vòng đời, so với công suất theo lưu lượng giếng → yếu tố giới hạn, <b>diện tích vỉa tối thiểu</b>, thời gian tới khi vỉa nguội; biểu đồ công suất theo diện tích.</p>
+<p>Thêm cho vỉa: <b>chỉ số khai thác PI</b> (m³/ngđ/bar) × độ hạ áp cho phép giới hạn lưu lượng; <b>khoảng cách giếng khai thác – bơm ép</b> cho thời gian nước lạnh tới; <b>hàm lượng CO₂</b> trên 10% hiện cảnh báo ăn mòn, đóng cặn. Web luôn hiện bán kính vùng nước lạnh sau vòng đời và khoảng cách giếng đề xuất; bật “Rf theo vùng nước lạnh quét qua” để thay Rf cố định bằng tính toán này.</p>
 <p class="note">Vòng kín chỉ làm nguội đá trong bán kính khoảng 50–60 m sau 25 năm, nên diện tích vỉa hầu như không ảnh hưởng. Với vòng hở, vùng nước lạnh quanh giếng bơm ép có bán kính r ≈ √(Q·t·ρc<sub>nước</sub> / (π·h·ρc<sub>đá+nước</sub>)); hai giếng nên cách nhau ≈ √3·r.</p>
 
 <h3 id="g9">9. Độ nhạy</h3>
@@ -93,7 +108,10 @@ window.GUIDE = {
 <li><b>Kỹ thuật</b>: lưu lượng tuần hoàn, nhiệt độ nước vào, thời gian vận hành, T₀ bề mặt, độ dẫn nhiệt đá, nhiệt trở thành giếng, tổn thất ống đi lên, độ bất định gradient.</li>
 <li><b>Kinh tế</b>: giá trị nhiệt thay thế, vốn cải tạo đất liền/ngoài khơi, đường ống, vận hành – bảo dưỡng, công suất bơm, giờ vận hành, lãi suất, vòng đời.</li>
 <li><b>Trọng số xếp hạng</b> và ngưỡng đạt.</li>
-<li><b>Phương án sử dụng</b>: nhiệt độ làm mát, chênh nhiệt bình ngưng, T sấy, giá trị điện và nhiệt, vốn ORC (triệu đ/kWe), vốn trao đổi nhiệt, vốn vòng hở, tổn thất lên miệng giếng, T bơm ép, Rf.</li>
+<li><b>Phương án sử dụng</b>: nhiệt độ làm mát, chênh nhiệt bình ngưng, T sấy, giá trị điện và nhiệt, vốn ORC (triệu đ/kWe), vốn trao đổi nhiệt, vốn vòng hở, tổn thất lên miệng giếng, T bơm ép, Rf, Rf theo vùng quét, giá trị điện trên giàn, pinch ORC, độ hạ áp cho phép.</li>
+<li><b>Thủy lực</b>: bật “Tính bơm theo thủy lực” để công suất bơm tính theo ma sát trong vành xuyến và ống trong (đường kính ống chống, ống trong); tắt thì dùng công suất bơm cố định.</li>
+<li><b>Kinh tế mở rộng</b>: chi phí hủy giếng P&amp;A và số năm hoãn (giá trị hoãn cộng vào NPV), hệ số phát thải nhiệt thay thế và giá tín chỉ CO₂. Báo cáo giếng hiện <b>NPV P10–P90</b> và xác suất NPV &gt; 0 khi vốn, giá nhiệt và công suất bất định.</li>
+<li><b>So sánh các giếng</b> có thêm bảng tổng hợp theo mỏ (cụm giếng).</li>
 </ul>
 <p class="note">Các giá trị mặc định về chi phí là giả định để minh họa; hãy thay bằng số liệu thực của dự án.</p>
 
@@ -102,6 +120,7 @@ window.GUIDE = {
 <li>Mọi tính toán chạy trong trình duyệt; tệp LAS, CSV, dự án <b>không được tải lên máy chủ nào</b>.</li>
 <li>Dự án lưu trong IndexedDB của trình duyệt. Xóa dữ liệu trình duyệt sẽ mất dự án → luôn giữ tệp <code>.awproj.json</code>.</li>
 <li>Không đưa tệp dự án, LAS hay kết quả có số liệu mỏ lên kho mã công khai.</li>
+<li><b>Dùng ngoại tuyến:</b> sau lần mở đầu tiên có mạng, web tự lưu bản chạy trên máy và mở được khi mất mạng.</li>
 </ul>
 
 <h3 id="g12">12. Xử lý sự cố</h3>
@@ -111,17 +130,18 @@ window.GUIDE = {
 <tr><td>Tệp LAS báo lỗi</td><td>Xem Cửa sổ thông báo; kiểm tra có ~Curve và ~ASCII, dòng dữ liệu đủ số cột.</td></tr>
 <tr><td>Giếng bị “bỏ qua”</td><td>Thiếu chiều sâu hoặc gradient/BHT hợp lệ.</td></tr>
 <tr><td>Không thấy dự án cũ</td><td>Đang dùng trình duyệt/máy khác → Mở tệp dự án.</td></tr>
-<tr><td>Web không cập nhật bản mới</td><td>Nhấn Ctrl+F5.</td></tr></table>
+<tr><td>Web không cập nhật bản mới</td><td>Nhấn Ctrl+F5 (có thể hai lần vì bản ngoại tuyến).</td></tr>
+<tr><td>Muốn kiểm tra phép tính</td><td>Mở <a href="tests.html" target="_blank">tests.html</a>: 24 kiểm thử tự động so với mô hình Python v0.1 và công thức chuẩn.</td></tr></table>
 
 <h3 id="g13">13. Giới hạn của mô hình</h3>
-<p>Gradient tuyến tính, đá đồng nhất, tổn thất ống đi lên cố định; ORC tính theo hệ số exergy; vỉa tính theo phương pháp thể tích. Kết quả dùng để <b>sàng lọc</b>, chưa thay cho thiết kế chi tiết, mô phỏng thủy động hay đánh giá toàn vẹn giếng thực tế.</p>
+<p>Gradient tuyến tính, đá đồng nhất, tổn thất ống đi lên cố định; ORC tính theo hệ số exergy; vỉa tính theo phương pháp thể tích. Kết quả dùng để <b>sàng lọc</b>, chưa thay cho thiết kế chi tiết, mô phỏng thủy động hay đánh giá toàn vẹn giếng thực tế. Mô hình học máy chỉ tốt như số điểm đo nhiệt độ có trong dự án. Chưa đọc DLIS/LIS, chưa có bản đồ tọa độ, toàn vẹn giếng vẫn chọn tay, và mô hình chưa được so với số đo sản lượng địa nhiệt thực tế.</p>
 `,
   en: `
 <h2>AbandonedWell Energy AI – User Guide</h2>
-<p class="muted">Web version v0.3 · Screening tool for repurposing shut-in oil &amp; gas wells as geothermal wells.</p>
+<p class="muted">Web version v0.4 · Screening tool for repurposing shut-in oil &amp; gas wells as geothermal wells.</p>
 <nav class="toc"><b>Contents</b><ol>
 <li><a href="#g1">Interface</a></li><li><a href="#g2">Creating and managing projects</a></li><li><a href="#g3">Importing data (LAS, CSV, manual)</a></li>
-<li><a href="#g4">Well properties and gradient source</a></li><li><a href="#g5">Log plot</a></li><li><a href="#g6">Screening and ranking</a></li>
+<li><a href="#g4">Well properties and gradient source</a></li><li><a href="#g4b">Machine learning – temperature model</a></li><li><a href="#g5">Log plot</a></li><li><a href="#g6">Screening and ranking</a></li>
 <li><a href="#g7">Well report</a></li><li><a href="#g8">Utilisation options (ORC, direct heat, reservoir)</a></li><li><a href="#g9">Sensitivity</a></li>
 <li><a href="#g10">Project parameters</a></li><li><a href="#g11">Data privacy</a></li><li><a href="#g12">Troubleshooting</a></li><li><a href="#g13">Model limitations</a></li></ol></nav>
 
@@ -156,8 +176,12 @@ window.GUIDE = {
 </ul>
 <h4>Well-list CSV (Data → Import CSV)</h4>
 <p>Columns: <code>id,name,location,depth_m,gradient_c100m,bht_c,bht1_c,dt1_h,bht2_c,dt2_h,tc_h,integrity,distance_km</code> · location: onshore | offshore · integrity: good | fair | poor. Template under Help → Data Formats.</p>
+<h4>Deviation survey (Data → Import Deviation)</h4>
+<p>Select the well first, then a text file with three columns <b>MD, inclination, azimuth</b> (space, tab or comma separated). TVD is computed by minimum curvature and MD/TVD are filled when empty; a TVD already entered from reports is kept and the difference reported.</p>
+<h4>Well-test temperatures (Data → Import DST)</h4>
+<p>CSV with columns <code>well,tvd_m,temp_c,label</code> (or <code>md_m</code> instead of <code>tvd_m</code> – converted to TVD with the survey). Wells are matched by name, points are added and the gradient is refitted to DST.</p>
 <h4>Manual entry</h4>
-<p>Home → New Well, then fill in the Properties Editor.</p>
+<p>Home → New Well, then fill in the Properties Editor. <b>Undo</b> (Home, or Ctrl+Z) reverts the last change, up to 30 steps.</p>
 <h4>Tools</h4>
 <p><b>Convert Null Value</b> treats a value (e.g. −999.25) as missing on all curves of the well. <b>Export LAS/CSV</b> saves edited data. <b>Delete Selected</b> removes a well or curve.</p>
 
@@ -172,6 +196,15 @@ window.GUIDE = {
 <li><b>Single BHT</b>: Harrison (1983) empirical correction, ±10–15 °C.</li>
 <li>BHT/Horner values below T₀ + 5 °C (e.g. a BHT of 0) are ignored with a yellow warning on the ranking.</li>
 <li>The “G source” column shows: Well test (DST) · Horner · Corrected BHT · Temperature log · Field gradient · Entered.</li>
+</ul>
+
+<h3 id="g4b">4b. Machine learning – temperature model</h3>
+<p><b>Geothermal → ML Model</b>. A physics-constrained ridge regression predicts the <b>apparent gradient</b> from depth and the averages of GR, DT, RHOB and NPHI above each point, so temperature always rises with depth.</p>
+<ul>
+<li><b>Training data:</b> every measured temperature in the project – DST points, Horner static temperatures, corrected BHT. At least 6 points in 2 wells.</li>
+<li><b>Validation:</b> leave one well out, train on the rest, predict it; compared with a single field-average gradient. The page states plainly whether ML is better yet.</li>
+<li><b>P10–P90 range</b> from 60 bootstrap models plus the residual error.</li>
+<li><b>Apply to wells without data</b> only fills wells on the field gradient or with no gradient; measured or entered gradients are kept. G source shows “Machine learning”.</li>
 </ul>
 
 <h3 id="g5">5. Log plot</h3>
@@ -194,10 +227,12 @@ window.GUIDE = {
 <li><b>Direct heat – heat-pump substitute</b> (any temperature) and <b>drying / industry</b> (needs water ≥ drying T, default 60 °C).</li>
 <li><b>ORC/Kalina power</b> per working fluid: R134a, R1233zd(E), R245fa, isobutane, isopentane, n-pentane, Kalina, ethanol. Efficiency = exergy factor × Carnot; the table gives reasons for infeasibility (source too cold, sub-atmospheric condensing…) and safety notes (flammable, toxic, GWP).</li>
 <li><b>Cascade</b>: ORC first, then the ORC outlet water for drying/heating.</li>
-<li>Two sources: <b>closed loop</b> (coaxial well) and <b>open loop</b> (produce reservoir fluid and re-inject).</li>
+<li>Three sources: <b>closed loop</b> (coaxial well), <b>open loop</b> (produce reservoir fluid and re-inject) and <b>co-produced water</b> on an operating platform (well Properties “Co-produced water”: rate and temperature; no well retrofit capex).</li>
+<li>Offshore wells value power at the <b>platform electricity value</b> (displacing gas-turbine/diesel generation), set separately in the project parameters.</li>
 </ul>
 <h4>Reservoir – open-loop production</h4>
 <p>Enter in the well Properties: area (km²), net thickness (m), porosity (%), reservoir TVDss, reservoir temperature (blank = from gradient), production rate (kg/s = m³/day ÷ 86.4). The tool computes volumetric heat in place, recoverable heat (Rf), the <b>power the reservoir can sustain</b> over the project life versus the well-flow power → limiting factor, <b>minimum reservoir area</b>, time to cooling, and a power-vs-area chart.</p>
+<p>Reservoir extras: <b>productivity index PI</b> (m³/day/bar) × allowed drawdown caps the rate; <b>producer–injector spacing</b> gives the cold-water arrival time; <b>CO₂ content</b> above 10% raises a corrosion/scaling warning. The cold-zone radius after the project life and the recommended spacing are always shown; switch on “Rf from the swept cold zone” to replace the fixed Rf with this calculation.</p>
 <p class="note">A closed loop only cools rock within about 50–60 m after 25 years, so reservoir area hardly matters. In an open loop the cold zone around the injector has radius r ≈ √(Q·t·ρc<sub>water</sub> / (π·h·ρc<sub>rock+water</sub>)); producer–injector spacing should be ≈ √3·r.</p>
 
 <h3 id="g9">9. Sensitivity</h3>
@@ -209,7 +244,10 @@ window.GUIDE = {
 <li><b>Technical</b>: circulation rate, inlet temperature, operating time, surface T₀, rock conductivity, well-wall resistance, up-flow loss, gradient uncertainty.</li>
 <li><b>Economics</b>: substituted heat value, onshore/offshore retrofit capex, pipeline, O&amp;M, pump power, hours, discount rate, life.</li>
 <li><b>Ranking weights</b> and pass threshold.</li>
-<li><b>Utilisation</b>: cooling ambient, condenser approach, drying T, electricity and heat values, ORC capex (M VND/kWe), heat-exchanger capex, open-loop capex, wellbore heat loss, reinjection T, Rf.</li>
+<li><b>Utilisation</b>: cooling ambient, condenser approach, drying T, electricity and heat values, ORC capex (M VND/kWe), heat-exchanger capex, open-loop capex, wellbore heat loss, reinjection T, Rf, swept-zone Rf, platform electricity value, ORC pinch, allowed drawdown.</li>
+<li><b>Hydraulics</b>: “Hydraulic pump power” computes pump power from friction in the annulus and inner tube (casing and tube diameters); off = fixed pump power.</li>
+<li><b>Extended economics</b>: P&amp;A cost and years deferred (deferral value added to NPV), emission factor of displaced heat and CO₂ credit price. Well reports show <b>NPV P10–P90</b> and the probability of NPV &gt; 0 under capex, price and output uncertainty.</li>
+<li><b>Compare Wells</b> adds totals by field (well cluster).</li>
 </ul>
 <p class="note">Default cost figures are illustrative assumptions; replace them with your project's data.</p>
 
@@ -218,6 +256,7 @@ window.GUIDE = {
 <li>All calculations run in your browser; LAS, CSV and project files are <b>never uploaded</b> to any server.</li>
 <li>Projects live in the browser's IndexedDB; clearing browser data deletes them → always keep the <code>.awproj.json</code> file.</li>
 <li>Do not put project files, LAS or results containing field data in a public repository.</li>
+<li><b>Offline use:</b> after the first visit online, the app is stored on the computer and opens without a connection.</li>
 </ul>
 
 <h3 id="g12">12. Troubleshooting</h3>
@@ -227,9 +266,10 @@ window.GUIDE = {
 <tr><td>LAS file error</td><td>See the Output Window; check ~Curve and ~ASCII sections and the column count.</td></tr>
 <tr><td>Well “skipped”</td><td>Missing depth or a valid gradient/BHT.</td></tr>
 <tr><td>Old project missing</td><td>Different browser/computer → Open Project File.</td></tr>
-<tr><td>Site not updating</td><td>Press Ctrl+F5.</td></tr></table>
+<tr><td>Site not updating</td><td>Press Ctrl+F5 (possibly twice because of the offline copy).</td></tr>
+<tr><td>Check the calculations</td><td>Open <a href="tests.html" target="_blank">tests.html</a>: 24 automated checks against the Python v0.1 model and standard formulas.</td></tr></table>
 
 <h3 id="g13">13. Model limitations</h3>
-<p>Linear gradient, homogeneous rock, fixed up-flow loss; ORC by exergy factor; reservoir by the volumetric method. Results are for <b>screening</b> and do not replace detailed design, reservoir simulation or real well-integrity assessment.</p>
+<p>Linear gradient, homogeneous rock, fixed up-flow loss; ORC by exergy factor; reservoir by the volumetric method. Results are for <b>screening</b> and do not replace detailed design, reservoir simulation or real well-integrity assessment. The ML model is only as good as the measured temperatures in the project. DLIS/LIS files, a coordinate map and log-based integrity are not supported yet, and the model has not been compared with measured geothermal production.</p>
 `,
 };

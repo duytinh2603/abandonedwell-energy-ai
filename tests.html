@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AbandonedWell – Kiểm thử</title>
+<style>
+  :root { color-scheme: light; }
+  body { font: 14px/1.5 system-ui, "Segoe UI", sans-serif; margin: 24px; color: #1f2933; background: #fff; }
+  h1 { font-size: 20px; color: #1565c0; margin: 0 0 4px; }
+  table { border-collapse: collapse; width: 100%; max-width: 1000px; margin-top: 12px; }
+  th, td { border-bottom: 1px solid #e3e8ee; padding: 6px 8px; text-align: left; vertical-align: top; }
+  th { background: #f5f7fa; }
+  .ok { color: #2e7d32; font-weight: 700; } .fail { color: #c62828; font-weight: 700; }
+  #sum { font-weight: 700; margin-top: 8px; }
+  code { background: #f5f7fa; padding: 1px 4px; border-radius: 3px; }
+</style>
+</head>
+<body>
+<h1>AbandonedWell Energy AI – kiểm thử tự động</h1>
+<div>Kiểm tra các phép tính lõi so với giá trị chuẩn (mô hình Python v0.1, công thức giải tích, dữ liệu tổng hợp). Mở trang này sau mỗi lần sửa mã.</div>
+<div id="sum"></div>
+<table><thead><tr><th>#</th><th>Kiểm tra</th><th>Kết quả</th><th>Chi tiết</th></tr></thead><tbody id="rows"></tbody></table>
+<script src="js/model.js"></script>
+<script src="js/las.js"></script>
+<script src="js/utilization.js"></script>
+<script src="js/ml.js"></script>
+<script src="js/tests.js"></script>
+</body>
+</html>

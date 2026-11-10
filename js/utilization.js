@@ -28,7 +28,7 @@
   ];
 
   /** ORC on a sensible-heat source stream (mdot kg/s at Ts °C). */
-  function orc(f, Ts, mdot, Tcond, Tfloor) {
+  function orc(f, Ts, mdot, Tcond, Tfloor, pinch = 5) {
     const r = { fluid: f, reasons: [], notes: [] };
     const Tout = Math.max(Tcond + 10, Math.sqrt((Ts + K) * (Tcond + K)) - K, Tfloor || -Infinity);
     if (Ts < f.minT) r.reasons.push('lowT');
@@ -37,7 +37,7 @@
     if (f.p40 !== null && f.p40 < 1) { eps *= 0.8; r.notes.push('vacuum'); }
     if (f.tc !== null && Ts > f.tc - 5) r.notes.push('transcritical');
     const Thm = Ts > Tout ? ((Ts + K) - (Tout + K)) / Math.log((Ts + K) / (Tout + K)) : Ts + K;
-    const carnot = Math.max(0, 1 - (Tcond + K) / Thm);
+    const carnot = Math.max(0, 1 - (Tcond + K) / Math.max(Tcond + K + 1, Thm - pinch)); // evaporator pinch lowers the usable source temperature
     r.Tout = Tout;
     r.Qin = Math.max(0, mdot * CP * (Ts - Tout) / 1000); // kWth
     r.eta = eps * carnot;
@@ -54,6 +54,15 @@
     const Hrec = H * res.Rf;
     const Psust = Hrec / (life * SEC_YEAR) / 1000; // kWth sustained over the project life
     return { V, rc, H, Hrec, Psust, perKm2: Psust / Math.max(res.A, 1e-9), HGWh: H / 3.6e12, HrecGWh: Hrec / 3.6e12 };
+  }
+
+  /** Cold-front geometry of an injector over `seconds` at mdot kg/s: swept radius (m), area (km²),
+   *  recommended producer–injector spacing √3·r, and breakthrough time (yr) for a given spacing (Gringarten-type). */
+  function sweep(res, mdot, seconds, spacing) {
+    const rc = (1 - res.phi) * 2650 * 1000 + res.phi * 1000 * CP;
+    const r = Math.sqrt(Math.max(0, mdot * CP * seconds / (Math.PI * res.h * rc)));
+    const tb = spacing > 0 && mdot > 0 ? Math.PI * res.h * spacing * spacing * rc / (3 * mdot * CP) / SEC_YEAR : null;
+    return { r, area: Math.PI * r * r / 1e6, spacing: Math.sqrt(3) * r, tbYears: tb };
   }
 
   /** NPV (bn VND) of a constant yearly cash flow. */
@@ -75,7 +84,7 @@
     const hours = eco.hours, life = eco.life, rate = eco.rate / 100;
     const toBn = (vnd) => vnd / 1e9;
     const flows = [0.5, 1, 1.5, 2, 3, 4, 5, 6, 8, 10, 12];
-    const pumpCost = (m) => toBn(eco.pumpKW * (m / 5) * hours * eco.elecPrice);
+    const pumpCost = (m) => toBn((eco.pumpAt ? eco.pumpAt(m) : eco.pumpKW * (m / 5)) * hours * eco.elecPrice);
 
     function finish(o, capexWell, m) {
       o.capex = capexWell + o.capexSurf;
@@ -106,8 +115,8 @@
       const perFluid = FLUIDS.map((f) => {
         const o = best((m) => {
           let Tret = Tcond + 10, Ts = src.Ts(m, Tret), r = null;
-          for (let i = 0; i < 6; i++) { r = orc(f, Ts, m, Tcond, src.open ? src.Tret : null); Tret = r.Tout; Ts = src.Ts(m, Tret); }
-          r = orc(f, Ts, m, Tcond, src.open ? src.Tret : null);
+          for (let i = 0; i < 6; i++) { r = orc(f, Ts, m, Tcond, src.open ? src.Tret : null, U.pinch); Tret = r.Tout; Ts = src.Ts(m, Tret); }
+          r = orc(f, Ts, m, Tcond, src.open ? src.Tret : null, U.pinch);
           return finish({ id: 'orc', fluid: f, src: src.id, Ts, Q: r.Qin, Pe: r.Pe, eta: r.eta, Tout: r.Tout, reasons: r.reasons, notes: r.notes,
             value: toBn(r.Pe * hours * U.elecValue), capexSurf: r.Pe * U.capexORC / 1000, feasible: r.feasible && r.Pe > 0 }, src.capex, m);
         });
@@ -120,7 +129,7 @@
       if (okF.length) {
         const f = okF[0].fluid;
         out.push(best((m) => {
-          const Ts = src.Ts(m, src.Tret); const r = orc(f, Ts, m, Tcond, null);
+          const Ts = src.Ts(m, src.Tret); const r = orc(f, Ts, m, Tcond, null, U.pinch);
           if (!r.feasible) return null;
           const Q2 = Math.max(0, m * CP * (r.Tout - src.Tret) / 1000);
           return finish({ id: 'cascade', fluid: f, src: src.id, Ts, Q: r.Qin + Q2, Q2, Pe: r.Pe, eta: r.eta, Tout: r.Tout,
@@ -143,14 +152,26 @@
     if (resIn && resIn.A > 0 && resIn.h > 0 && resIn.flow > 0 && isFinite(resIn.Tres)) {
       const R = reservoir(resIn, life);
       const Twh = resIn.Tres - U.whLoss;
-      const PwellFull = resIn.flow * CP * Math.max(0, Twh - resIn.Treinj) / 1000;
-      const mSust = PwellFull > 0 ? Math.min(resIn.flow, resIn.flow * R.Psust / PwellFull) : 0;
+      // deliverability: DST flow, capped by productivity index × allowed drawdown when PI is known
+      const flowCap = resIn.PI > 0 ? resIn.PI * U.dpMax / 86.4 : Infinity;
+      const flow = Math.min(resIn.flow, flowCap);
+      const PwellFull = flow * CP * Math.max(0, Twh - resIn.Treinj) / 1000;
+      const sw = sweep(resIn, flow, life * hours * 3600, resIn.spacing);
+      if (U.RfSwept) R.Psust = PwellFull * Math.min(1, resIn.A / Math.max(sw.area, 1e-9)); // physics of the swept cold zone instead of a fixed Rf
+      R.perKm2 = R.Psust / Math.max(resIn.A, 1e-9);
+      const mSust = PwellFull > 0 ? Math.min(flow, flow * R.Psust / PwellFull) : 0;
       const open = { id: 'open', open: true, capex: U.capexOpen, flows: [mSust], Tret: resIn.Treinj, Ts: () => Twh };
       const ro = mSust > 0 ? options(open) : { options: [], fluids: [] };
       const breakthroughYears = PwellFull > 0 ? R.Hrec / (PwellFull * 1000 * hours * 3600) : Infinity;
       const Amin = R.perKm2 > 0 ? PwellFull / R.perKm2 : Infinity;
-      result.reservoir = Object.assign(R, { Twh, PwellFull, mSust, limited: mSust < resIn.flow - 1e-9, breakthroughYears, Amin, input: resIn });
+      result.reservoir = Object.assign(R, { Twh, PwellFull, mSust, flow, flowCap, piLimited: flowCap < resIn.flow, limited: mSust < flow - 1e-9, breakthroughYears, Amin, sweep: sw, co2High: resIn.co2 > 10, input: resIn });
       result.sources.push({ id: 'open', ...ro });
+    }
+    // co-produced water from a still-producing platform/field: no well retrofit capex
+    if (U.coprod && U.coprod.flow > 0 && isFinite(U.coprod.T)) {
+      const Tcp = U.coprod.T - U.whLoss;
+      const cp = { id: 'coprod', open: true, capex: 0, flows: [U.coprod.flow], Tret: U.Treinj, Ts: () => Tcp };
+      result.sources.push({ id: 'coprod', ...options(cp) });
     }
     const all = result.sources.flatMap((s) => s.options).filter((o) => o.feasible);
     all.sort((a, b) => b.npv - a.npv);
@@ -159,5 +180,5 @@
     return result;
   }
 
-  global.AWUtil = { FLUIDS, orc, reservoir, evaluate };
+  global.AWUtil = { FLUIDS, orc, reservoir, sweep, evaluate };
 })(window);

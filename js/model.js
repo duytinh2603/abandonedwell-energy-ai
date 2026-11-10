@@ -25,6 +25,8 @@
       Rw: 0.10, cp: 4180.0, n: 600, upLoss: 0.10, alpha: 1.0e-6, rw: 0.108,
       profile: false,
     }, p);
+    // L = length along the hole (MD), Lv = vertical depth (TVD) of the bottom; rock T follows TVD.
+    const Lv = o.Lv > 0 ? Math.min(o.Lv, o.L) : o.L, vr = Lv / o.L;
     const n = o.n;
     const dz = o.L / (n - 1);
     const R = rameyF(o.years * SEC_PER_YEAR, o.alpha, o.rw) / (2 * Math.PI * o.k) + o.Rw; // m·K/W
@@ -33,16 +35,16 @@
     let zs, Trs, Tfs;
     if (o.profile) { zs = [0]; Trs = [o.T0]; Tfs = [o.Tin]; }
     for (let i = 1; i < n; i++) {
-      const Tr = o.T0 + (o.G / 100) * ((i - 1) * dz);
+      const Tr = o.T0 + (o.G / 100) * ((i - 1) * dz) * vr;
       Tf = Tf + (Tr - Tf) * coef;
       if (o.profile && (i % 10 === 0 || i === n - 1)) {
         const z = i * dz;
-        zs.push(z); Trs.push(o.T0 + (o.G / 100) * z); Tfs.push(Tf);
+        zs.push(z * vr); Trs.push(o.T0 + (o.G / 100) * z * vr); Tfs.push(Tf);
       }
     }
     const Tout = Tf - o.upLoss * (Tf - o.Tin);
     const Q = (o.m * o.cp * (Tout - o.Tin)) / 1000;
-    const res = { Tout, Q, Tbottom: o.T0 + (o.G / 100) * o.L, R };
+    const res = { Tout, Q, Tbottom: o.T0 + (o.G / 100) * Lv, R };
     if (o.profile) { res.z = zs; res.Trock = Trs; res.Tfluid = Tfs; }
     return res;
   }
@@ -84,6 +86,7 @@
       field: String(raw.field || '').trim(),
       location: /off|ngoài/i.test(String(raw.location || '')) ? 'offshore' : 'onshore',
       depth: num(raw.depth_m),
+      md: num(raw.md_m),
       gIn: num(raw.gradient_c100m),
       bht: num(raw.bht_c),
       bht1: num(raw.bht1_c), dt1: num(raw.dt1_h),
@@ -96,6 +99,7 @@
     w.integrity = map[w.integrity] || w.integrity;
     if (!isFinite(w.distance)) w.distance = 5;
     if (!isFinite(w.depth) || w.depth <= 0) { w.warnings.push('depth'); }
+    if (!(w.md >= w.depth)) w.md = w.depth; // MD defaults to TVD (vertical well)
 
     // A downhole temperature must exceed the surface temperature; 0 or tiny values are typos
     // (e.g. a gradient typed into the BHT box) and must not override a valid gradient.
@@ -153,6 +157,22 @@
     return { p10: quantile(Qs, 0.1), p50: quantile(Qs, 0.5), p90: quantile(Qs, 0.9) };
   }
 
+  /* ---------------- hydraulics ---------------- */
+
+  /** Circulation pump power (kW) for a coaxial well: down the annulus, up the tubing (Darcy–Weisbach, Swamee–Jain),
+   *  plus a fixed surface-loop / heat-exchanger loss. Water at ~50 °C. Diameters in mm. */
+  function pumpPower(m, L, g = {}) {
+    const D = (g.csgID || 157) / 1000, dOut = (g.tubOD || 89) / 1000, dIn = (g.tubID || 76) / 1000;
+    const rho = 990, mu = 6e-4, eps = 4.6e-5, eff = g.eff || 0.7, dpSurf = (g.dpSurf ?? 1) * 1e5;
+    const q = m / rho;
+    const fr = (Re, Dh) => (Re < 2300 ? 64 / Math.max(Re, 1) : 0.25 / Math.pow(Math.log10(eps / (3.7 * Dh) + 5.74 / Math.pow(Re, 0.9)), 2));
+    const seg = (A, Dh) => { const v = q / A, Re = rho * v * Dh / mu; return fr(Re, Dh) * (L / Dh) * rho * v * v / 2; };
+    const dpAnn = D > dOut ? seg(Math.PI / 4 * (D * D - dOut * dOut), D - dOut) : 0;
+    const dpTub = seg(Math.PI / 4 * dIn * dIn, dIn);
+    const dp = dpAnn + dpTub + dpSurf;
+    return { kW: dp * q / eff / 1000, dpBar: dp / 1e5 };
+  }
+
   /* ---------------- Module 4: economics ---------------- */
 
   /** Returns NPV (bn VND), LCOH (VND/kWh_th), yearly series. */
@@ -161,12 +181,14 @@
     const capex = (well.location === 'offshore' ? eco.capexOff : eco.capexOn) + eco.pipeCost * well.distance; // bn VND
     const opex = capex * eco.opexPct / 100; // bn VND / yr
     const r = eco.rate / 100;
-    let npv = -capex, discCost = capex, discEnergy = 0, cum = -capex;
+    // value of deferring plugging & abandonment: the P&A spend moves paYears later
+    const deferral = (eco.paCost || 0) * (1 - Math.pow(1 + r, -(eco.paYears || 0)));
+    let npv = -capex + deferral, discCost = capex, discEnergy = 0, cum = -capex + deferral, annuity = 0;
     const years = [], Qy = [], cumCash = [];
     for (let y = 1; y <= life; y++) {
       const Q = wellOutput(Object.assign({}, base, { years: y, n: 300 })).Q; // kW
       const E = Q * eco.hours; // kWh_th
-      const revenue = E * eco.heatPrice / 1e9; // bn VND
+      const revenue = E * eco.heatPrice / 1e9 + E * (eco.co2Factor || 0) / 1000 * (eco.co2Price || 0) / 1e9; // bn VND (heat + avoided CO2)
       const pump = eco.pumpKW * eco.hours * eco.elecPrice / 1e9;
       const df = Math.pow(1 + r, y);
       const cash = revenue - pump - opex;
@@ -174,12 +196,31 @@
       cum += cash;
       discCost += (pump + opex) / df;
       discEnergy += E / df;
+      annuity += 1 / df;
       years.push(y); Qy.push(Q); cumCash.push(cum);
     }
     const lcoh = discEnergy > 0 ? (discCost * 1e9) / discEnergy : NaN;
     let payback = null;
     for (let i = 0; i < cumCash.length; i++) if (cumCash[i] >= 0) { payback = i + 1; break; }
-    return { capex, opex, npv, lcoh, years, Qy, cumCash, payback };
+    const pumpCost = eco.pumpKW * eco.hours * eco.elecPrice / 1e9;
+    return { capex, opex, npv, lcoh, years, Qy, cumCash, payback, deferral, discEnergy, annuity, pumpCost };
+  }
+
+  /** NPV P10/P50/P90: capex ×[0.8–1.4], heat value ×[0.75–1.25], opex ×[0.7–1.5], heat output from its P10–P90. */
+  function npvRange(e, eco, mc, Q, seed) {
+    const rng = mulberry32(seed || 99);
+    const tri = (a, c, b) => { const u = rng(), f = (c - a) / (b - a); return u < f ? a + Math.sqrt(u * (b - a) * (c - a)) : b - Math.sqrt((1 - u) * (b - a) * (b - c)); };
+    const sq = Q > 0 && mc ? (mc.p90 - mc.p10) / (2 * 1.2816 * Q) : 0;
+    const co2v = (eco.co2Factor || 0) / 1000 * (eco.co2Price || 0);
+    const out = [];
+    for (let i = 0; i < 400; i++) {
+      const fc = tri(0.8, 1, 1.4), fp = tri(0.75, 1, 1.25), fo = tri(0.7, 1, 1.5);
+      let u = 1 - rng(), v = rng(); const fq = Math.max(0, 1 + sq * Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v));
+      const capex = e.capex * fc;
+      out.push(-capex + e.deferral + e.discEnergy * fq * (eco.heatPrice * fp + co2v) / 1e9 - (e.opex * fc * fo + e.pumpCost) * e.annuity);
+    }
+    out.sort((a, b) => a - b);
+    return { p10: quantile(out, 0.1), p50: quantile(out, 0.5), p90: quantile(out, 0.9), probPos: out.filter((x) => x > 0).length / out.length };
   }
 
   /** Suggest a use category from outlet temperature (°C). */
@@ -197,12 +238,15 @@
     const wells = rawWells.map((r) => normaliseWell(r, params.T0));
     const ok = wells.filter((w) => w.valid);
     ok.forEach((w) => {
-      const base = { L: w.depth, G: w.G, T0: params.T0, k: params.k, m: params.m, Tin: params.Tin, years: params.years, Rw: params.Rw, upLoss: params.upLoss };
+      const base = { L: w.md, Lv: w.depth, G: w.G, T0: params.T0, k: params.k, m: params.m, Tin: params.Tin, years: params.years, Rw: params.Rw, upLoss: params.upLoss };
+      const hyd = params.eco.pumpAuto ? pumpPower(params.m, w.md, params.geom) : null;
+      w.pumpKW = hyd ? hyd.kW : params.eco.pumpKW; w.dpBar = hyd ? hyd.dpBar : null;
       const r = wellOutput(base);
       w.Tbottom = r.Tbottom; w.Tout = r.Tout; w.Q = r.Q;
       w.base = base;
       w.mc = monteCarlo(base, params.sigmaG, params.kMin, params.kMax, params.mcN, 7 + w.depth);
-      w.eco = economics(base, params.eco, w);
+      w.eco = economics(base, Object.assign({}, params.eco, { pumpKW: w.pumpKW }), w);
+      w.eco.range = npvRange(w.eco, params.eco, w.mc, r.Q, 11 + w.depth);
       w.use = suggestUse(w.Tout);
     });
     const qMax = Math.max(1, ...ok.map((w) => w.Q));
@@ -222,5 +266,5 @@
     return { ranked: ok, invalid: wells.filter((w) => !w.valid) };
   }
 
-  global.AWModel = { rameyF, wellOutput, hornerStatic, harrisonCorrection, normaliseWell, monteCarlo, economics, suggestUse, screen };
+  global.AWModel = { rameyF, wellOutput, hornerStatic, harrisonCorrection, normaliseWell, monteCarlo, economics, npvRange, pumpPower, suggestUse, screen };
 })(window);
