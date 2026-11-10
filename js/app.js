@@ -65,6 +65,7 @@
   ICON.docRank = ICON.exportRank; ICON.docSens = ICON.sens; ICON.docLog = ICON.logPlot; ICON.docRep = ICON.report;
   ICON.tempPlot = ICON.report;
   ICON.optimize = svg(`<circle cx="17" cy="20" r="11" fill="#e3f0fc" stroke="${B}" stroke-width="2"/><path d="M17 20 17 10M17 20l8.7 5M17 20l-8.7 5" stroke="${B}" stroke-width="2.4" stroke-linecap="round"/><circle cx="17" cy="20" r="2.6" fill="${R}"/><path d="M29 8l6-3v8z" fill="${R}"/><path d="M30 30h6M33 27v6" stroke="#2e7d32" stroke-width="2.4"/>`);
+  ICON.guide = svg(`<path d="M6 8c5-2 10-2 14 1v24c-4-3-9-3-14-1z" fill="#e3f0fc" stroke="${B}" stroke-width="2" stroke-linejoin="round"/><path d="M34 8c-5-2-10-2-14 1v24c4-3 9-3 14-1z" fill="#fff" stroke="${B}" stroke-width="2" stroke-linejoin="round"/><path d="M24 15h6M24 20h6M24 25h4" stroke="${R}" stroke-width="2"/>`);
   ICON.optAll = svg(`<rect x="5" y="6" width="30" height="28" fill="#fff" stroke="${B}" stroke-width="2"/><path d="M5 13h30M5 20h30M5 27h30" stroke="${G}" stroke-width="1.4"/><path d="M14 6v28" stroke="${G}" stroke-width="1.4"/><circle cx="25" cy="16.5" r="2.6" fill="#2e7d32"/><circle cx="21" cy="23.5" r="2.6" fill="${R}"/><circle cx="29" cy="30.5" r="2.6" fill="#ef6c00"/>`);
 
   /* ================= state ================= */
@@ -333,11 +334,11 @@
     data: [['g.import', ['importLas', 'importCsv']], ['g.export', ['exportLas', 'exportCsv']], ['g.tools', ['nullValue', 'delete']]],
     geo: [['g.eval', ['params', 'run', 'report', 'sens']], ['g.util', ['optimize', 'optAll']], ['g.export', ['exportRank']]],
     plot: [['g.plots', ['logPlot', 'report', 'sens']]],
-    help: [['g.help', ['about', 'lasHelp', 'sample', 'demo']]],
+    help: [['g.help', ['guide', 'about', 'lasHelp', 'sample', 'demo']]],
   };
   const selWell = () => (S.sel && (S.sel.t === 'well' || S.sel.t === 'curve') ? wellBy(S.sel.uid) : null);
   function enabled(a) {
-    if (['newProject', 'openProject', 'openFile', 'about', 'lasHelp', 'sample', 'demo', 'browser', 'props', 'output'].includes(a)) return true;
+    if (['newProject', 'openProject', 'openFile', 'guide', 'about', 'lasHelp', 'sample', 'demo', 'browser', 'props', 'output'].includes(a)) return true;
     if (!S.project) return false;
     if (['report', 'optimize', 'exportLas', 'nullValue', 'logPlot'].includes(a)) return !!selWell() && (a === 'report' || a === 'optimize' || selWell().curves.length > 0);
     if (a === 'optAll') return S.project.wells.length > 0;
@@ -491,6 +492,7 @@
     if (id === 'rank') return [ICON.docRank, t('doc.rank')];
     if (id === 'sens') return [ICON.docSens, t('doc.sens')];
     if (id === 'optall') return [ICON.optAll, t('doc.optall')];
+    if (id === 'guide') return [ICON.guide, t('b.guide')];
     const [k, u] = id.split(':'); const w = wellBy(u);
     const ic = { log: ICON.docLog, rep: ICON.docRep, opt: ICON.optimize }[k];
     return [ic, `${t('doc.' + k)}: ${w ? wellLabel(w) : '?'}`];
@@ -525,6 +527,7 @@
     const a = $('#docArea'); const id = S.active;
     a.scrollTop = 0;
     if (id === 'start') return renderStart(a);
+    if (id === 'guide') return renderGuide(a);
     if (!S.project) { a.innerHTML = ''; return; }
     if (id === 'rank') return renderRank(a);
     if (id === 'sens') return renderSens(a);
@@ -705,6 +708,13 @@
       <div class="card"><h3>${t('sens.t41')}</h3><div class="tscroll"><table class="tbl"><thead><tr><th class="n">${t('ch.depth')}</th><th class="n">G</th><th class="n">${t('r.tb')}</th><th class="n">${t('r.tout')}</th><th class="n">${t('r.q')}</th><th class="n">${t('sens.e')}</th></tr></thead><tbody>${rows}</tbody></table></div>
       <h3 style="margin-top:14px">${t('det.flow')} – ${t('sens.flow')}</h3><div class="chart-box" style="height:230px"><canvas id="chFlowRef"></canvas></div></div></div></div>`;
     flowChart('chFlowRef', Object.assign({}, base, { L: 4000, G: 3.3, n: 600 }));
+  }
+
+  /* ---------- user guide ---------- */
+  function renderGuide(a) {
+    a.innerHTML = `<div class="doc guide"><div class="rep-head no-print" style="justify-content:flex-end"><button class="btn" id="btnPrint">${t('det.print')}</button></div>${window.GUIDE[S.lang] || window.GUIDE.vi}</div>`;
+    $('#btnPrint').onclick = () => window.print();
+    $$('.guide .toc a', a).forEach((l) => l.addEventListener('click', (e) => { e.preventDefault(); const el = a.querySelector(l.getAttribute('href')); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }));
   }
 
   /* ---------- utilisation optimiser ---------- */
@@ -1032,6 +1042,7 @@
       download(safeName(S.project.name) + '_ranking.csv', toCSV(rows, Object.keys(rows[0] || { rank: 1 })), 'text/csv');
     },
     logPlot() { openDoc('log:' + selWell().uid); },
+    guide() { openDoc('guide'); },
     about() { dialog(t('about.title'), t('about.body'), [{ label: t('dlg.close'), primary: true }]); },
     async lasHelp() {
       const r = await dialog(t('help.title'), t('help.body'), [{ label: t('help.csvTpl'), value: 'tpl' }, { label: t('b.sample'), value: 'las' }, { label: t('dlg.close'), primary: true }]);
@@ -1056,7 +1067,7 @@
   document.addEventListener('click', (e) => {
     const b = e.target.closest('[data-act]'); if (!b || b.disabled) return;
     const a = b.dataset.act;
-    if (!S.project && !['newProject', 'openProject', 'openFile', 'about', 'lasHelp', 'sample', 'demo', 'browser', 'props', 'output', 'clearLog', 'search', 'clearFilter', 'toggleTree'].includes(a)) return;
+    if (!S.project && !['newProject', 'openProject', 'openFile', 'guide', 'about', 'lasHelp', 'sample', 'demo', 'browser', 'props', 'output', 'clearLog', 'search', 'clearFilter', 'toggleTree'].includes(a)) return;
     if (ACT[a]) Promise.resolve(ACT[a]()).catch((err) => log(String(err && err.message || err), 'err'));
   });
   $('#ribbonTabs').addEventListener('click', (e) => { const b = e.target.closest('[data-tab]'); if (b) { S.tab = b.dataset.tab; renderRibbon(); } });
