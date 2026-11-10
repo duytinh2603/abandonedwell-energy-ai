@@ -1,0 +1,7 @@
+# Never commit field data or project files – they stay on the user's machine.
+*.awproj.json
+*.las
+*.LAS
+*.dlis
+*.csv
+data/private/

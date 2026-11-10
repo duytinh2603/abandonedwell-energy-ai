@@ -82,6 +82,14 @@
   const lsGet = (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } };
   const wellBy = (u) => S.project && S.project.wells.find((w) => w.uid === u);
   const wellLabel = (w) => w.name || w.id || '?';
+  /** Normalise a well name for matching: drop diacritics, separators and block prefix (e.g. "04-3-AB-1X" ≈ "AB-1X" ≈ "AB1X"). */
+  const normWell = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[đĐ]/g, 'D').toUpperCase().replace(/[^A-Z0-9]/g, '').replace(/^(043|04)/, '');
+  /** Display source of the gradient, refining the model's generic "given" with what the project knows. */
+  function srcOf(w) {
+    const well = wellBy(w.uid);
+    if (w.gSource === 'given' && well && ['dst', 'field', 'log'].includes(well.gSource)) return well.gSource;
+    return w.gSource;
+  }
 
   /* ================= output window ================= */
   function log(msg, level = '') {
@@ -148,15 +156,19 @@
       const tc = w.curves.find((c) => c.family === 'Temperature');
       if (tc) {
         const g = L.gradientFromLog(dc.data, tc.data, tc.unit);
-        if (g) {
+        if (g && (w.gSource === 'dst' || w.gSource === 'field')) {
+          log(t('msg.gLogKeep', { c: tc.mnemonic, g: fmt(g.G, 2) }), 'warn');
+        } else if (g) {
           w.gradient_c100m = Math.round(g.G * 1000) / 1000;
+          w.gSource = 'log';
           w.gNote = `${tc.mnemonic}: ${fmt(g.n)} pts, ${fmt(g.zmin)}–${fmt(g.zmax)} m`;
           log(t('msg.gLog', { c: tc.mnemonic, g: fmt(g.G, 2), n: fmt(g.n), a: fmt(g.zmin), b: fmt(g.zmax) }), 'ok');
+          if (g.G < 2.2) log(t('msg.gLogLow', { c: tc.mnemonic, g: fmt(g.G, 2) }), 'warn');
         }
       }
     }
-    if (parsed && parsed.params) {
-      const p = parsed.params.BHT || parsed.params.BHTEMP || parsed.params.MBHT || parsed.params.BHT1;
+    if (parsed && parsed.params && w.gSource !== 'dst') {
+      const p = parsed.params.BHT || parsed.params.BHTEMP || parsed.params.MBHT || parsed.params.BHT1 || parsed.params.MRT || parsed.params.MAXT;
       if (p && isFinite(parseFloat(p.value))) {
         let v = parseFloat(p.value);
         if (/f/i.test(p.unit) && !/c/i.test(p.unit)) v = (v - 32) / 1.8;
@@ -168,7 +180,16 @@
   function addLas(parsed) {
     const P = S.project;
     const name = parsed.wellName.trim();
-    const ex = P.wells.find((w) => (w.name || '').toLowerCase() === name.toLowerCase() && w.curves.length);
+    const key = normWell(name);
+    // a well entered by hand (no curves yet) with the same name gets the LAS curves attached
+    const bare = P.wells.find((w) => !w.curves.length && (normWell(w.name) === key || normWell(w.id) === key));
+    if (bare) {
+      Object.assign(bare, { curves: parsed.curves, nullValue: parsed.nullValue, fileName: parsed.fileName });
+      deriveThermal(bare, parsed);
+      log(t('msg.lasAttach', { f: parsed.fileName, w: wellLabel(bare) }), 'ok');
+      return bare;
+    }
+    const ex = P.wells.find((w) => normWell(w.name) === key && w.curves.length);
     if (ex && ex.curves[0].data.length === parsed.curves[0].data.length && ex.curves[0].data[0] === parsed.curves[0].data[0]) {
       parsed.curves.slice(1).forEach((c) => {
         let m = c.mnemonic; let k = 1;
@@ -412,7 +433,12 @@
       const w = wellBy(S.sel.uid); if (!w) { el.innerHTML = ''; return; }
       if (S.sel.t === 'well') {
         h = fieldRows(w, WELL_FIELDS);
+        if (w.gSource) h += roRow('det.gsrc', t('src.' + w.gSource));
         if (w.gNote) h += roRow('f.gNote', w.gNote);
+        if (isFinite(w.md_m)) h += roRow('f.md', fmt(w.md_m));
+        if (Array.isArray(w.tempPoints) && w.tempPoints.length) {
+          h += grpRow('f.tpts') + w.tempPoints.map((p) => `<tr><td title="${esc(p.src)}">${fmt(p.z)} m</td><td><span class="ro" title="${esc(p.src)}">${fmt(p.T, 1)} °C · ${esc(p.src)}</span></td></tr>`).join('');
+        }
         if (w.curves.length) {
           const st = L.curveStats(w.curves[0].data);
           h += grpRow('pg.las') + roRow('f.file', w.fileName || '–') + roRow('f.null', w.nullValue) + roRow('f.curves', w.curves.length) + roRow('f.rows', fmt(w.curves[0].data.length)) + roRow('f.range', `${fmt(st.min, 1)} – ${fmt(st.max, 1)}`);
@@ -438,7 +464,7 @@
     obj[k] = numeric ? (raw === '' ? undefined : parseFloat(raw)) : raw;
     if (S.sel.t === 'project' && k === 'purpose' && raw !== 'custom') { obj.heatPrice = PURPOSE_PRICE[raw]; renderProps(); }
     if (S.sel.t === 'project' && k === 'heatPrice') { obj.purpose = 'custom'; renderProps(); }
-    if (S.sel.t === 'well' && (k === 'gradient_c100m')) { const w = obj; if (w.gNote) { w.gNote = ''; renderProps(); } }
+    if (S.sel.t === 'well' && (k === 'gradient_c100m')) { obj.gNote = ''; obj.gSource = undefined; renderProps(); }
     touch();
     renderTree(); renderRibbon(); renderDocTabs();
     if (S.active.startsWith('log:')) renderDoc();
@@ -534,7 +560,7 @@
       </tr></thead><tbody>${res.ranked.map((w, i) => {
         const ok = w.score >= P.threshold;
         return `<tr class="${ok ? 'pass' : ''}${w.uid === selU ? ' sel' : ''}" data-u="${w.uid}"><td>${i + 1}</td><td><b>${esc(w.name || w.id)}</b> <span class="hint">${t('loc.' + w.location)}</span></td>
-          <td class="n">${fmt(w.depth)}</td><td class="n">${fmt(w.G, 2)}</td><td><span class="src ${w.gSource}">${t('src.' + w.gSource)}</span></td><td class="n">${fmt(w.Tbottom)}</td><td class="n">${fmt(w.Tout, 1)}</td>
+          <td class="n">${fmt(w.depth)}</td><td class="n">${fmt(w.G, 2)}</td><td><span class="src ${srcOf(w)}">${t('src.' + srcOf(w))}</span></td><td class="n">${fmt(w.Tbottom)}</td><td class="n">${fmt(w.Tout, 1)}</td>
           <td class="n"><b>${fmt(w.Q)}</b></td><td class="n">${fmt(w.mc.p10)}–${fmt(w.mc.p90)}</td><td><span class="badge ${w.integrity}">${t('int.' + w.integrity)}</span></td>
           <td class="n ${w.eco.npv < 0 ? 'npv-neg' : 'npv-pos'}">${fmt(w.eco.npv, 1)}</td><td class="use">${t(w.use)}</td>
           <td><div class="bar ${ok ? 'pass' : ''}"><i><b style="width:${w.score}%"></b></i><span>${w.score}</span></div></td></tr>`;
@@ -593,7 +619,8 @@
           <tr><td>${t('f.location')}</td><td>${t('loc.' + w.location)}</td></tr>
           <tr><td>${t('r.depth')}</td><td>${fmt(w.depth)}</td></tr>
           <tr><td>${t('r.g')}</td><td>${fmt(w.G, 2)}</td></tr>
-          <tr><td>${t('det.gsrc')}</td><td>${t('src.' + w.gSource)}${well.gNote && w.gSource === 'given' ? ' (' + esc(well.gNote.split(':')[0]) + ')' : ''}</td></tr>
+          <tr><td>${t('det.gsrc')}</td><td>${t('src.' + srcOf(w))}</td></tr>
+          ${well.gNote && w.gSource === 'given' ? `<tr><td colspan="2" class="hint" style="text-align:left;font-weight:400">${esc(well.gNote)}</td></tr>` : ''}
           ${isFinite(w.Tstatic) ? `<tr><td>${t('det.tstatic')}</td><td>${fmt(w.Tstatic, 1)} °C</td></tr>` : ''}
           <tr><td>${t('r.tb')}</td><td>${fmt(w.Tbottom, 1)}</td></tr>
           <tr><td>${t('r.integ')}</td><td><span class="badge ${w.integrity}">${t('int.' + w.integrity)}</span></td></tr>
@@ -622,8 +649,11 @@
       for (let i = 0; i < dd.length; i += step) if (dd[i] !== null && tc.data[i] !== null) pts.push({ x: toC(tc.data[i]), y: dd[i] });
       ds.push({ label: `${t('ch.meas')} (${tc.mnemonic})`, data: pts, pointRadius: 1.5, borderColor: '#ef6c00', backgroundColor: '#ef6c00' });
     }
+    if (Array.isArray(well.tempPoints) && well.tempPoints.length) {
+      ds.push({ label: t('ch.dst'), data: well.tempPoints.map((p) => ({ x: p.T, y: p.z, src: p.src })), pointRadius: 6, pointStyle: 'rectRot', borderColor: '#2e7d32', backgroundColor: '#66bb6a' });
+    }
     mk('chProfile', { type: 'scatter', data: { datasets: ds }, options: { maintainAspectRatio: false,
-      plugins: { tooltip: { callbacks: { label: (c) => `${c.dataset.label}: ${fmt(c.parsed.x, 1)} °C @ ${fmt(c.parsed.y)} m` } } },
+      plugins: { tooltip: { callbacks: { label: (c) => `${c.dataset.label}: ${fmt(c.parsed.x, 1)} °C @ ${fmt(c.parsed.y)} m${c.raw && c.raw.src ? ' – ' + c.raw.src : ''}` } } },
       scales: { y: { reverse: true, min: 0, title: { display: true, text: t('ch.depth') }, ticks: { callback: numTick() } }, x: { title: { display: true, text: t('ch.temp') }, ticks: { callback: numTick() } } } } });
     flowChart('chFlow', w.base);
     mk('chDecline', { data: { labels: w.eco.years, datasets: [
@@ -864,7 +894,7 @@
     sens() { openDoc('sens'); },
     exportRank() {
       const r = screen();
-      const rows = r.ranked.map((w, i) => ({ rank: i + 1, id: w.id, name: w.name, location: w.location, depth_m: w.depth, gradient_c100m: w.G.toFixed(2), g_source: w.gSource, t_bottom_c: w.Tbottom.toFixed(1), t_out_c: w.Tout.toFixed(1), q_kw: w.Q.toFixed(0), q_p10_kw: w.mc.p10.toFixed(0), q_p90_kw: w.mc.p90.toFixed(0), integrity: w.integrity, distance_km: w.distance, capex_bn_vnd: w.eco.capex.toFixed(2), npv_bn_vnd: w.eco.npv.toFixed(2), lcoh_vnd_kwh: w.eco.lcoh.toFixed(0), suggested_use: t(w.use), score: w.score }));
+      const rows = r.ranked.map((w, i) => ({ rank: i + 1, id: w.id, name: w.name, location: w.location, depth_m: w.depth, gradient_c100m: w.G.toFixed(2), g_source: srcOf(w), t_bottom_c: w.Tbottom.toFixed(1), t_out_c: w.Tout.toFixed(1), q_kw: w.Q.toFixed(0), q_p10_kw: w.mc.p10.toFixed(0), q_p90_kw: w.mc.p90.toFixed(0), integrity: w.integrity, distance_km: w.distance, capex_bn_vnd: w.eco.capex.toFixed(2), npv_bn_vnd: w.eco.npv.toFixed(2), lcoh_vnd_kwh: w.eco.lcoh.toFixed(0), suggested_use: t(w.use), score: w.score }));
       download(safeName(S.project.name) + '_ranking.csv', toCSV(rows, Object.keys(rows[0] || { rank: 1 })), 'text/csv');
     },
     logPlot() { openDoc('log:' + selWell().uid); },

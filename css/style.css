@@ -166,7 +166,7 @@ button, input, select { font: inherit; color: inherit; }
 .bar.pass i b { background: var(--good); }
 .npv-neg { color: var(--poor); } .npv-pos { color: var(--good); }
 .src { font-size: 11.5px; padding: 1px 7px; border-radius: 999px; background: var(--bg2); color: var(--ink2); }
-.src.horner { background: #e7f4ea; color: var(--good); } .src.bht { background: #eaf1fb; color: var(--blue); }
+.src.horner, .src.dst { background: #e7f4ea; color: var(--good); } .src.bht, .src.log { background: #eaf1fb; color: var(--blue); } .src.field { background: #fff3e0; color: var(--fair); }
 .warnbox { background: #fff6e5; border: 1px solid #f3d9a4; color: #7a5200; padding: 7px 12px; border-radius: 6px; font-size: 13px; margin-bottom: 10px; }
 
 /* report */

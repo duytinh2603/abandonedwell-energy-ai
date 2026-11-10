@@ -14,7 +14,7 @@
     [/^(CALI|CAL|HCAL|C1|C2)$/i, 'Caliper'],
     [/^(SP|SSP)$/i, 'Spontaneous Potential'],
     [/^(PEF|PE|PEFZ)$/i, 'Photoelectric'],
-    [/^(TEMP|MTEMP|TMP|BHT|TEMPC|TEMPF|WTEP|ETEMP|FTEMP)$/i, 'Temperature'],
+    [/^(TEMP|MTEMP|MTEM|HTEM|TMP|BHT|TEMPC|TEMPF|WTEP|ETEMP|FTEMP)$/i, 'Temperature'],
     [/^(DRHO|HDRA)$/i, 'Density Correction'],
     [/^(VSH|VCL)$/i, 'Shale Volume'],
     [/^(PHIE|PHIT|POR)$/i, 'Porosity'],
