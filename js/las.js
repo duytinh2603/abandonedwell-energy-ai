@@ -194,12 +194,16 @@
     db: null, mem: new Map(),
     open() {
       return new Promise((res) => {
+        // never let a blocked/hung IndexedDB keep the app from starting: fall back to memory after 2 s
+        const timer = setTimeout(res, 2000);
+        const done = () => { clearTimeout(timer); res(); };
         try {
           const rq = indexedDB.open('abandonedwell-ai', 1);
           rq.onupgradeneeded = () => rq.result.createObjectStore('projects', { keyPath: 'id' });
-          rq.onsuccess = () => { this.db = rq.result; res(); };
-          rq.onerror = () => res();
-        } catch (e) { res(); }
+          rq.onsuccess = () => { this.db = rq.result; this.db.onversionchange = () => this.db.close(); done(); };
+          rq.onerror = done;
+          rq.onblocked = done;
+        } catch (e) { done(); }
       });
     },
     tx(mode) { return this.db.transaction('projects', mode).objectStore('projects'); },
