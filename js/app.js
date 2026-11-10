@@ -75,7 +75,11 @@
     return s;
   };
   const loc = () => (S.lang === 'vi' ? 'vi-VN' : 'en-US');
-  const fmt = (x, d = 0) => (x !== null && x !== undefined && isFinite(x) ? Number(x).toLocaleString(loc(), { minimumFractionDigits: d, maximumFractionDigits: d }) : '–');
+  const fmt = (x, d = 0) => {
+    if (x === null || x === undefined || !isFinite(x)) return '–';
+    const v = Math.abs(x) < 0.5 * Math.pow(10, -d) ? 0 : Number(x); // avoid "-0"
+    return v.toLocaleString(loc(), { minimumFractionDigits: d, maximumFractionDigits: d });
+  };
   const esc = (s) => String(s === undefined || s === null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const uid = () => Math.random().toString(36).slice(2, 10);
   const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch (e) { /* ignore */ } };

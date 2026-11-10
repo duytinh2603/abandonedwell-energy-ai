@@ -210,12 +210,13 @@
     const npvs = ok.map((w) => w.eco.npv);
     const nMin = Math.min(...npvs), nMax = Math.max(...npvs);
     ok.forEach((w) => {
-      const sT = w.Q / qMax;
+      const sT = Math.max(0, w.Q) / qMax; // a well that cools the water (Q <= 0) scores 0, never negative
       const sI = INTEGRITY_SCORE[w.integrity] ?? 0.6;
       const sD = Math.max(0, 1 - w.distance / params.maxDist);
       const sE = nMax > nMin ? (w.eco.npv - nMin) / (nMax - nMin) : 1;
       w.subScores = { thermal: sT, integrity: sI, distance: sD, econ: sE };
-      w.score = Math.round(100 * (wt.thermal * sT + wt.integrity * sI + wt.distance * sD + wt.econ * sE) / wsum);
+      w.score = Math.max(0, Math.min(100, Math.round(100 * (wt.thermal * sT + wt.integrity * sI + wt.distance * sD + wt.econ * sE) / wsum)));
+      if (w.Q <= 0) { w.score = 0; w.warnings.push('noHeat'); }
     });
     ok.sort((a, b) => b.score - a.score);
     return { ranked: ok, invalid: wells.filter((w) => !w.valid) };
