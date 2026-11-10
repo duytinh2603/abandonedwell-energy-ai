@@ -450,6 +450,7 @@
         if (w.gSource) h += roRow('det.gsrc', t('src.' + w.gSource));
         if (w.gNote) h += roRow('f.gNote', w.gNote);
         if (isFinite(w.md_m)) h += roRow('f.md', fmt(w.md_m));
+        if (w.res_note) h += roRow('r2.note', w.res_note);
         if (Array.isArray(w.tempPoints) && w.tempPoints.length) {
           h += grpRow('f.tpts') + w.tempPoints.map((p) => `<tr><td title="${esc(p.src)}">${fmt(p.z)} m</td><td><span class="ro" title="${esc(p.src)}">${fmt(p.T, 1)} °C · ${esc(p.src)}</span></td></tr>`).join('');
         }
