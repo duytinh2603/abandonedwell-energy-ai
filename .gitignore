@@ -5,3 +5,4 @@
 *.dlis
 *.csv
 data/private/
+.claude/

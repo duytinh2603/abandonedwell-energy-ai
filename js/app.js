@@ -73,6 +73,8 @@
   ICON.undo = svg(`<path d="M12 14H25a8 8 0 0 1 0 16H14" fill="none" stroke="${B}" stroke-width="2.6" stroke-linecap="round"/><path d="M17 8l-6 6 6 6" fill="none" stroke="${R}" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>`);
   ICON.importSurvey = svg(`<path d="M10 4v12c0 8 6 12 16 16" fill="none" stroke="${B}" stroke-width="2.4"/><circle cx="10" cy="10" r="2" fill="${R}"/><circle cx="12" cy="20" r="2" fill="${R}"/><circle cx="19" cy="28" r="2" fill="${R}"/><circle cx="26" cy="32" r="2" fill="${R}"/><path d="M28 8h8M32 4v8" stroke="#2e7d32" stroke-width="2.2"/>`);
   ICON.importDst = svg(badge('DST', '#2e7d32') + `<path d="M13 31h14m-3-3 3 3-3 3" stroke="#2e7d32" stroke-width="1.6"/>`);
+  ICON.volve = svg(`<path d="M6 30h28" stroke="${B}" stroke-width="2"/><path d="M4 34c4-2 8 2 12 0s8 2 12 0 6 1 8 0" stroke="#4fc3f7" stroke-width="2"/><rect x="12" y="14" width="16" height="10" fill="#e3f0fc" stroke="${B}" stroke-width="2"/><path d="M14 24v6M26 24v6M20 4v10M16 8h8" stroke="${B}" stroke-width="2"/><circle cx="31" cy="11" r="6" fill="#2e7d32"/><path d="M28.5 11l2 2 3.5-4" stroke="#fff" stroke-width="1.8" fill="none"/>`);
+  ICON.volveData = svg(`<rect x="5" y="6" width="30" height="28" fill="#fff" stroke="${B}" stroke-width="2"/><path d="M9 28l6-8 5 4 6-10 5 6" stroke="#ef6c00" stroke-width="2" fill="none"/><path d="M5 12h30" stroke="${B}" stroke-width="2"/><circle cx="29" cy="29" r="6" fill="#2e7d32"/><path d="M26.5 29l2 2 3.5-4" stroke="#fff" stroke-width="1.8" fill="none"/>`);
   ICON.optAll = svg(`<rect x="5" y="6" width="30" height="28" fill="#fff" stroke="${B}" stroke-width="2"/><path d="M5 13h30M5 20h30M5 27h30" stroke="${G}" stroke-width="1.4"/><path d="M14 6v28" stroke="${G}" stroke-width="1.4"/><circle cx="25" cy="16.5" r="2.6" fill="#2e7d32"/><circle cx="21" cy="23.5" r="2.6" fill="${R}"/><circle cx="29" cy="30.5" r="2.6" fill="#ef6c00"/>`);
 
   /* ================= state ================= */
@@ -104,7 +106,7 @@
   /** Display source of the gradient, refining the model's generic "given" with what the project knows. */
   function srcOf(w) {
     const well = wellBy(w.uid);
-    if (w.gSource === 'given' && well && ['dst', 'field', 'log', 'ml'].includes(well.gSource)) return well.gSource;
+    if (w.gSource === 'given' && well && ['dst', 'lwd', 'field', 'log', 'ml'].includes(well.gSource)) return well.gSource;
     return w.gSource;
   }
 
@@ -182,7 +184,7 @@
       const tc = w.curves.find((c) => c.family === 'Temperature');
       if (tc) {
         const g = L.gradientFromLog(dc.data, tc.data, tc.unit);
-        if (g && (w.gSource === 'dst' || w.gSource === 'field')) {
+        if (g && (w.gSource === 'dst' || w.gSource === 'lwd' || w.gSource === 'field')) {
           log(t('msg.gLogKeep', { c: tc.mnemonic, g: fmt(g.G, 2) }), 'warn');
         } else if (g) {
           w.gradient_c100m = Math.round(g.G * 1000) / 1000;
@@ -193,7 +195,7 @@
         }
       }
     }
-    if (parsed && parsed.params && w.gSource !== 'dst') {
+    if (parsed && parsed.params && w.gSource !== 'dst' && w.gSource !== 'lwd') {
       const p = parsed.params.BHT || parsed.params.BHTEMP || parsed.params.MBHT || parsed.params.BHT1 || parsed.params.MRT || parsed.params.MAXT;
       if (p && isFinite(parseFloat(p.value))) {
         let v = parseFloat(p.value);
@@ -321,6 +323,55 @@
     return p;
   }
 
+  /* ================= Volve (Equinor open data) ================= */
+  let VOLVE = null;
+  async function loadVolve() {
+    if (VOLVE) return VOLVE;
+    const r = await fetch('data/volve.json', { cache: 'no-cache' });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    VOLVE = await r.json();
+    return VOLVE;
+  }
+  const VOLVE_PARAMS = { T0: 6, Tin: 25, u_Tamb: 10, purpose: 'res', capexOff: 25 };
+  /** Wells usable for screening: TVD at TD is known. */
+  const volveUsable = (vw) => vw.tdTVD > 0 && vw.tdMD > 0;
+  function volveProject(D) {
+    const p = makeProject(t('volve.projName'));
+    Object.assign(p.params, VOLVE_PARAMS);
+    p.source = 'volve';
+    const T0 = p.params.T0;
+    const fieldPts = [];
+    D.wells.filter(volveUsable).forEach((vw) => {
+      const kb = vw.kb || 54.9;
+      const w = newWellObj({
+        id: vw.name, name: vw.name, field: 'Volve', location: 'offshore', integrity: 'fair', distance_km: 0,
+        depth_m: Math.round(vw.tdTVD - kb), md_m: Math.round(vw.tdMD), lat: vw.lat, lon: vw.lon, kb,
+        note: t('volve.wellNote', { src: vw.logSrc || '–' }),
+      });
+      if (vw.stations) { w.survey = vw.stations; w.surveyMD = Math.round(vw.tdMD); w.surveyTVD = Math.round(vw.tdTVD); }
+      if (vw.temps.length) {
+        w.tempPoints = vw.temps.map((q) => ({ z: Math.round(q.tvd - kb), T: q.t, src: `${q.how === 'pTEMP' ? 'LWD FPWD' : 'LWD FT'} · MD ${fmt(q.md)} m · ${q.file.split('/').pop()}` }));
+        w.tempPoints.forEach((q) => fieldPts.push(q));
+        const g = fitGradient(w.tempPoints, T0);
+        w.gradient_c100m = Math.round(g.G * 1000) / 1000; w.gSource = 'lwd';
+        w.gNote = t('volve.gNote', { n: w.tempPoints.length, rms: fmt(g.rms, 1) });
+      }
+      if (vw.logs && vw.logs.md.length) {
+        const fam = { GR: ['Gamma Ray', 'gAPI', 'Gamma ray'], DT: ['Sonic', 'us/ft', 'Compressional slowness'], RHOB: ['Bulk Density', 'g/cm3', 'Bulk density'], NPHI: ['Neutron Porosity', 'v/v', 'Neutron porosity'], RT: ['Resistivity', 'ohm.m', 'Deep resistivity'] };
+        w.curves = [{ mnemonic: 'DEPT', unit: 'm', desc: 'Measured depth (5 m median bins)', family: 'Depth', data: vw.logs.md.slice() }];
+        Object.keys(fam).forEach((k) => { if (vw.logs[k]) w.curves.push({ mnemonic: k, unit: fam[k][1], desc: fam[k][2], family: fam[k][0], data: vw.logs[k].slice() }); });
+        w.nullValue = -999.25; w.fileName = vw.logSrc.split('/').pop();
+      }
+      p.wells.push(w);
+    });
+    // wells with no temperature measurement get the field gradient (all LWD points, T0 fixed)
+    if (fieldPts.length) {
+      const g = fitGradient(fieldPts, T0);
+      p.wells.filter((w) => !(w.tempPoints || []).length).forEach((w) => { w.gradient_c100m = Math.round(g.G * 1000) / 1000; w.gSource = 'field'; w.gNote = t('volve.gField', { n: fieldPts.length }); });
+    }
+    return p;
+  }
+
   /* ================= params ================= */
   function modelParams() {
     const p = Object.assign({}, DEFAULTS, S.project ? S.project.params : {});
@@ -351,11 +402,11 @@
     data: [['g.import', ['importLas', 'importCsv', 'importSurvey', 'importDst']], ['g.export', ['exportLas', 'exportCsv']], ['g.tools', ['nullValue', 'delete']]],
     geo: [['g.eval', ['params', 'run', 'report', 'sens']], ['g.ai', ['ml']], ['g.util', ['optimize', 'optAll']], ['g.export', ['exportRank']]],
     plot: [['g.plots', ['logPlot', 'report', 'sens']]],
-    help: [['g.help', ['guide', 'about', 'lasHelp', 'sample', 'demo']]],
+    help: [['g.help', ['guide', 'about', 'lasHelp', 'sample', 'demo']], ['g.volve', ['volve', 'volveData']]],
   };
   const selWell = () => (S.sel && (S.sel.t === 'well' || S.sel.t === 'curve') ? wellBy(S.sel.uid) : null);
   function enabled(a) {
-    if (['newProject', 'openProject', 'openFile', 'guide', 'about', 'lasHelp', 'sample', 'demo', 'browser', 'props', 'output'].includes(a)) return true;
+    if (['newProject', 'openProject', 'openFile', 'guide', 'about', 'lasHelp', 'sample', 'demo', 'volve', 'volveData', 'browser', 'props', 'output'].includes(a)) return true;
     if (!S.project) return false;
     if (['report', 'optimize', 'exportLas', 'nullValue', 'logPlot'].includes(a)) return !!selWell() && (a === 'report' || a === 'optimize' || selWell().curves.length > 0);
     if (a === 'optAll' || a === 'ml' || a === 'importDst') return S.project.wells.length > 0;
@@ -473,6 +524,8 @@
       if (S.sel.t === 'well') {
         h = fieldRows(w, WELL_FIELDS);
         if (w.gSource) h += roRow('det.gsrc', t('src.' + w.gSource));
+        if (isFinite(w.lat) && w.lat !== null) h += roRow('f.coord', `${fmt(w.lat, 5)}°N, ${fmt(w.lon, 5)}°E${w.kb ? ` · KB ${fmt(w.kb, 1)} m` : ''}`);
+        if (w.note) h += roRow('f.note', w.note);
         if (w.gNote) h += roRow('f.gNote', w.gNote);
         if (Array.isArray(w.survey) && w.survey.length) h += roRow('f.survey', `${w.survey.length} ${t('f.stations')} · TVD ${fmt(w.surveyTVD)} m / MD ${fmt(w.surveyMD)} m`);
         if (w.res_note) h += roRow('r2.note', w.res_note);
@@ -519,6 +572,7 @@
     if (id === 'sens') return [ICON.docSens, t('doc.sens')];
     if (id === 'optall') return [ICON.optAll, t('doc.optall')];
     if (id === 'guide') return [ICON.guide, t('b.guide')];
+    if (id === 'volve') return [ICON.volveData, t('doc.volve')];
     if (id === 'ml') return [ICON.ml, t('doc.ml')];
     const [k, u] = id.split(':'); const w = wellBy(u);
     const ic = { log: ICON.docLog, rep: ICON.docRep, opt: ICON.optimize }[k];
@@ -555,6 +609,7 @@
     a.scrollTop = 0;
     if (id === 'start') return renderStart(a);
     if (id === 'guide') return renderGuide(a);
+    if (id === 'volve') return renderVolve(a);
     if (!S.project) { a.innerHTML = ''; return; }
     if (id === 'rank') return renderRank(a);
     if (id === 'sens') return renderSens(a);
@@ -575,6 +630,7 @@
           <button class="big-act" data-act="openProject">${ICON.openProject}${t('start.open')}</button>
           <button class="big-act" data-act="importLas" ${S.project ? '' : 'hidden'}>${ICON.importLas}${t('b.importLas')}</button>
           <button class="big-act" data-act="demo">${ICON.demo}${t('start.demo')}</button>
+          <button class="big-act" data-act="volve">${ICON.volve}${t('start.volve')}</button>
         </div>
         <div class="recent"><h3>${t('start.recent')}</h3><div id="recentList"></div></div>
       </div>
@@ -880,7 +936,81 @@
     const P = modelParams();
     return AWML.train(S.project.wells, P.T0, M);
   }
-  const MEASURED = ['dst', 'horner', 'bht'];
+  const MEASURED = ['dst', 'lwd', 'horner', 'bht'];
+  /* ---------- Volve data view ---------- */
+  async function renderVolve(a) {
+    a.innerHTML = `<div class="doc"><h2>${t('doc.volve')}</h2><p class="muted">${t('volve.loading')}</p></div>`;
+    let D;
+    try { D = await loadVolve(); } catch (e) { a.innerHTML = `<div class="doc"><h2>${t('doc.volve')}</h2><div class="warnbox">${t('volve.loadErr', { e: esc(e.message) })}</div></div>`; return; }
+    if (S.active !== 'volve') return;
+    const T0 = VOLVE_PARAMS.T0, F = D.field;
+    const pts = []; D.wells.forEach((w) => w.temps.forEach((q) => pts.push({ w: w.name, z: q.tvd - (w.kb || 54.9), T: q.t, md: q.md, how: q.how })));
+    const fg = pts.length ? fitGradient(pts, T0) : null;
+    const usable = D.wells.filter(volveUsable);
+    const cubes = D.seismic.cubes, by = (s) => cubes.filter((c) => c.survey === s);
+    const flagTxt = (f) => t(/view/i.test(f) ? 'volve.flag.view' : /to[aạ]\s*đ|coord/i.test(f) ? 'volve.flag.coord' : 'volve.flag.other');
+    const curvesOf = (w) => (w.logs ? ['GR', 'DT', 'RHOB', 'NPHI', 'RT'].filter((k) => w.logs[k]).join(', ') : '–');
+    a.innerHTML = `<div class="doc"><h2>${t('doc.volve')}</h2>
+      <div class="rec">${t('volve.attrib', { url: esc(D.url) })}</div>
+      <p class="muted">${t('volve.intro', { block: esc(F.block), prod: esc(F.production), res: esc(F.reservoir), wd: fmt(F.waterDepth) })}</p>
+      <div class="kpis">
+        <div class="kpi"><span>${t('volve.k.wells')}</span><b>${D.wells.length}</b></div>
+        <div class="kpi"><span>${t('volve.k.usable')}</span><b>${usable.length}</b></div>
+        <div class="kpi"><span>${t('volve.k.pts')}</span><b>${pts.length}</b></div>
+        <div class="kpi"><span>${t('volve.k.g')}</span><b>${fg ? fmt(fg.G, 2) : '–'}</b></div>
+        <div class="kpi"><span>${t('volve.k.cubes')}</span><b>${cubes.length}</b></div>
+        <div class="kpi"><span>${t('volve.k.lines')}</span><b>${D.seismic.lines2d.length}</b></div>
+      </div>
+      <div class="rep-head no-print" style="justify-content:flex-start;gap:8px;flex-wrap:wrap">
+        <button class="btn" data-act="volve">${t('volve.open')}</button>
+        <button class="btn" id="btnVolveDst">${t('volve.dlDst')}</button>
+        <button class="btn" id="btnVolveWells">${t('volve.dlWells')}</button>
+      </div>
+      <div class="rep-grid">
+        <div class="card"><h3>${t('volve.chT')}</h3><div class="chart-box" style="height:340px"><canvas id="chVolveT"></canvas></div><p class="hint">${t('volve.chTHint', { T0: fmt(T0), g: fg ? fmt(fg.G, 2) : '–', rms: fg ? fmt(fg.rms, 1) : '–' })}</p></div>
+        <div class="card"><h3>${t('volve.map')}</h3><div id="volveMap"></div><p class="hint">${t('volve.mapHint')}</p></div>
+      </div>
+      <div class="card" style="margin-top:14px"><h3>${t('volve.tWells')}</h3><div class="tscroll"><table class="tbl"><thead><tr>
+        <th>${t('r.well')}</th><th class="n">MD TD (m)</th><th class="n">TVD TD (m RKB)</th><th class="n">KB (m)</th><th class="n">${t('volve.nT')}</th><th class="n">T (°C)</th><th class="n">${t('volve.gW')}</th><th>${t('volve.logs')}</th><th>${t('volve.status')}</th></tr></thead><tbody>
+        ${D.wells.map((w) => { const ts = w.temps.map((q) => q.t); const g = w.temps.length ? fitGradient(w.temps.map((q) => ({ z: q.tvd - (w.kb || 54.9), T: q.t })), T0).G : null; return `<tr><td><b>${esc(w.name)}</b></td><td class="n">${fmt(w.tdMD)}</td><td class="n">${fmt(w.tdTVD)}</td><td class="n" title="${esc(w.kbSrc)}">${fmt(w.kb, 1)}</td>
+          <td class="n">${w.temps.length || '–'}</td><td class="n">${ts.length ? `${fmt(Math.min(...ts), 1)}–${fmt(Math.max(...ts), 1)}` : '–'}</td><td class="n">${g ? fmt(g, 2) : '–'}</td><td>${esc(curvesOf(w))}</td>
+          <td>${volveUsable(w) ? `<span class="src dst">${t('volve.inProj')}</span>` : `<span class="src field">${t('volve.noTvd')}</span>`}</td></tr>`; }).join('')}
+        </tbody></table></div><p class="hint">${t('volve.wellsFoot')}</p></div>
+      <div class="card" style="margin-top:14px"><h3>${t('volve.tCubes')}</h3>
+        <p class="hint">${['ST10010', 'ST0202'].map((s) => { const c = by(s); if (!c.length) return ''; const il = [Math.min(...c.map((x) => x.il[0])), Math.max(...c.map((x) => x.il[1]))], xl = [Math.min(...c.map((x) => x.xl[0])), Math.max(...c.map((x) => x.xl[1]))]; return t('volve.surveySum', { s, n: c.length, il0: il[0], il1: il[1], xl0: xl[0], xl1: xl[1] }); }).join(' · ')}</p>
+        <div class="tscroll"><table class="tbl"><thead><tr><th>#</th><th>${t('volve.cube')}</th><th>${t('volve.survey')}</th><th>${t('volve.domain')}</th><th class="n">Inline</th><th class="n">Crossline</th><th>${t('volve.note')}</th></tr></thead><tbody>
+        ${cubes.map((c, i) => `<tr><td class="n">${i + 1}</td><td style="word-break:break-all">${esc(c.name)}</td><td>${esc(c.survey)}</td><td>${t('volve.dom.' + c.domain)}</td><td class="n">${c.il[0]}–${c.il[1]}</td><td class="n">${c.xl[0]}–${c.xl[1]}</td><td>${c.flags.map((f) => `<span class="src field">${flagTxt(f)}</span>`).join(' ') || '–'}</td></tr>`).join('')}
+        </tbody></table></div></div>
+      <div class="card" style="margin-top:14px"><h3>${t('volve.t2d', { n: D.seismic.lines2d.length })}</h3><p class="hint" style="line-height:1.9">${D.seismic.lines2d.map((l) => `<code>${esc(l)}</code>`).join(' ')}</p></div>
+      <div class="card" style="margin-top:14px"><h3>${t('volve.limits')}</h3><ul class="hint" style="text-align:left">${t('volve.limitList')}</ul></div>
+    </div>`;
+    // T–z chart
+    const names = Array.from(new Set(pts.map((p) => p.w)));
+    const pal = ['#1565c0', '#c62828', '#2e7d32', '#ef6c00', '#6a1b9a', '#00838f', '#ad1457', '#5d4037', '#455a64', '#9e9d24', '#283593', '#d84315', '#00695c', '#8e24aa'];
+    const zmax = Math.max(3600, ...pts.map((p) => p.z)) + 100;
+    const ds = names.map((n, i) => ({ label: n, data: pts.filter((p) => p.w === n).map((p) => ({ x: p.T, y: p.z, md: p.md, how: p.how })), backgroundColor: pal[i % pal.length], pointRadius: 3.5 }));
+    if (fg) ds.push({ label: t('volve.fit', { g: fmt(fg.G, 2) }), data: [{ x: T0, y: 0 }, { x: T0 + fg.G / 100 * zmax, y: zmax }], showLine: true, pointRadius: 0, borderColor: '#212121', borderDash: [6, 4] });
+    mk('chVolveT', { type: 'scatter', data: { datasets: ds }, options: { maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 10 } } }, tooltip: { callbacks: { label: (c) => `${c.dataset.label}: ${fmt(c.parsed.x, 1)} °C @ ${fmt(c.parsed.y)} m TVDSS${c.raw.md ? ` (MD ${fmt(c.raw.md)} m, ${c.raw.how})` : ''}` } } },
+      scales: { x: { title: { display: true, text: t('ch.temp') } }, y: { reverse: true, min: 0, max: zmax, title: { display: true, text: 'TVDSS (m)' } } } } });
+    // survey outline map (equirectangular, km from platform)
+    const plat = D.wells.find((w) => w.coordSrc === 'LAS header' && w.lat) || D.wells.find((w) => w.lat);
+    const lat0 = plat ? plat.lat : 58.44, lon0 = plat ? plat.lon : 1.887, kx = 111.32 * Math.cos(lat0 * Math.PI / 180), ky = 110.57;
+    const polys = Object.entries(D.seismic.corners).map(([s, cs]) => ({ s, p: cs.map((c) => [(c.lon - lon0) * kx, (c.lat - lat0) * ky]) }));
+    const all = polys.flatMap((q) => q.p).concat([[0, 0]]);
+    const x0 = Math.min(...all.map((p) => p[0])) - 1, x1 = Math.max(...all.map((p) => p[0])) + 1, y0 = Math.min(...all.map((p) => p[1])) - 1, y1 = Math.max(...all.map((p) => p[1])) + 1;
+    const W = 420, H = Math.round(W * (y1 - y0) / (x1 - x0)), sx = (x) => ((x - x0) / (x1 - x0) * W).toFixed(1), sy = (y) => ((y1 - y) / (y1 - y0) * H).toFixed(1);
+    const colr = { ST10010: '#1565c0', ST0202: '#ef6c00' };
+    const grid = []; for (let g = Math.ceil(x0); g <= x1; g++) grid.push(`<line x1="${sx(g)}" y1="0" x2="${sx(g)}" y2="${H}" stroke="#eceff1"/>`); for (let g = Math.ceil(y0); g <= y1; g++) grid.push(`<line x1="0" y1="${sy(g)}" x2="${W}" y2="${sy(g)}" stroke="#eceff1"/>`);
+    $('#volveMap').innerHTML = `<svg viewBox="0 0 ${W} ${H}" style="width:100%;max-height:340px;background:#fbfdff;border:1px solid #e0e6ed;border-radius:4px" role="img" aria-label="${esc(t('volve.map'))}">
+      ${grid.join('')}
+      ${polys.map((q) => `<polygon points="${q.p.map((p) => sx(p[0]) + ',' + sy(p[1])).join(' ')}" fill="${colr[q.s] || '#607d8b'}" fill-opacity=".10" stroke="${colr[q.s] || '#607d8b'}" stroke-width="2"/><text x="${sx(q.p[0][0])}" y="${sy(q.p[0][1])}" dy="${q.s === 'ST0202' ? -6 : 14}" font-size="12" fill="${colr[q.s] || '#607d8b'}" font-weight="700">${esc(q.s)}</text>`).join('')}
+      <circle cx="${sx(0)}" cy="${sy(0)}" r="6" fill="#c62828" stroke="#fff" stroke-width="2"/><text x="${sx(0)}" y="${sy(0)}" dx="9" dy="4" font-size="12" fill="#c62828" font-weight="700">${t('volve.platform')}</text>
+      <text x="6" y="${H - 6}" font-size="10" fill="#78909c">1 ô = 1 km · N ↑ · ${fmt(lat0, 4)}°N ${fmt(lon0, 4)}°E</text></svg>`;
+    // downloads
+    $('#btnVolveDst').onclick = () => download('volve_lwd_temperatures.csv', toCSV(D.wells.flatMap((w) => w.temps.map((q) => ({ well: w.name, tvd_m: Math.round(q.tvd - (w.kb || 54.9)), md_m: q.md, temp_c: q.t, label: `${q.how} ${q.file.split('/').pop()}` }))), ['well', 'tvd_m', 'md_m', 'temp_c', 'label']), 'text/csv');
+    $('#btnVolveWells').onclick = () => download('volve_wells.csv', toCSV(D.wells.map((w) => ({ name: w.name, md_td_m: w.tdMD, tvd_td_m_rkb: w.tdTVD, kb_m: w.kb, lat: w.lat, lon: w.lon, coord_source: w.coordSrc, n_temp: w.temps.length, logs: curvesOf(w), log_source: w.logSrc })), ['name', 'md_td_m', 'tvd_td_m_rkb', 'kb_m', 'lat', 'lon', 'coord_source', 'n_temp', 'logs', 'log_source']), 'text/csv');
+  }
+
   function renderML(a) {
     const P = modelParams(); const ml = trainML(); S.ml = ml;
     if (!ml.ok) { a.innerHTML = `<div class="doc"><h2>${t('doc.ml')}</h2><div class="warnbox">${t(ml.reason === 'wells' ? 'ml.needWells' : 'ml.needPts', { n: ml.n })}</div><p class="muted">${t('ml.intro')}</p></div>`; return; }
@@ -1246,6 +1376,17 @@
       const w = newWellObj({ id: 'SAMPLE-1', name: 'SAMPLE-1', field: 'DEMO', bht_c: 118, curves: L.synthLogs(500, 3000, 0.5, 3.3, 99), nullValue: -999.25 });
       download('sample_SAMPLE-1.las', L.writeLAS(w));
     },
+    async volve() {
+      let D;
+      try { D = await loadVolve(); } catch (e) { log(t('volve.loadErr', { e: e.message }), 'err'); return; }
+      if (S.project) await Store.put(S.project);
+      const p = volveProject(D); await Store.put(p);
+      openProject(p, 'msg.opened');
+      log(t('volve.loaded', { n: p.wells.length, k: p.wells.filter((w) => w.gSource === 'lwd').length, s: D.wells.length - p.wells.length }), 'ok');
+      log(t('volve.paramsSet', { T0: p.params.T0, Tin: p.params.Tin, Ta: p.params.u_Tamb }));
+      openDoc('rank');
+    },
+    volveData() { openDoc('volve'); },
     async demo() {
       if (S.project) await Store.put(S.project);
       const p = demoProject(); await Store.put(p);
@@ -1260,7 +1401,7 @@
   document.addEventListener('click', (e) => {
     const b = e.target.closest('[data-act]'); if (!b || b.disabled) return;
     const a = b.dataset.act;
-    if (!S.project && !['newProject', 'openProject', 'openFile', 'guide', 'about', 'lasHelp', 'sample', 'demo', 'browser', 'props', 'output', 'clearLog', 'search', 'clearFilter', 'toggleTree'].includes(a)) return;
+    if (!S.project && !['newProject', 'openProject', 'openFile', 'guide', 'about', 'lasHelp', 'sample', 'demo', 'volve', 'volveData', 'browser', 'props', 'output', 'clearLog', 'search', 'clearFilter', 'toggleTree'].includes(a)) return;
     if (ACT[a]) Promise.resolve(ACT[a]()).catch((err) => log(String(err && err.message || err), 'err'));
   });
   $('#ribbonTabs').addEventListener('click', (e) => { const b = e.target.closest('[data-tab]'); if (b) { S.tab = b.dataset.tab; renderRibbon(); } });

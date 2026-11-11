@@ -94,6 +94,21 @@
     return { ok: m.ok && m.cv.rmseML < m.cv.rmseBase, detail: m.ok ? `RMSE ML ${m.cv.rmseML.toFixed(2)} °C < trung bình ${m.cv.rmseBase.toFixed(2)} °C` : m.reason };
   });
 
+  /* 7. Volve open dataset (Equinor) */
+  test('Dữ liệu Volve: 24 giếng, điểm nhiệt độ hợp lệ, gradient mỏ 2–4 °C/100 m, mô hình giếng chạy được', () => {
+    const x = new XMLHttpRequest(); x.open('GET', 'data/volve.json', false); x.send();
+    if (x.status !== 200) return { ok: false, detail: 'HTTP ' + x.status };
+    const D = JSON.parse(x.responseText);
+    const pts = D.wells.flatMap((w) => w.temps.map((q) => ({ z: q.tvd - (w.kb || 54.9), T: q.t, md: q.md, tvd: q.tvd })));
+    const okPts = pts.every((p) => p.T > 20 && p.T < 250 && p.tvd <= p.md + 1);
+    const T0 = 6, sz2 = pts.reduce((a, p) => a + p.z * p.z, 0), G = pts.reduce((a, p) => a + p.z * (p.T - T0), 0) / sz2 * 100;
+    const wells = D.wells.filter((w) => w.tdTVD > 0).map((w, i) => ({ uid: 'v' + i, id: w.name, name: w.name, depth_m: w.tdTVD - (w.kb || 54.9), md_m: w.tdMD, gradient_c100m: G, location: 'offshore', integrity: 'fair', distance_km: 0 }));
+    const outs = wells.map((w) => M.wellOutput({ L: w.md_m, Lv: w.depth_m, G, T0, Tin: 25 }));
+    const okScreen = outs.length >= 15 && outs.every((o) => isFinite(o.Q) && isFinite(o.Tout));
+    return { ok: D.wells.length === 24 && pts.length >= 100 && okPts && G > 2 && G < 4 && okScreen,
+      detail: `${D.wells.length} giếng, ${pts.length} điểm, G = ${G.toFixed(2)} °C/100 m, ${wells.length} giếng tính được; ${D.seismic.cubes.length} khối 3D` };
+  });
+
   const tb = document.getElementById('rows'); let pass = 0;
   results.forEach((r, i) => {
     if (r.ok) pass++;

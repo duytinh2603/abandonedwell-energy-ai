@@ -2,12 +2,12 @@
 window.GUIDE = {
   vi: `
 <h2>Hướng dẫn sử dụng AbandonedWell Energy AI</h2>
-<p class="muted">Phiên bản web v0.4 · Công cụ sàng lọc giếng dầu khí ngừng khai thác để cải tạo thành giếng địa nhiệt.</p>
+<p class="muted">Phiên bản web v0.5 · Công cụ sàng lọc giếng dầu khí ngừng khai thác để cải tạo thành giếng địa nhiệt.</p>
 <nav class="toc"><b>Mục lục</b><ol>
 <li><a href="#g1">Giao diện</a></li><li><a href="#g2">Tạo và quản lý dự án</a></li><li><a href="#g3">Nhập dữ liệu (LAS, CSV, nhập tay)</a></li>
 <li><a href="#g4">Thuộc tính giếng và nguồn gradient</a></li><li><a href="#g4b">Học máy – mô hình nhiệt độ</a></li><li><a href="#g5">Biểu đồ log</a></li><li><a href="#g6">Sàng lọc và xếp hạng</a></li>
 <li><a href="#g7">Báo cáo giếng</a></li><li><a href="#g8">Phương án sử dụng (ORC, nhiệt trực tiếp, vỉa chứa)</a></li><li><a href="#g9">Độ nhạy</a></li>
-<li><a href="#g10">Thông số dự án</a></li><li><a href="#g11">Bảo mật dữ liệu</a></li><li><a href="#g12">Xử lý sự cố</a></li><li><a href="#g13">Giới hạn của mô hình</a></li></ol></nav>
+<li><a href="#g10">Thông số dự án</a></li><li><a href="#g11">Bảo mật dữ liệu</a></li><li><a href="#g12">Xử lý sự cố</a></li><li><a href="#g13">Giới hạn của mô hình</a></li><li><a href="#g14">Dự án mẫu mỏ Volve (dữ liệu thật)</a></li></ol></nav>
 
 <h3 id="g1">1. Giao diện</h3>
 <ul>
@@ -131,19 +131,28 @@ window.GUIDE = {
 <tr><td>Giếng bị “bỏ qua”</td><td>Thiếu chiều sâu hoặc gradient/BHT hợp lệ.</td></tr>
 <tr><td>Không thấy dự án cũ</td><td>Đang dùng trình duyệt/máy khác → Mở tệp dự án.</td></tr>
 <tr><td>Web không cập nhật bản mới</td><td>Nhấn Ctrl+F5 (có thể hai lần vì bản ngoại tuyến).</td></tr>
-<tr><td>Muốn kiểm tra phép tính</td><td>Mở <a href="tests.html" target="_blank">tests.html</a>: 24 kiểm thử tự động so với mô hình Python v0.1 và công thức chuẩn.</td></tr></table>
+<tr><td>Muốn kiểm tra phép tính</td><td>Mở <a href="tests.html" target="_blank">tests.html</a>: 25 kiểm thử tự động so với mô hình Python v0.1 và công thức chuẩn.</td></tr></table>
 
 <h3 id="g13">13. Giới hạn của mô hình</h3>
 <p>Gradient tuyến tính, đá đồng nhất, tổn thất ống đi lên cố định; ORC tính theo hệ số exergy; vỉa tính theo phương pháp thể tích. Kết quả dùng để <b>sàng lọc</b>, chưa thay cho thiết kế chi tiết, mô phỏng thủy động hay đánh giá toàn vẹn giếng thực tế. Mô hình học máy chỉ tốt như số điểm đo nhiệt độ có trong dự án. Chưa đọc DLIS/LIS, chưa có bản đồ tọa độ, toàn vẹn giếng vẫn chọn tay, và mô hình chưa được so với số đo sản lượng địa nhiệt thực tế.</p>
+
+<h3 id="g14">14. Dự án mẫu mỏ Volve (dữ liệu thật)</h3>
+<p>Volve (Biển Bắc Na Uy, lô 15/9) được Equinor công bố toàn bộ dữ liệu năm 2018 theo Giấy phép dữ liệu mở Equinor. Mỏ đã dừng khai thác năm 2016 nên phù hợp làm ví dụ chuyển giếng sang địa nhiệt. Web có sẵn bản trích gọn tại <code>data/volve.json</code>.</p>
+<ol>
+<li><b>Trợ giúp → Dữ liệu Volve</b>: xem nguồn và giấy phép, bảng 24 giếng (MD, TVD, KB, số điểm nhiệt độ, gradient, log), biểu đồ nhiệt độ – chiều sâu của toàn bộ điểm đo, bản đồ vùng khảo sát 3D ST10010/ST0202 và vị trí giàn, danh mục 34 khối địa chấn 3D (inline/crossline, miền thời gian/độ sâu, tình trạng) và 33 tuyến 2D ST0299. Có nút tải điểm nhiệt độ dạng CSV DST và danh sách giếng.</li>
+<li><b>Trợ giúp → Dự án Volve</b> (hoặc nút trên trang Bắt đầu): tạo dự án gồm các giếng có TVD, kèm khảo sát độ lệch (suy từ cặp MD–TVD), điểm nhiệt độ LWD, log GR/DT/RHOB/NPHI/RT bước 5 m. Thông số được đặt cho Biển Bắc: T0 = 6 °C, nước vào 25 °C, nhiệt độ môi trường 10 °C, mục đích phát điện. Sau đó chạy sàng lọc, mở báo cáo, phương án sử dụng và học máy như dự án thường.</li>
+<li>Giếng không có điểm đo nhận gradient chung của mỏ; có thể dùng <b>Địa nhiệt → Mô hình học máy</b> để dự đoán từ log.</li>
+</ol>
+<p class="warnbox">Nhiệt độ LWD đo khi dung dịch đang tuần hoàn nên thấp hơn nhiệt độ vỉa tĩnh; gradient Volve trong web (≈ 2,4–3,4 °C/100 m) là cận dưới. Tệp SEG-Y không được nạp vào trình duyệt. Mã trích dữ liệu: <code>tools/build_volve.py</code>.</p>
 `,
   en: `
 <h2>AbandonedWell Energy AI – User Guide</h2>
-<p class="muted">Web version v0.4 · Screening tool for repurposing shut-in oil &amp; gas wells as geothermal wells.</p>
+<p class="muted">Web version v0.5 · Screening tool for repurposing shut-in oil &amp; gas wells as geothermal wells.</p>
 <nav class="toc"><b>Contents</b><ol>
 <li><a href="#g1">Interface</a></li><li><a href="#g2">Creating and managing projects</a></li><li><a href="#g3">Importing data (LAS, CSV, manual)</a></li>
 <li><a href="#g4">Well properties and gradient source</a></li><li><a href="#g4b">Machine learning – temperature model</a></li><li><a href="#g5">Log plot</a></li><li><a href="#g6">Screening and ranking</a></li>
 <li><a href="#g7">Well report</a></li><li><a href="#g8">Utilisation options (ORC, direct heat, reservoir)</a></li><li><a href="#g9">Sensitivity</a></li>
-<li><a href="#g10">Project parameters</a></li><li><a href="#g11">Data privacy</a></li><li><a href="#g12">Troubleshooting</a></li><li><a href="#g13">Model limitations</a></li></ol></nav>
+<li><a href="#g10">Project parameters</a></li><li><a href="#g11">Data privacy</a></li><li><a href="#g12">Troubleshooting</a></li><li><a href="#g13">Model limitations</a></li><li><a href="#g14">Volve field case study (real data)</a></li></ol></nav>
 
 <h3 id="g1">1. Interface</h3>
 <ul>
@@ -267,9 +276,18 @@ window.GUIDE = {
 <tr><td>Well “skipped”</td><td>Missing depth or a valid gradient/BHT.</td></tr>
 <tr><td>Old project missing</td><td>Different browser/computer → Open Project File.</td></tr>
 <tr><td>Site not updating</td><td>Press Ctrl+F5 (possibly twice because of the offline copy).</td></tr>
-<tr><td>Check the calculations</td><td>Open <a href="tests.html" target="_blank">tests.html</a>: 24 automated checks against the Python v0.1 model and standard formulas.</td></tr></table>
+<tr><td>Check the calculations</td><td>Open <a href="tests.html" target="_blank">tests.html</a>: 25 automated checks against the Python v0.1 model and standard formulas.</td></tr></table>
 
 <h3 id="g13">13. Model limitations</h3>
 <p>Linear gradient, homogeneous rock, fixed up-flow loss; ORC by exergy factor; reservoir by the volumetric method. Results are for <b>screening</b> and do not replace detailed design, reservoir simulation or real well-integrity assessment. The ML model is only as good as the measured temperatures in the project. DLIS/LIS files, a coordinate map and log-based integrity are not supported yet, and the model has not been compared with measured geothermal production.</p>
+
+<h3 id="g14">14. Volve field case study (real data)</h3>
+<p>Volve (Norwegian North Sea, block 15/9) was released in full by Equinor in 2018 under the Equinor Open Data Licence. The field stopped producing in 2016, which makes it a good repurposing example. The app ships a compact extract in <code>data/volve.json</code>.</p>
+<ol>
+<li><b>Help → Volve Data</b>: source and licence, a table of 24 wells (MD, TVD, KB, temperature points, gradient, logs), temperature vs depth for all measured points, a map of the ST10010/ST0202 3D survey outlines and the platform, the inventory of 34 3D cubes (inline/crossline, time/depth domain, status) and 33 ST0299 2D lines. Buttons download the temperature points as a DST-style CSV and the well list.</li>
+<li><b>Help → Volve Project</b> (or the button on the start page): builds a project with every well whose TVD is known, including a deviation survey (derived from MD–TVD pairs), LWD temperature points and 5 m GR/DT/RHOB/NPHI/RT logs. Parameters are set for the North Sea: T0 = 6 °C, inlet 25 °C, ambient 10 °C, power generation. Then run screening, reports, utilisation options and ML as for any project.</li>
+<li>Wells without measurements get the field gradient; use <b>Geothermal → ML Model</b> to predict from logs.</li>
+</ol>
+<p class="warnbox">LWD temperatures are recorded with mud circulating and read below static formation temperature; the Volve gradients here (≈ 2.4–3.4 °C/100 m) are lower bounds. SEG-Y volumes are not loaded in the browser. Extraction code: <code>tools/build_volve.py</code>.</p>
 `,
 };
