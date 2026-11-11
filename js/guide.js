@@ -2,12 +2,12 @@
 window.GUIDE = {
   vi: `
 <h2>Hướng dẫn sử dụng AbandonedWell Energy AI</h2>
-<p class="muted">Phiên bản web v0.5 · Công cụ sàng lọc giếng dầu khí ngừng khai thác để cải tạo thành giếng địa nhiệt.</p>
+<p class="muted">Phiên bản web v0.6 · Công cụ sàng lọc giếng dầu khí ngừng khai thác để cải tạo thành giếng địa nhiệt.</p>
 <nav class="toc"><b>Mục lục</b><ol>
 <li><a href="#g1">Giao diện</a></li><li><a href="#g2">Tạo và quản lý dự án</a></li><li><a href="#g3">Nhập dữ liệu (LAS, CSV, nhập tay)</a></li>
 <li><a href="#g4">Thuộc tính giếng và nguồn gradient</a></li><li><a href="#g4b">Học máy – mô hình nhiệt độ</a></li><li><a href="#g5">Biểu đồ log</a></li><li><a href="#g6">Sàng lọc và xếp hạng</a></li>
 <li><a href="#g7">Báo cáo giếng</a></li><li><a href="#g8">Phương án sử dụng (ORC, nhiệt trực tiếp, vỉa chứa)</a></li><li><a href="#g9">Độ nhạy</a></li>
-<li><a href="#g10">Thông số dự án</a></li><li><a href="#g11">Bảo mật dữ liệu</a></li><li><a href="#g12">Xử lý sự cố</a></li><li><a href="#g13">Giới hạn của mô hình</a></li><li><a href="#g14">Dự án mẫu mỏ Volve (dữ liệu thật)</a></li><li><a href="#g15">So sánh công nghệ địa nhiệt</a></li></ol></nav>
+<li><a href="#g10">Thông số dự án</a></li><li><a href="#g11">Bảo mật dữ liệu</a></li><li><a href="#g12">Xử lý sự cố</a></li><li><a href="#g13">Giới hạn của mô hình</a></li><li><a href="#g14">Dự án mẫu mỏ Volve (dữ liệu thật)</a></li><li><a href="#g15">So sánh công nghệ địa nhiệt</a></li><li><a href="#g16">Cập nhật và đồng bộ tự động</a></li></ol></nav>
 
 <h3 id="g1">1. Giao diện</h3>
 <ul>
@@ -154,15 +154,24 @@ window.GUIDE = {
 <tr><td>EGS – kích thích, nước</td><td>5–7</td><td>Trữ nhiệt trong thể tích đá kích thích × hệ số thu hồi; bơm theo trở kháng; vốn gồm kích thích và giếng bơm ép mới.</td></tr>
 <tr><td>CO₂-EGS / CPG</td><td>4–5</td><td>CO₂ siêu tới hạn trên vỉa cạn (hoặc đá kích thích): thu nhiệt gấp 1,5 lần nước, tự tuần hoàn, tuabin CO₂; CO₂ thất thoát vào vỉa tính là lưu trữ (tín chỉ theo “Giá CO₂”).</td></tr></table>
 <p>Năng lượng bán được bị giới hạn bởi nhu cầu tại chỗ (mặc định ngoài khơi 1.000 kWth nhiệt, 5.000 kWe điện). Mọi giả định chỉnh trong Thuộc tính dự án → <b>So sánh công nghệ</b>. Nút “Xuất CSV” lưu bảng chi tiết.</p>
+
+<h3 id="g16">16. Cập nhật và đồng bộ tự động</h3>
+<ul>
+<li><b>Phiên bản web:</b> khi mở trang, khi quay lại tab và mỗi 5 phút, web kiểm tra <code>version.json</code>; nếu có bản mới thì tự lưu dự án, xóa bộ nhớ đệm ngoại tuyến và tải lại. Phiên bản đang chạy hiện ở cuối trang Bắt đầu.</li>
+<li><b>Dữ liệu dự án giữa các máy:</b> Trang chủ → <b>Đồng bộ tệp</b> → “Tạo tệp đồng bộ mới” (lưu vào thư mục OneDrive) hoặc “Liên kết với tệp có sẵn”. Mọi thay đổi tự ghi vào tệp; khi mở dự án hoặc quay lại tab, web tự đọc tệp nếu tệp mới hơn. Ở máy khác, mở web → <b>Mở tệp dự án</b> → chọn đúng tệp đó là đồng bộ hai chiều. Trên thanh tiêu đề hiện “⟳ đồng bộ tên-tệp”.</li>
+<li>Cần Chrome hoặc Edge trên máy tính. Trình duyệt hỏi quyền ghi tệp mỗi phiên; chọn “Cho phép mỗi lần truy cập” để không phải hỏi lại. Trình duyệt khác: dùng Lưu/Mở tệp dự án.</li>
+<li><b>Nhiều tab:</b> sửa ở một tab, các tab khác đang mở cùng dự án tự cập nhật.</li>
+<li><b>Dự án Volve:</b> tự làm mới giếng khi dữ liệu Volve trên web được cập nhật, giữ nguyên thông số bạn đã chỉnh.</li>
+</ul>
 `,
   en: `
 <h2>AbandonedWell Energy AI – User Guide</h2>
-<p class="muted">Web version v0.5 · Screening tool for repurposing shut-in oil &amp; gas wells as geothermal wells.</p>
+<p class="muted">Web version v0.6 · Screening tool for repurposing shut-in oil &amp; gas wells as geothermal wells.</p>
 <nav class="toc"><b>Contents</b><ol>
 <li><a href="#g1">Interface</a></li><li><a href="#g2">Creating and managing projects</a></li><li><a href="#g3">Importing data (LAS, CSV, manual)</a></li>
 <li><a href="#g4">Well properties and gradient source</a></li><li><a href="#g4b">Machine learning – temperature model</a></li><li><a href="#g5">Log plot</a></li><li><a href="#g6">Screening and ranking</a></li>
 <li><a href="#g7">Well report</a></li><li><a href="#g8">Utilisation options (ORC, direct heat, reservoir)</a></li><li><a href="#g9">Sensitivity</a></li>
-<li><a href="#g10">Project parameters</a></li><li><a href="#g11">Data privacy</a></li><li><a href="#g12">Troubleshooting</a></li><li><a href="#g13">Model limitations</a></li><li><a href="#g14">Volve field case study (real data)</a></li><li><a href="#g15">Geothermal technology comparison</a></li></ol></nav>
+<li><a href="#g10">Project parameters</a></li><li><a href="#g11">Data privacy</a></li><li><a href="#g12">Troubleshooting</a></li><li><a href="#g13">Model limitations</a></li><li><a href="#g14">Volve field case study (real data)</a></li><li><a href="#g15">Geothermal technology comparison</a></li><li><a href="#g16">Automatic updates and sync</a></li></ol></nav>
 
 <h3 id="g1">1. Interface</h3>
 <ul>
@@ -309,5 +318,14 @@ window.GUIDE = {
 <tr><td>EGS – stimulated, water</td><td>5–7</td><td>Heat in the stimulated volume × recovery factor; pumping from impedance; capex includes stimulation and a new injector.</td></tr>
 <tr><td>CO₂-EGS / CPG</td><td>4–5</td><td>Supercritical CO₂ in the depleted reservoir (or stimulated rock): 1.5× the heat extraction of water, thermosiphon, CO₂ turbine; CO₂ lost to the formation counts as stored (credit at the “CO₂ price”).</td></tr></table>
 <p>Saleable energy is capped by local demand (default offshore 1,000 kWth heat, 5,000 kWe power). All assumptions are under Project properties → <b>Technology comparison</b>. “Export CSV” saves the detail table.</p>
+
+<h3 id="g16">16. Automatic updates and sync</h3>
+<ul>
+<li><b>Web version:</b> on load, when you return to the tab and every 5 minutes the app checks <code>version.json</code>; when a new version exists it saves the project, clears the offline cache and reloads. The running version is shown at the bottom of the start page.</li>
+<li><b>Project data across computers:</b> Home → <b>Sync File</b> → “Create new sync file” (save it in your OneDrive folder) or “Link to existing file”. Every change is written to the file; when you open the project or return to the tab, the app loads the file if it is newer. On another computer open the app → <b>Open Project File</b> → pick the same file to sync both ways. The title bar shows “⟳ synced file-name”.</li>
+<li>Needs Chrome or Edge on a computer. The browser asks for file access once per session; choose “Allow on every visit” to stop the prompt. Other browsers: use Save/Open Project File.</li>
+<li><b>Several tabs:</b> a change in one tab updates the other tabs showing the same project.</li>
+<li><b>Volve project:</b> its wells refresh automatically when the Volve data on the web is updated; your parameter changes are kept.</li>
+</ul>
 `,
 };

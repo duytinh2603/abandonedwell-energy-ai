@@ -19,7 +19,7 @@
     // technology comparison (AGS, EGS, CO2-EGS/CPG)
     t_latN: 2, t_latL: 2000, t_capexLat: 30, t_egsFlow: 30, t_egsV: 0.2, t_egsRf: 20, t_egsImp: 0.15, t_capexStim: 60, t_capexWellM: 0.08, t_co2Gain: 1.5, t_co2Loss: 5, t_capexCPG: 40, t_heatDemOff: 1000, t_heatDemOn: 5000, t_elecDem: 5000,
   };
-  const APP_VERSION = 'v0.5.2 · 11/11/2026';
+  const APP_VERSION = 'v0.6.0'; const APP_DATE = '11/11/2026';
   const ELEC_PRICE = 2204;
   const PURPOSE_PRICE = { res: 2204, hp: Math.round(2204 / 3) };
   const WELL_COLS = ['id', 'name', 'location', 'depth_m', 'md_m', 'gradient_c100m', 'bht_c', 'bht1_c', 'dt1_h', 'bht2_c', 'dt2_h', 'tc_h', 'integrity', 'distance_km'];
@@ -79,6 +79,7 @@
   ICON.volve = svg(`<path d="M6 30h28" stroke="${B}" stroke-width="2"/><path d="M4 34c4-2 8 2 12 0s8 2 12 0 6 1 8 0" stroke="#4fc3f7" stroke-width="2"/><rect x="12" y="14" width="16" height="10" fill="#e3f0fc" stroke="${B}" stroke-width="2"/><path d="M14 24v6M26 24v6M20 4v10M16 8h8" stroke="${B}" stroke-width="2"/><circle cx="31" cy="11" r="6" fill="#2e7d32"/><path d="M28.5 11l2 2 3.5-4" stroke="#fff" stroke-width="1.8" fill="none"/>`);
   ICON.volveData = svg(`<rect x="5" y="6" width="30" height="28" fill="#fff" stroke="${B}" stroke-width="2"/><path d="M9 28l6-8 5 4 6-10 5 6" stroke="#ef6c00" stroke-width="2" fill="none"/><path d="M5 12h30" stroke="${B}" stroke-width="2"/><circle cx="29" cy="29" r="6" fill="#2e7d32"/><path d="M26.5 29l2 2 3.5-4" stroke="#fff" stroke-width="1.8" fill="none"/>`);
   ICON.tech = svg(`<rect x="4" y="22" width="6" height="12" fill="#90caf9"/><rect x="12" y="15" width="6" height="19" fill="#66bb6a"/><rect x="20" y="9" width="6" height="25" fill="#ef6c00"/><rect x="28" y="18" width="6" height="16" fill="#ab47bc"/><path d="M3 34h33" stroke="${B}" stroke-width="2"/><path d="M6 8h6M9 5v6" stroke="${R}" stroke-width="2"/>`);
+  ICON.syncFile = svg(`<path d="M8 22a12 12 0 0 1 21-8" fill="none" stroke="${B}" stroke-width="2.6" stroke-linecap="round"/><path d="M30 8v7h-7" fill="none" stroke="${B}" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M32 18a12 12 0 0 1-21 8" fill="none" stroke="#2e7d32" stroke-width="2.6" stroke-linecap="round"/><path d="M10 32v-7h7" fill="none" stroke="#2e7d32" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>`);
   ICON.optAll = svg(`<rect x="5" y="6" width="30" height="28" fill="#fff" stroke="${B}" stroke-width="2"/><path d="M5 13h30M5 20h30M5 27h30" stroke="${G}" stroke-width="1.4"/><path d="M14 6v28" stroke="${G}" stroke-width="1.4"/><circle cx="25" cy="16.5" r="2.6" fill="#2e7d32"/><circle cx="21" cy="23.5" r="2.6" fill="${R}"/><circle cx="29" cy="30.5" r="2.6" fill="#ef6c00"/>`);
 
   /* ================= state ================= */
@@ -143,7 +144,7 @@
     S.project.updated = Date.now();
     if (opts.data !== false) { S.result = null; scheduleDocRefresh(); }
     clearTimeout(saveTimer);
-    saveTimer = setTimeout(() => Store.put(S.project).catch((e) => log(String(e), 'err')), 400);
+    saveTimer = setTimeout(() => Store.put(S.project).then(() => { syncPush(); if (chan && S.project) chan.postMessage({ id: S.project.id, updated: S.project.updated }); }).catch((e) => log(String(e), 'err')), 400);
   }
   let docTimer = null;
   function scheduleDocRefresh() {
@@ -156,7 +157,7 @@
     const now = Date.now();
     return { id: 'p' + now.toString(36) + uid().slice(0, 4), name, created: now, updated: now, params: Object.assign({}, DEFAULTS), wells: [] };
   }
-  function openProject(p, msgKey = 'msg.opened') {
+  function openProject(p, msgKey = 'msg.opened', opts = {}) {
     S.project = p; S.sel = { t: 'project' }; S.result = null; S.collapsed = {}; S.logView = {};
     p.params = Object.assign({}, DEFAULTS, p.params || {});
     S.docs = p.wells.length ? ['rank'] : ['start'];
@@ -166,6 +167,8 @@
     if (!p.wells.length) log(t('proj.empty'), 'warn');
     renderAll();
     if (!p.wells.length && /volve/i.test(p.name || '')) { log(t('msg.volveAuto'), 'ok'); setTimeout(() => ACT.volveAdd(), 0); }
+    if (!opts.noSync) syncAttach(p);
+    if (p.source === 'volve' && p.wells.length) setTimeout(() => volveRefresh(p), 0);
   }
   function closeProject() {
     if (!S.project) return;
@@ -328,6 +331,75 @@
     return p;
   }
 
+  /* ================= automatic sync: linked project file, other tabs, app version ================= */
+  const SYNC = { handle: null, state: 'off', name: '', timer: null };
+  const chan = 'BroadcastChannel' in window ? new BroadcastChannel('aw-projects') : null;
+  const canSync = () => !!(window.AWSync && window.AWSync.supported());
+  /** Swap in a newer copy of the open project without closing the user's tabs. */
+  function replaceProject(q) {
+    const docs = S.docs, active = S.active;
+    q.params = Object.assign({}, DEFAULTS, q.params || {});
+    S.project = q; S.result = null; S.docs = docs; S.active = active;
+    if (S.sel && S.sel.uid && !wellBy(S.sel.uid)) S.sel = { t: 'project' };
+    renderAll();
+  }
+  async function syncAttach(p) {
+    SYNC.handle = null; SYNC.state = 'off'; SYNC.name = '';
+    if (!canSync()) return;
+    const h = await AWSync.getHandle(p.id);
+    if (!h || !S.project || S.project.id !== p.id) { renderRibbon(); return; }
+    SYNC.handle = h; SYNC.name = h.name;
+    SYNC.state = (await AWSync.permission(h, false)) === 'granted' ? 'on' : 'need';
+    if (SYNC.state === 'on') await syncPull(); else log(t('sync.needPerm', { f: h.name }), 'warn');
+    renderRibbon();
+  }
+  /** Load the linked file when it is newer than the copy in this browser; write it when ours is newer. */
+  async function syncPull() {
+    if (!SYNC.handle || SYNC.state !== 'on' || !S.project) return;
+    try {
+      const f = await AWSync.read(SYNC.handle); let q = null;
+      try { q = JSON.parse(f.text); } catch (e) { q = null; }
+      if (!q || !Array.isArray(q.wells)) { await syncPush(true); return; }
+      const fileT = +q.updated || f.lastModified, mine = +S.project.updated || 0;
+      if (fileT > mine + 1000) {
+        q.id = S.project.id; q.updated = fileT;
+        q.wells.forEach((w) => { w.uid = w.uid || uid(); w.curves = w.curves || []; });
+        await Store.put(q); replaceProject(q);
+        log(t('sync.pulled', { f: f.name, d: new Date(fileT).toLocaleString(loc()) }), 'ok');
+      } else if (mine > fileT + 1000) await syncPush(true);
+    } catch (e) { SYNC.state = 'err'; log(t('sync.err', { e: e.message }), 'err'); renderRibbon(); }
+  }
+  async function syncPush(now) {
+    if (!SYNC.handle || SYNC.state !== 'on' || !S.project) return;
+    clearTimeout(SYNC.timer);
+    const go = async () => { try { await AWSync.write(SYNC.handle, JSON.stringify(S.project)); } catch (e) { SYNC.state = 'err'; log(t('sync.err', { e: e.message }), 'err'); renderRibbon(); } };
+    if (now) return go();
+    SYNC.timer = setTimeout(go, 1500);
+  }
+  if (chan) chan.onmessage = async (e) => {
+    const d = e.data || {};
+    if (S.project && d.id === S.project.id && d.updated > (S.project.updated || 0)) { const q = await Store.get(d.id); if (q) { replaceProject(q); log(t('sync.tab')); } }
+  };
+  /** New web version on the server → save, refresh the offline cache and reload once. */
+  async function checkVersion() {
+    try {
+      const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
+      const v = await r.json();
+      if (!v.version || v.version === APP_VERSION) return;
+      if (S.project) { await Store.put(S.project); await syncPush(true); }
+      let tried = null; try { tried = sessionStorage.getItem('aw-upd'); } catch (e) { /* ignore */ }
+      if (tried === v.version) { log(t('upd.manual', { v: v.version }), 'warn'); return; }
+      try { sessionStorage.setItem('aw-upd', v.version); } catch (e) { /* ignore */ }
+      log(t('upd.found', { v: v.version }), 'ok');
+      try { const reg = navigator.serviceWorker && await navigator.serviceWorker.getRegistration(); if (reg) await reg.update(); } catch (e) { /* ignore */ }
+      try { if (window.caches) for (const k of await caches.keys()) await caches.delete(k); } catch (e) { /* ignore */ }
+      setTimeout(() => location.reload(), 300);
+    } catch (e) { /* offline: keep running */ }
+  }
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) { syncPull(); checkVersion(); } });
+  window.addEventListener('focus', () => syncPull());
+  setInterval(checkVersion, 5 * 60 * 1000);
+
   /* ================= Volve (Equinor open data) ================= */
   let VOLVE = null;
   async function loadVolve() {
@@ -338,12 +410,21 @@
     return VOLVE;
   }
   const VOLVE_PARAMS = { T0: 6, Tin: 25, u_Tamb: 10, purpose: 'res', capexOff: 25 };
+  /** Rebuild the wells of a Volve project when data/volve.json has a newer version (parameters are kept). */
+  async function volveRefresh(p) {
+    let D; try { D = await loadVolve(); } catch (e) { return; }
+    if (!D.version || p.dataVersion === D.version || !S.project || S.project.id !== p.id) return;
+    const fresh = volveProject(D);
+    S.project.wells = fresh.wells; S.project.dataVersion = D.version; S.project.source = 'volve';
+    touch(); renderAll();
+    log(t('volve.updated', { v: D.version, n: fresh.wells.length }), 'ok');
+  }
   /** Wells usable for screening: TVD at TD is known. */
   const volveUsable = (vw) => vw.tdTVD > 0 && vw.tdMD > 0;
   function volveProject(D) {
     const p = makeProject(t('volve.projName'));
     Object.assign(p.params, VOLVE_PARAMS);
-    p.source = 'volve';
+    p.source = 'volve'; p.dataVersion = D.version || '';
     const T0 = p.params.T0;
     const fieldPts = [];
     D.wells.filter(volveUsable).forEach((vw) => {
@@ -403,7 +484,7 @@
 
   /* ================= ribbon ================= */
   const RIBBON = {
-    home: [['g.project', ['newProject', 'openProject', 'closeProject', 'saveFile', 'openFile', 'undo']], ['g.well', ['newWell', 'importLas', 'importCsv']], ['g.view', ['browser', 'props', 'output']]],
+    home: [['g.project', ['newProject', 'openProject', 'closeProject', 'saveFile', 'openFile', 'syncFile', 'undo']], ['g.well', ['newWell', 'importLas', 'importCsv']], ['g.view', ['browser', 'props', 'output']]],
     data: [['g.import', ['importLas', 'importCsv', 'importSurvey', 'importDst']], ['g.export', ['exportLas', 'exportCsv']], ['g.tools', ['nullValue', 'delete']]],
     geo: [['g.eval', ['params', 'run', 'report', 'sens']], ['g.ai', ['ml']], ['g.util', ['optimize', 'optAll', 'tech']], ['g.export', ['exportRank']]],
     plot: [['g.plots', ['logPlot', 'report', 'sens']]],
@@ -427,7 +508,7 @@
       const on = ['browser', 'props', 'output'].includes(a) && S.panes[{ browser: 'paneBrowser', props: 'paneProps', output: 'paneOutput' }[a]];
       return `<button class="rbtn${on ? ' on' : ''}" data-act="${a}" ${enabled(a) ? '' : 'disabled'}>${ICON[a] || ''}<span>${t('b.' + a)}</span></button>`;
     }).join('')}</div><div class="rgroup-label">${t(g)}</div></div>`).join('');
-    $('#projName').textContent = S.project ? S.project.name : '';
+    $('#projName').textContent = S.project ? S.project.name + (SYNC.state !== 'off' ? ' · ' + t('sync.st.' + SYNC.state, { f: SYNC.name }) : '') : '';
   }
 
   /* ================= project browser ================= */
@@ -645,7 +726,7 @@
         <div class="recent"><h3>${t('start.recent')}</h3><div id="recentList"></div></div>
       </div>
       <ol class="steps"><li>${t('start.s1')}</li><li>${t('start.s2')}</li><li>${t('start.s3')}</li><li>${t('start.s4')}</li></ol>
-      <p class="hint" style="margin-top:16px">${t('start.local')} · ${t('start.version')} ${APP_VERSION}</p></div>`;
+      <p class="hint" style="margin-top:16px">${t('start.local')} · ${t('start.version')} ${APP_VERSION} · ${APP_DATE}</p></div>`;
     const list = (await Store.all()).sort((x, y) => y.updated - x.updated).slice(0, 8);
     const rl = $('#recentList'); if (!rl) return;
     rl.innerHTML = list.length ? list.map((p) => `<div class="item" data-open="${p.id}"><span>${esc(p.name)}</span><small>${p.wells.length} ${t('dlg.wells')} · ${new Date(p.updated).toLocaleDateString(loc())}</small></div>`).join('') : `<div class="none">${t('start.none')}</div>`;
@@ -1363,7 +1444,7 @@
       const body = note + (list.length ? `<div class="plist">${list.map((p) => `<div class="item"><div><b>${esc(p.name)}</b>${p.wells.length ? '' : ` <span class="src field">${t('dlg.empty')}</span>`}<small>${p.wells.length} ${t('dlg.wells')} · ${new Date(p.updated).toLocaleString(loc())}</small></div><button class="btn" data-pick="${p.id}" data-a="open">${t('dlg.open')}</button><button class="btn ghost" data-pick="${p.id}" data-a="del" style="color:var(--poor)">${t('dlg.delete')}</button></div>`).join('')}</div>` : `<p class="muted">${t('start.none')}</p>`);
       const r = await dialog(t('dlg.openProject'), body, [{ label: t('dlg.close') }]);
       if (!r) return;
-      if (r.act === 'file') { $('#fileProj').click(); return; }
+      if (r.act === 'file') { ACT.openFile(); return; }
       if (r.act === 'volve') { ACT.volve(); return; }
       const p = list.find((x) => x.id === r.pick);
       if (r.act === 'open') { if (S.project) await Store.put(S.project); openProject(await Store.get(p.id)); }
@@ -1375,7 +1456,37 @@
     },
     closeProject,
     saveFile() { download(safeName(S.project.name) + '.awproj.json', JSON.stringify(S.project), 'application/json'); },
-    openFile() { $('#fileProj').click(); },
+    /** Open a project file; on Chrome/Edge the file stays linked so later changes sync both ways. */
+    async openFile() {
+      if (!canSync()) { $('#fileProj').click(); return; }
+      try {
+        const h = await AWSync.pickExisting();
+        const f = await AWSync.read(h);
+        const p = await importProjectText(f.text, f.name, { noSync: true });
+        if (!p) return;
+        const perm = await AWSync.permission(h, true);
+        await AWSync.setHandle(p.id, h);
+        SYNC.handle = h; SYNC.name = h.name; SYNC.state = perm === 'granted' ? 'on' : 'need';
+        log(t('sync.linkedOk', { f: h.name }), 'ok'); renderRibbon();
+      } catch (e) { if (e.name !== 'AbortError') log(t('sync.err', { e: e.message }), 'err'); }
+    },
+    async syncFile() {
+      if (!canSync()) { dialog(t('sync.title'), t('sync.unsupported'), [{ label: t('dlg.close'), primary: true }]); return; }
+      const P = S.project, h = await AWSync.getHandle(P.id);
+      const body = `<p>${t('sync.intro')}</p>` + (h ? `<p><b>${esc(t('sync.linked', { f: h.name }))}</b> · ${t('sync.st.' + (SYNC.state === 'off' ? 'need' : SYNC.state), { f: h.name })}</p>` : '');
+      const btns = [{ label: t('dlg.close') }];
+      if (h) { btns.push({ label: t('sync.unlink'), value: 'unlink' }); btns.push({ label: t(SYNC.state === 'on' ? 'sync.now' : 'sync.grant'), value: 'grant', primary: true }); }
+      else { btns.push({ label: t('sync.existing'), value: 'existing' }); btns.push({ label: t('sync.create'), value: 'create', primary: true }); }
+      const r = await dialog(t('sync.title'), body, btns);
+      if (!r) return;
+      try {
+        if (r === 'unlink') { await AWSync.unlink(P.id); SYNC.handle = null; SYNC.state = 'off'; SYNC.name = ''; log(t('sync.unlinked')); }
+        if (r === 'grant') { const perm = await AWSync.permission(h, true); SYNC.handle = h; SYNC.name = h.name; SYNC.state = perm === 'granted' ? 'on' : 'need'; await syncPull(); if (SYNC.state === 'on') log(t('sync.ok', { f: h.name }), 'ok'); }
+        if (r === 'create') { const nh = await AWSync.pickNew(safeName(P.name) + '.awproj.json'); await AWSync.setHandle(P.id, nh); SYNC.handle = nh; SYNC.name = nh.name; SYNC.state = 'on'; await syncPush(true); log(t('sync.created', { f: nh.name }), 'ok'); }
+        if (r === 'existing') { const nh = await AWSync.pickExisting(); const perm = await AWSync.permission(nh, true); await AWSync.setHandle(P.id, nh); SYNC.handle = nh; SYNC.name = nh.name; SYNC.state = perm === 'granted' ? 'on' : 'need'; await syncPull(); log(t('sync.linkedOk', { f: nh.name }), 'ok'); }
+      } catch (e) { if (e.name !== 'AbortError') log(t('sync.err', { e: e.message }), 'err'); }
+      renderRibbon();
+    },
     async newWell() {
       const nm = await dialog(t('dlg.newWell'), `<label>${t('f.name')}<input id="dlgName" value="W-${S.project.wells.length + 1}"></label>`, [{ label: t('dlg.cancel') }, { label: t('dlg.create'), primary: true, value: true, collect: true }], () => $('#dlgName').value.trim());
       if (!nm) return;
@@ -1442,7 +1553,7 @@
     },
     logPlot() { openDoc('log:' + selWell().uid); },
     guide() { openDoc('guide'); },
-    about() { dialog(t('about.title'), t('about.body') + `<p class="hint">${t('start.version')} ${APP_VERSION}</p>`, [{ label: t('dlg.close'), primary: true }]); },
+    about() { dialog(t('about.title'), t('about.body') + `<p class="hint">${t('start.version')} ${APP_VERSION} · ${APP_DATE}</p>`, [{ label: t('dlg.close'), primary: true }]); },
     async lasHelp() {
       const r = await dialog(t('help.title'), t('help.body'), [{ label: t('help.csvTpl'), value: 'tpl' }, { label: t('b.sample'), value: 'las' }, { label: t('dlg.close'), primary: true }]);
       if (r === 'tpl') download('abandonedwell_template.csv', toCSV(DEMO_WELLS, WELL_COLS), 'text/csv');
@@ -1517,8 +1628,13 @@
   };
   $('#fileProj').onchange = async (e) => {
     const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+    await importProjectText(await f.text(), f.name);
+  };
+  /** Open a project from file text; asks before replacing a matching project. Returns the opened project or null. */
+  async function importProjectText(text, fname, opts = {}) {
+    const f = { name: fname };
     try {
-      const p = JSON.parse(await f.text());
+      const p = JSON.parse(text);
       if (!p || !Array.isArray(p.wells)) throw new Error('format');
       p.id = p.id || makeProject('x').id; p.name = p.name || f.name; p.created = p.created || Date.now(); p.updated = Date.now();
       p.wells.forEach((w) => { w.uid = w.uid || uid(); w.curves = w.curves || []; });
@@ -1529,16 +1645,17 @@
         const old = same.sort((x, y) => y.updated - x.updated)[0];
         const ans = await dialog(t('dlg.replaceTitle'), `<p>${esc(t('dlg.replaceBody', { o: old.name, n: old.wells.length, d: new Date(old.updated).toLocaleString(loc()), f: f.name, m: p.wells.length }))}</p>`,
           [{ label: t('dlg.cancel') }, { label: t('dlg.keepBoth'), value: 'both' }, { label: t('dlg.replace'), primary: true, value: 'replace' }]);
-        if (!ans) return;
+        if (!ans) return null;
         if (ans === 'replace') { p.id = old.id; if (S.project && S.project.id === old.id) S.project = null; }
         else if (same.some((q) => q.id === p.id)) p.id = makeProject('x').id;
       }
       if (S.project) await Store.put(S.project);
       await Store.put(p);
       log(t('msg.importProj', { f: f.name }), 'ok');
-      openProject(p);
-    } catch (err) { log(t('msg.lasErr', { f: f.name, e: err.message }), 'err'); }
-  };
+      openProject(p, 'msg.opened', opts);
+      return p;
+    } catch (err) { log(t('msg.lasErr', { f: f.name, e: err.message }), 'err'); return null; }
+  }
 
   /* ================= panes & splitters ================= */
   function togglePane(id) { S.panes[id] = !S.panes[id]; applyPanes(); renderRibbon(); }
@@ -1583,6 +1700,7 @@
     await Store.open();
     if (!Store.db) log(t('msg.storage'), 'warn');
     log(t('msg.ready'));
+    checkVersion();
     const last = lsGet('aw-last');
     if (last) { const p = await Store.get(last); if (p) { openProject(p); return; } }
     renderAll();

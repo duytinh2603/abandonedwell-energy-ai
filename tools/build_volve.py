@@ -312,6 +312,7 @@ for r in s3[1:]:
                       'flags': flags})
 lines2d = [r[0].strip() for r in s2[1:] if r and r[0].strip()]
 dataset = {
+    'version': __import__('datetime').date.today().isoformat(),  # bump → projects built from older data refresh automatically
     'source': 'Equinor Volve Data Village (open data, 2018)',
     'licence': 'Equinor Open Data Licence - attribution required',
     'url': 'https://www.equinor.com/energy/volve-data-sharing',

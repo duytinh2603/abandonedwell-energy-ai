@@ -21,6 +21,12 @@
   - BHT trong `~Parameter` → hiệu chỉnh Harrison (1983).
 - **CSV danh sách giếng**: `id,name,location,depth_m,gradient_c100m,bht_c,bht1_c,dt1_h,bht2_c,dt2_h,tc_h,integrity,distance_km`
 
+## Cập nhật và đồng bộ tự động (v0.6)
+
+- Web tự kiểm tra `version.json` và tự tải bản mới (không cần Ctrl+F5).
+- **Trang chủ → Đồng bộ tệp**: liên kết dự án với một tệp `.awproj.json` (ví dụ trong OneDrive); thay đổi tự ghi vào tệp và tự đọc bản mới hơn – mọi máy/trình duyệt dùng chung tệp có cùng dữ liệu (Chrome/Edge máy tính). Dữ liệu không đi qua máy chủ web.
+- Các tab cùng dự án tự cập nhật; dự án Volve tự làm mới khi `data/volve.json` đổi phiên bản.
+
 ## So sánh công nghệ địa nhiệt (v0.5)
 
 - **Địa nhiệt → So sánh công nghệ**: CLGS (đồng trục kín), AGS (vòng kín nhiều nhánh), Hydrothermal (vòng hở), EGS (kích thích), CO₂-EGS/CPG – công suất, vốn, NPV, LCOE, CO₂ lưu trữ cho từng giếng, giới hạn theo nhu cầu tại chỗ; xuất CSV.
