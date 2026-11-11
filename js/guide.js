@@ -63,7 +63,7 @@ window.GUIDE = {
 </ul>
 
 <h3 id="g4b">4b. Học máy – mô hình nhiệt độ</h3>
-<p><b>Địa nhiệt → Mô hình học máy</b>. Mô hình hồi quy ridge có ràng buộc vật lý dự đoán <b>gradient biểu kiến</b> từ chiều sâu và giá trị trung bình của log GR, DT, RHOB, NPHI phía trên mỗi điểm, nên nhiệt độ luôn tăng theo chiều sâu.</p>
+<p><b>Chạy học máy (Trang chủ hoặc Địa nhiệt)</b>. Mô hình hồi quy ridge có ràng buộc vật lý dự đoán <b>gradient biểu kiến</b> từ chiều sâu và giá trị trung bình của log GR, DT, RHOB, NPHI phía trên mỗi điểm, nên nhiệt độ luôn tăng theo chiều sâu.</p>
 <ul>
 <li><b>Dữ liệu huấn luyện:</b> mọi nhiệt độ đo trong dự án – điểm DST, nhiệt độ vỉa tĩnh Horner, BHT đã hiệu chỉnh. Cần ít nhất 6 điểm ở 2 giếng.</li>
 <li><b>Kiểm chứng:</b> bỏ ra từng giếng, huấn luyện trên các giếng còn lại rồi dự đoán giếng đó; so với cách dùng một gradient trung bình cho cả mỏ. Web nói rõ học máy tốt hơn hay chưa.</li>
@@ -141,7 +141,7 @@ window.GUIDE = {
 <ol>
 <li><b>Trợ giúp → Dữ liệu Volve</b>: xem nguồn và giấy phép, bảng 24 giếng (MD, TVD, KB, số điểm nhiệt độ, gradient, log), biểu đồ nhiệt độ – chiều sâu của toàn bộ điểm đo, bản đồ vùng khảo sát 3D ST10010/ST0202 và vị trí giàn, danh mục 34 khối địa chấn 3D (inline/crossline, miền thời gian/độ sâu, tình trạng) và 33 tuyến 2D ST0299. Có nút tải điểm nhiệt độ dạng CSV DST và danh sách giếng.</li>
 <li><b>Trợ giúp → Dự án Volve</b> (hoặc nút trên trang Bắt đầu): tạo dự án gồm các giếng có TVD, kèm khảo sát độ lệch (suy từ cặp MD–TVD), điểm nhiệt độ LWD, log GR/DT/RHOB/NPHI/RT bước 5 m. Thông số được đặt cho Biển Bắc: T0 = 6 °C, nước vào 25 °C, nhiệt độ môi trường 10 °C, mục đích phát điện. Sau đó chạy sàng lọc, mở báo cáo, phương án sử dụng và học máy như dự án thường.</li>
-<li>Giếng không có điểm đo nhận gradient chung của mỏ; có thể dùng <b>Địa nhiệt → Mô hình học máy</b> để dự đoán từ log.</li>
+<li>Giếng không có điểm đo nhận gradient chung của mỏ; có thể dùng <b>Chạy học máy (Trang chủ hoặc Địa nhiệt)</b> để dự đoán từ log.</li>
 </ol>
 <p class="warnbox">Nhiệt độ LWD đo khi dung dịch đang tuần hoàn nên thấp hơn nhiệt độ vỉa tĩnh; gradient Volve trong web (≈ 2,4–3,4 °C/100 m) là cận dưới. Tệp SEG-Y không được nạp vào trình duyệt. Mã trích dữ liệu: <code>tools/build_volve.py</code>.</p>
 
@@ -227,7 +227,7 @@ window.GUIDE = {
 </ul>
 
 <h3 id="g4b">4b. Machine learning – temperature model</h3>
-<p><b>Geothermal → ML Model</b>. A physics-constrained ridge regression predicts the <b>apparent gradient</b> from depth and the averages of GR, DT, RHOB and NPHI above each point, so temperature always rises with depth.</p>
+<p><b>Run ML (Home or Geothermal)</b>. A physics-constrained ridge regression predicts the <b>apparent gradient</b> from depth and the averages of GR, DT, RHOB and NPHI above each point, so temperature always rises with depth.</p>
 <ul>
 <li><b>Training data:</b> every measured temperature in the project – DST points, Horner static temperatures, corrected BHT. At least 6 points in 2 wells.</li>
 <li><b>Validation:</b> leave one well out, train on the rest, predict it; compared with a single field-average gradient. The page states plainly whether ML is better yet.</li>
@@ -305,7 +305,7 @@ window.GUIDE = {
 <ol>
 <li><b>Help → Volve Data</b>: source and licence, a table of 24 wells (MD, TVD, KB, temperature points, gradient, logs), temperature vs depth for all measured points, a map of the ST10010/ST0202 3D survey outlines and the platform, the inventory of 34 3D cubes (inline/crossline, time/depth domain, status) and 33 ST0299 2D lines. Buttons download the temperature points as a DST-style CSV and the well list.</li>
 <li><b>Help → Volve Project</b> (or the button on the start page): builds a project with every well whose TVD is known, including a deviation survey (derived from MD–TVD pairs), LWD temperature points and 5 m GR/DT/RHOB/NPHI/RT logs. Parameters are set for the North Sea: T0 = 6 °C, inlet 25 °C, ambient 10 °C, power generation. Then run screening, reports, utilisation options and ML as for any project.</li>
-<li>Wells without measurements get the field gradient; use <b>Geothermal → ML Model</b> to predict from logs.</li>
+<li>Wells without measurements get the field gradient; use <b>Run ML (Home or Geothermal)</b> to predict from logs.</li>
 </ol>
 <p class="warnbox">LWD temperatures are recorded with mud circulating and read below static formation temperature; the Volve gradients here (≈ 2.4–3.4 °C/100 m) are lower bounds. SEG-Y volumes are not loaded in the browser. Extraction code: <code>tools/build_volve.py</code>.</p>
 

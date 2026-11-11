@@ -258,3 +258,7 @@ button, input, select { font: inherit; color: inherit; }
   .app, .main, .work, .doc-area { display: block; height: auto; overflow: visible; }
   .card, .chart-box { break-inside: avoid; }
 }
+
+/* icon inside a text button */
+.btn svg { width: 18px; height: 18px; flex: none; vertical-align: -4px; margin-right: 6px; }
+.btn:has(svg) { display: inline-flex; align-items: center; }

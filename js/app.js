@@ -19,7 +19,7 @@
     // technology comparison (AGS, EGS, CO2-EGS/CPG)
     t_latN: 2, t_latL: 2000, t_capexLat: 30, t_egsFlow: 30, t_egsV: 0.2, t_egsRf: 20, t_egsImp: 0.15, t_capexStim: 60, t_capexWellM: 0.08, t_co2Gain: 1.5, t_co2Loss: 5, t_capexCPG: 40, t_heatDemOff: 1000, t_heatDemOn: 5000, t_elecDem: 5000,
   };
-  const APP_VERSION = 'v0.6.0'; const APP_DATE = '11/11/2026';
+  const APP_VERSION = 'v0.6.1'; const APP_DATE = '11/11/2026';
   const ELEC_PRICE = 2204;
   const PURPOSE_PRICE = { res: 2204, hp: Math.round(2204 / 3) };
   const WELL_COLS = ['id', 'name', 'location', 'depth_m', 'md_m', 'gradient_c100m', 'bht_c', 'bht1_c', 'dt1_h', 'bht2_c', 'dt2_h', 'tc_h', 'integrity', 'distance_km'];
@@ -484,7 +484,7 @@
 
   /* ================= ribbon ================= */
   const RIBBON = {
-    home: [['g.project', ['newProject', 'openProject', 'closeProject', 'saveFile', 'openFile', 'syncFile', 'undo']], ['g.well', ['newWell', 'importLas', 'importCsv']], ['g.view', ['browser', 'props', 'output']]],
+    home: [['g.project', ['newProject', 'openProject', 'closeProject', 'saveFile', 'openFile', 'syncFile', 'undo']], ['g.well', ['newWell', 'importLas', 'importCsv']], ['g.ai', ['ml']], ['g.view', ['browser', 'props', 'output']]],
     data: [['g.import', ['importLas', 'importCsv', 'importSurvey', 'importDst']], ['g.export', ['exportLas', 'exportCsv']], ['g.tools', ['nullValue', 'delete']]],
     geo: [['g.eval', ['params', 'run', 'report', 'sens']], ['g.ai', ['ml']], ['g.util', ['optimize', 'optAll', 'tech']], ['g.export', ['exportRank']]],
     plot: [['g.plots', ['logPlot', 'report', 'sens']]],
@@ -745,6 +745,10 @@
     const selU = S.sel && S.sel.uid;
     a.innerHTML = `<div class="doc">
       <h2>${t('doc.rank')}</h2><div class="hint">${t('rank.hint')}</div>
+      <div class="rep-head no-print" style="justify-content:flex-start;gap:8px;flex-wrap:wrap;margin:10px 0">
+        <button class="btn" data-act="ml">${ICON.ml}<span>${t('b.mlRun')}</span></button>
+        <button class="btn ghost" data-act="optAll">${t('b.optAll')}</button>
+        <button class="btn ghost" data-act="tech">${t('b.tech')}</button></div>
       <div class="kpis">
         <div class="kpi"><span>${t('kpi.n')}</span><b>${fmt(res.ranked.length)}</b></div>
         <div class="kpi"><span>${t('kpi.pass')} ≥ ${fmt(P.threshold)}</span><b>${fmt(pass.length)}</b></div>
@@ -1166,7 +1170,7 @@
 
   function renderML(a) {
     const P = modelParams(); const ml = trainML(); S.ml = ml;
-    if (!ml.ok) { a.innerHTML = `<div class="doc"><h2>${t('doc.ml')}</h2><div class="warnbox">${t(ml.reason === 'wells' ? 'ml.needWells' : 'ml.needPts', { n: ml.n })}</div><p class="muted">${t('ml.intro')}</p></div>`; return; }
+    if (!ml.ok) { a.innerHTML = `<div class="doc"><div class="rep-head"><h2 style="margin:0">${t('doc.ml')}</h2><button class="btn no-print" data-act="ml">${t('b.mlRun')}</button></div><div class="warnbox">${t(ml.reason === 'wells' ? 'ml.needWells' : 'ml.needPts', { n: ml.n })}</div><p class="muted">${t('ml.intro')}</p></div>`; return; }
     const gain = ml.cv.rmseBase > 0 ? (1 - ml.cv.rmseML / ml.cv.rmseBase) * 100 : 0;
     const rows = S.project.wells.map((w) => {
       const pr = ml.predictWell(w), nw = M.normaliseWell(w, P.T0), measured = (w.tempPoints || []).length || MEASURED.includes(nw.gSource) || w.gSource === 'dst';
@@ -1174,7 +1178,8 @@
     });
     const target = rows.filter((r) => !r.measured && r.pr && (r.w.gSource === 'field' || r.w.gSource === 'ml' || !(+r.w.gradient_c100m > 0))); // never overwrite an entered gradient
     const lab = (k) => ({ z_km: t('ml.f.z'), GR: 'GR', DT: 'DT', RHOB: 'RHOB', NPHI: 'NPHI', hasLogs: t('ml.f.has') }[k]);
-    a.innerHTML = `<div class="doc"><h2>${t('doc.ml')}</h2><p class="muted">${t('ml.intro')}</p>
+    S.mlRunAt = new Date();
+    a.innerHTML = `<div class="doc"><div class="rep-head"><h2 style="margin:0">${t('doc.ml')}</h2><div class="no-print" style="display:flex;gap:8px;align-items:center"><small class="muted">${t('ml.ranAt', { t: S.mlRunAt.toLocaleTimeString(loc()) })}</small><button class="btn" id="btnMLrun">${ICON.ml}<span>${t('b.mlRun')}</span></button></div></div><p class="muted">${t('ml.intro')}</p>
       <div class="kpis">
         <div class="kpi"><span>${t('ml.k.pts')}</span><b>${ml.n}</b></div>
         <div class="kpi"><span>${t('ml.k.wells')}</span><b>${ml.nWells}</b></div>
@@ -1203,6 +1208,7 @@
       scales: { x: { min: lo, max: hi, title: { display: true, text: t('ml.ax.meas') } }, y: { min: lo, max: hi, title: { display: true, text: t('ml.ax.pred') } } } } });
     mk('chMLcoef', { type: 'bar', data: { labels: ml.feats.map(lab), datasets: [{ label: t('ml.coef'), data: ml.model.w, backgroundColor: ml.model.w.map((v) => (v >= 0 ? '#ef6c00' : '#1565c0')) }] },
       options: { indexAxis: 'y', maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => `${fmt(c.parsed.x, 3)} °C/100 m / σ` } } } } });
+    $('#btnMLrun').onclick = () => { log(t('ml.ran', { n: ml.n, w: ml.nWells })); renderML(a); };
     const btn = $('#btnMLapply');
     if (btn) btn.onclick = () => {
       snapshot();
@@ -1533,7 +1539,7 @@
     optimize() { openDoc('opt:' + selWell().uid); },
     optAll() { openDoc('optall'); },
     tech() { openDoc('tech'); },
-    ml() { openDoc('ml'); },
+    ml() { if (S.active === 'ml') renderDoc(); else openDoc('ml'); log(t('ml.started')); },
     importSurvey() { $('#fileSurvey').click(); },
     importDst() { $('#fileDst').click(); },
     undo() {
