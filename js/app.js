@@ -19,6 +19,7 @@
     // technology comparison (AGS, EGS, CO2-EGS/CPG)
     t_latN: 2, t_latL: 2000, t_capexLat: 30, t_egsFlow: 30, t_egsV: 0.2, t_egsRf: 20, t_egsImp: 0.15, t_capexStim: 60, t_capexWellM: 0.08, t_co2Gain: 1.5, t_co2Loss: 5, t_capexCPG: 40, t_heatDemOff: 1000, t_heatDemOn: 5000, t_elecDem: 5000,
   };
+  const APP_VERSION = 'v0.5.2 · 11/11/2026';
   const ELEC_PRICE = 2204;
   const PURPOSE_PRICE = { res: 2204, hp: Math.round(2204 / 3) };
   const WELL_COLS = ['id', 'name', 'location', 'depth_m', 'md_m', 'gradient_c100m', 'bht_c', 'bht1_c', 'dt1_h', 'bht2_c', 'dt2_h', 'tc_h', 'integrity', 'distance_km'];
@@ -164,6 +165,7 @@
     log(t(msgKey, { n: p.name, w: p.wells.length }), 'ok');
     if (!p.wells.length) log(t('proj.empty'), 'warn');
     renderAll();
+    if (!p.wells.length && /volve/i.test(p.name || '')) { log(t('msg.volveAuto'), 'ok'); setTimeout(() => ACT.volveAdd(), 0); }
   }
   function closeProject() {
     if (!S.project) return;
@@ -643,7 +645,7 @@
         <div class="recent"><h3>${t('start.recent')}</h3><div id="recentList"></div></div>
       </div>
       <ol class="steps"><li>${t('start.s1')}</li><li>${t('start.s2')}</li><li>${t('start.s3')}</li><li>${t('start.s4')}</li></ol>
-      <p class="hint" style="margin-top:16px">${t('start.local')}</p></div>`;
+      <p class="hint" style="margin-top:16px">${t('start.local')} · ${t('start.version')} ${APP_VERSION}</p></div>`;
     const list = (await Store.all()).sort((x, y) => y.updated - x.updated).slice(0, 8);
     const rl = $('#recentList'); if (!rl) return;
     rl.innerHTML = list.length ? list.map((p) => `<div class="item" data-open="${p.id}"><span>${esc(p.name)}</span><small>${p.wells.length} ${t('dlg.wells')} · ${new Date(p.updated).toLocaleDateString(loc())}</small></div>`).join('') : `<div class="none">${t('start.none')}</div>`;
@@ -1357,9 +1359,12 @@
     },
     async openProject() {
       const list = (await Store.all()).sort((x, y) => y.updated - x.updated);
-      const body = list.length ? `<div class="plist">${list.map((p) => `<div class="item"><div><b>${esc(p.name)}</b><small>${p.wells.length} ${t('dlg.wells')} · ${new Date(p.updated).toLocaleString(loc())}</small></div><button class="btn" data-pick="${p.id}" data-a="open">${t('dlg.open')}</button><button class="btn ghost" data-pick="${p.id}" data-a="del" style="color:var(--poor)">${t('dlg.delete')}</button></div>`).join('')}</div>` : `<p class="muted">${t('start.none')}</p>`;
+      const note = `<div class="hint" style="margin-bottom:10px">${t('dlg.localNote')}</div><div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px"><button class="btn" data-pick="_file" data-a="file">${t('dlg.fromFile')}</button><button class="btn ghost" data-pick="_volve" data-a="volve">${t('b.volve')}</button></div>`;
+      const body = note + (list.length ? `<div class="plist">${list.map((p) => `<div class="item"><div><b>${esc(p.name)}</b>${p.wells.length ? '' : ` <span class="src field">${t('dlg.empty')}</span>`}<small>${p.wells.length} ${t('dlg.wells')} · ${new Date(p.updated).toLocaleString(loc())}</small></div><button class="btn" data-pick="${p.id}" data-a="open">${t('dlg.open')}</button><button class="btn ghost" data-pick="${p.id}" data-a="del" style="color:var(--poor)">${t('dlg.delete')}</button></div>`).join('')}</div>` : `<p class="muted">${t('start.none')}</p>`);
       const r = await dialog(t('dlg.openProject'), body, [{ label: t('dlg.close') }]);
       if (!r) return;
+      if (r.act === 'file') { $('#fileProj').click(); return; }
+      if (r.act === 'volve') { ACT.volve(); return; }
       const p = list.find((x) => x.id === r.pick);
       if (r.act === 'open') { if (S.project) await Store.put(S.project); openProject(await Store.get(p.id)); }
       if (r.act === 'del') {
@@ -1437,7 +1442,7 @@
     },
     logPlot() { openDoc('log:' + selWell().uid); },
     guide() { openDoc('guide'); },
-    about() { dialog(t('about.title'), t('about.body'), [{ label: t('dlg.close'), primary: true }]); },
+    about() { dialog(t('about.title'), t('about.body') + `<p class="hint">${t('start.version')} ${APP_VERSION}</p>`, [{ label: t('dlg.close'), primary: true }]); },
     async lasHelp() {
       const r = await dialog(t('help.title'), t('help.body'), [{ label: t('help.csvTpl'), value: 'tpl' }, { label: t('b.sample'), value: 'las' }, { label: t('dlg.close'), primary: true }]);
       if (r === 'tpl') download('abandonedwell_template.csv', toCSV(DEMO_WELLS, WELL_COLS), 'text/csv');
@@ -1517,6 +1522,17 @@
       if (!p || !Array.isArray(p.wells)) throw new Error('format');
       p.id = p.id || makeProject('x').id; p.name = p.name || f.name; p.created = p.created || Date.now(); p.updated = Date.now();
       p.wells.forEach((w) => { w.uid = w.uid || uid(); w.curves = w.curves || []; });
+      const key = (x) => String(x || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
+      const fileKey = key(f.name.replace(/\.awproj\.json$|\.json$/i, ''));
+      const same = (await Store.all()).filter((q) => q.id === p.id || key(q.name) === key(p.name) || (fileKey && key(q.name) && (fileKey.includes(key(q.name)) || key(q.name).includes(fileKey))));
+      if (same.length) {
+        const old = same.sort((x, y) => y.updated - x.updated)[0];
+        const ans = await dialog(t('dlg.replaceTitle'), `<p>${esc(t('dlg.replaceBody', { o: old.name, n: old.wells.length, d: new Date(old.updated).toLocaleString(loc()), f: f.name, m: p.wells.length }))}</p>`,
+          [{ label: t('dlg.cancel') }, { label: t('dlg.keepBoth'), value: 'both' }, { label: t('dlg.replace'), primary: true, value: 'replace' }]);
+        if (!ans) return;
+        if (ans === 'replace') { p.id = old.id; if (S.project && S.project.id === old.id) S.project = null; }
+        else if (same.some((q) => q.id === p.id)) p.id = makeProject('x').id;
+      }
       if (S.project) await Store.put(S.project);
       await Store.put(p);
       log(t('msg.importProj', { f: f.name }), 'ok');
