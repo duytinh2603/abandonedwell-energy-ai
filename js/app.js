@@ -16,6 +16,8 @@
     u_elecOff: 2204, u_pinch: 5, u_dpMax: 20, u_RfSwept: 0,
     // hydraulics & extra economics
     pumpAuto: 1, csgID: 157, tubOD: 89, tubID: 76, paCost: 0, paYears: 10, co2Factor: 0.2, co2Price: 0,
+    // technology comparison (AGS, EGS, CO2-EGS/CPG)
+    t_latN: 2, t_latL: 2000, t_capexLat: 30, t_egsFlow: 30, t_egsV: 0.2, t_egsRf: 20, t_egsImp: 0.15, t_capexStim: 60, t_capexWellM: 0.08, t_co2Gain: 1.5, t_co2Loss: 5, t_capexCPG: 40, t_heatDemOff: 1000, t_heatDemOn: 5000, t_elecDem: 5000,
   };
   const ELEC_PRICE = 2204;
   const PURPOSE_PRICE = { res: 2204, hp: Math.round(2204 / 3) };
@@ -75,6 +77,7 @@
   ICON.importDst = svg(badge('DST', '#2e7d32') + `<path d="M13 31h14m-3-3 3 3-3 3" stroke="#2e7d32" stroke-width="1.6"/>`);
   ICON.volve = svg(`<path d="M6 30h28" stroke="${B}" stroke-width="2"/><path d="M4 34c4-2 8 2 12 0s8 2 12 0 6 1 8 0" stroke="#4fc3f7" stroke-width="2"/><rect x="12" y="14" width="16" height="10" fill="#e3f0fc" stroke="${B}" stroke-width="2"/><path d="M14 24v6M26 24v6M20 4v10M16 8h8" stroke="${B}" stroke-width="2"/><circle cx="31" cy="11" r="6" fill="#2e7d32"/><path d="M28.5 11l2 2 3.5-4" stroke="#fff" stroke-width="1.8" fill="none"/>`);
   ICON.volveData = svg(`<rect x="5" y="6" width="30" height="28" fill="#fff" stroke="${B}" stroke-width="2"/><path d="M9 28l6-8 5 4 6-10 5 6" stroke="#ef6c00" stroke-width="2" fill="none"/><path d="M5 12h30" stroke="${B}" stroke-width="2"/><circle cx="29" cy="29" r="6" fill="#2e7d32"/><path d="M26.5 29l2 2 3.5-4" stroke="#fff" stroke-width="1.8" fill="none"/>`);
+  ICON.tech = svg(`<rect x="4" y="22" width="6" height="12" fill="#90caf9"/><rect x="12" y="15" width="6" height="19" fill="#66bb6a"/><rect x="20" y="9" width="6" height="25" fill="#ef6c00"/><rect x="28" y="18" width="6" height="16" fill="#ab47bc"/><path d="M3 34h33" stroke="${B}" stroke-width="2"/><path d="M6 8h6M9 5v6" stroke="${R}" stroke-width="2"/>`);
   ICON.optAll = svg(`<rect x="5" y="6" width="30" height="28" fill="#fff" stroke="${B}" stroke-width="2"/><path d="M5 13h30M5 20h30M5 27h30" stroke="${G}" stroke-width="1.4"/><path d="M14 6v28" stroke="${G}" stroke-width="1.4"/><circle cx="25" cy="16.5" r="2.6" fill="#2e7d32"/><circle cx="21" cy="23.5" r="2.6" fill="${R}"/><circle cx="29" cy="30.5" r="2.6" fill="#ef6c00"/>`);
 
   /* ================= state ================= */
@@ -144,7 +147,7 @@
   let docTimer = null;
   function scheduleDocRefresh() {
     clearTimeout(docTimer);
-    docTimer = setTimeout(() => { const a = S.active; if (a === 'rank' || a === 'sens' || a === 'optall' || a.startsWith('rep:') || a.startsWith('opt:')) renderDoc(); }, 300);
+    docTimer = setTimeout(() => { const a = S.active; if (a === 'rank' || a === 'sens' || a === 'optall' || a === 'tech' || a.startsWith('rep:') || a.startsWith('opt:')) renderDoc(); }, 300);
   }
 
   /* ================= project ops ================= */
@@ -400,7 +403,7 @@
   const RIBBON = {
     home: [['g.project', ['newProject', 'openProject', 'closeProject', 'saveFile', 'openFile', 'undo']], ['g.well', ['newWell', 'importLas', 'importCsv']], ['g.view', ['browser', 'props', 'output']]],
     data: [['g.import', ['importLas', 'importCsv', 'importSurvey', 'importDst']], ['g.export', ['exportLas', 'exportCsv']], ['g.tools', ['nullValue', 'delete']]],
-    geo: [['g.eval', ['params', 'run', 'report', 'sens']], ['g.ai', ['ml']], ['g.util', ['optimize', 'optAll']], ['g.export', ['exportRank']]],
+    geo: [['g.eval', ['params', 'run', 'report', 'sens']], ['g.ai', ['ml']], ['g.util', ['optimize', 'optAll', 'tech']], ['g.export', ['exportRank']]],
     plot: [['g.plots', ['logPlot', 'report', 'sens']]],
     help: [['g.help', ['guide', 'about', 'lasHelp', 'sample', 'demo']], ['g.volve', ['volve', 'volveData']]],
   };
@@ -489,6 +492,8 @@
     ['pg.util', [['u_Tamb', 'u.Tamb', 1], ['u_approach', 'u.approach', 1], ['u_Tdry', 'u.Tdry', 5], ['u_elec', 'u.elec', 50], ['u_heatHigh', 'u.heatHigh', 50], ['u_heatLow', 'u.heatLow', 50],
       ['u_capexORC', 'u.capexORC', 5], ['u_capexHX', 'u.capexHX', 0.5], ['u_capexOpen', 'u.capexOpen', 1], ['u_whLoss', 'u.whLoss', 1], ['u_Treinj', 'u.Treinj', 1], ['u_Rf', 'u.Rf', 1],
       ['u_RfSwept', 'u.RfSwept', 'yesno'], ['u_elecOff', 'u.elecOff', 50], ['u_pinch', 'u.pinch', 1], ['u_dpMax', 'u.dpMax', 1]]],
+    ['pg.tech', [['t_latN', 'tp.latN', 1], ['t_latL', 'tp.latL', 100], ['t_capexLat', 'tp.capexLat', 1], ['t_egsFlow', 'tp.egsFlow', 5], ['t_egsV', 'tp.egsV', 0.05], ['t_egsRf', 'tp.egsRf', 5],
+      ['t_egsImp', 'tp.egsImp', 0.01], ['t_capexStim', 'tp.capexStim', 5], ['t_capexWellM', 'tp.capexWellM', 0.01], ['t_co2Gain', 'tp.co2Gain', 0.1], ['t_co2Loss', 'tp.co2Loss', 1], ['t_capexCPG', 'tp.capexCPG', 5], ['t_heatDemOff', 'tp.heatDemOff', 100], ['t_heatDemOn', 'tp.heatDemOn', 100], ['t_elecDem', 'tp.elecDem', 100]]],
   ];
   const WELL_FIELDS = [
     ['pg.general', [['id', 'f.id', 'text'], ['name', 'f.name', 'text'], ['field', 'f.field', 'text'], ['location', 'f.location', 'location'], ['depth_m', 'f.depth', 1], ['md_m', 'f.md', 1]]],
@@ -571,6 +576,7 @@
     if (id === 'rank') return [ICON.docRank, t('doc.rank')];
     if (id === 'sens') return [ICON.docSens, t('doc.sens')];
     if (id === 'optall') return [ICON.optAll, t('doc.optall')];
+    if (id === 'tech') return [ICON.tech, t('doc.tech')];
     if (id === 'guide') return [ICON.guide, t('b.guide')];
     if (id === 'volve') return [ICON.volveData, t('doc.volve')];
     if (id === 'ml') return [ICON.ml, t('doc.ml')];
@@ -616,6 +622,7 @@
     if (id.startsWith('rep:')) return renderReport(a, id.slice(4));
     if (id.startsWith('opt:')) return renderOpt(a, id.slice(4));
     if (id === 'optall') return renderOptAll(a);
+    if (id === 'tech') return renderTech(a);
     if (id === 'ml') return renderML(a);
     if (id.startsWith('log:')) return renderLog(a, id.slice(4));
   }
@@ -931,6 +938,67 @@
       <p class="hint" style="margin-top:12px">${t('opt.disclaimer')}</p></div>`;
   }
   $('#docArea').addEventListener('dblclick', (e) => { const r = e.target.closest('#optTbl tbody tr'); if (r) openDoc('opt:' + r.dataset.u); });
+
+  /* ---------- technology comparison: CLGS / AGS / hydrothermal / EGS / CO2-EGS ---------- */
+  const TECHS = ['clgs', 'ags', 'hydro', 'egs', 'cpg'];
+  function techParams() {
+    const p = Object.assign({}, DEFAULTS, S.project ? S.project.params : {});
+    const n = (k) => (isFinite(+p[k]) ? +p[k] : DEFAULTS[k]);
+    return { latN: Math.max(1, Math.round(n('t_latN'))), latL: Math.max(100, n('t_latL')), capexLat: n('t_capexLat'), egsFlow: Math.max(1, n('t_egsFlow')), egsV: Math.max(0.001, n('t_egsV')), egsRf: n('t_egsRf') / 100,
+      egsImp: n('t_egsImp'), capexStim: n('t_capexStim'), capexWellM: n('t_capexWellM'), co2Gain: n('t_co2Gain'), co2Loss: n('t_co2Loss'), capexCPG: n('t_capexCPG'), heatDemOff: n('t_heatDemOff'), heatDemOn: n('t_heatDemOn'), elecDem: n('t_elecDem') };
+  }
+  function techWell(w) {
+    const { ev, resIn, U, P } = evalWell(w);
+    const eco = Object.assign({}, P.eco);
+    return window.AWTech.evaluate(w, ev, { P, U, eco, resIn, T: techParams(), wellCapex: w.eco.capex });
+  }
+  function techAll() {
+    const res = screen(); if (!res) return [];
+    return res.ranked.map((w) => ({ w, r: techWell(w) }));
+  }
+  const useLabel = (o) => (o && o.use ? t('tuse.' + o.use) + ((o.use === 'power' || o.use === 'cogen') && o.fluid ? ` (${o.fluid})` : '') : '–');
+  const techWhy = (o) => (o.reasons || []).map((r) => t('tw.' + r)).join('; ');
+  function renderTech(a) {
+    const rows = techAll();
+    if (!rows.length) { a.innerHTML = `<div class="doc"><h2>${t('doc.tech')}</h2><p class="muted">${t('proj.empty')}</p></div>`; return; }
+    const tot = {}; TECHS.forEach((k) => { tot[k] = { n: 0, pos: 0, npv: 0, pe: 0, q: 0, co2: 0 }; });
+    rows.forEach(({ r }) => r.options.forEach((o) => { const x = tot[o.id]; if (isFinite(o.npv) && o.npv !== null) { x.n++; x.q += o.Q || 0; x.pe += o.Pe || 0; x.co2 += o.co2t || 0; if (o.npv > 0) { x.pos++; x.npv += o.npv; } } }));
+    const cell = (o) => (o && isFinite(o.npv) && o.npv !== null ? `<td class="n ${o.npv < 0 ? 'npv-neg' : 'npv-pos'}" title="${esc(useLabel(o))}">${fmt(o.npv, 1)}</td>` : `<td class="n" style="color:var(--muted)" title="${esc(o ? techWhy(o) : '')}">${o && o.status === 'nodata' ? t('tech.nodata') : '–'}</td>`);
+    a.innerHTML = `<div class="doc"><h2>${t('doc.tech')}</h2><p class="muted">${t('tech.intro')}</p>
+      <div class="card"><h3>${t('tech.matrix')}</h3><div class="tscroll"><table class="tbl" id="techTbl"><thead><tr><th>${t('r.well')}</th><th class="n">${t('r.tb')}</th>
+        ${TECHS.map((k) => `<th class="n">${t('tech.' + k)}<br><small>NPV (${bnU()})</small></th>`).join('')}<th>${t('tech.best')}</th><th class="n">${t('tech.dnpv')}</th></tr></thead><tbody>
+        ${rows.map(({ w, r }) => `<tr data-u="${w.uid}"><td><b>${esc(w.name || w.id)}</b></td><td class="n">${fmt(w.Tbottom)}</td>${TECHS.map((k) => cell(r.options.find((o) => o.id === k))).join('')}
+          <td>${r.best ? `<b>${t('tech.' + r.best.id)}</b> · ${esc(useLabel(r.best))}` : '–'}</td><td class="n">${r.best && r.best.dNpv !== null ? (r.best.dNpv > 0 ? '+' : '') + fmt(r.best.dNpv, 1) : '–'}</td></tr>`).join('')}
+        </tbody></table></div><p class="hint">${t('tech.matrixHint')}</p></div>
+      <div class="card" style="margin-top:14px"><h3>${t('tech.totals')}</h3><div class="tscroll"><table class="tbl"><thead><tr><th>${t('tech.col.tech')}</th><th>TRL</th><th class="n">${t('tech.col.n')}</th><th class="n">${t('optall.pos')}</th><th class="n">${t('opt.col.Q')}</th><th class="n">${t('opt.col.Pe')}</th><th class="n">${t('optall.npvPos')}</th><th class="n">${t('tech.col.co2')}</th></tr></thead><tbody>
+        ${TECHS.map((k) => { const x = tot[k]; const trl = (rows[0].r.options.find((o) => o.id === k) || {}).trl; return `<tr><td><b>${t('tech.' + k)}</b></td><td>${trl || ''}</td><td class="n">${x.n}</td><td class="n">${x.pos}</td><td class="n">${fmt(x.q)}</td><td class="n">${x.pe > 0 ? fmt(x.pe, 0) : '–'}</td><td class="n">${fmt(x.npv, 1)}</td><td class="n">${x.co2 > 0 ? fmt(x.co2 / 1000, 1) : '–'}</td></tr>`; }).join('')}
+      </tbody></table></div></div>
+      <div class="card" style="margin-top:14px"><h3>${t('tech.chart')}</h3><div class="chart-box" style="height:${Math.max(240, rows.length * 34)}px"><canvas id="chTech"></canvas></div></div>
+      <div class="card" style="margin-top:14px"><div class="rep-head"><h3 style="margin:0">${t('tech.detail')}</h3><button class="btn no-print" id="btnTechCsv">${t('b.exportCsv')}</button></div><div class="tscroll"><table class="tbl"><thead><tr>
+        <th>${t('r.well')}</th><th>${t('tech.col.tech')}</th><th>${t('tech.col.status')}</th><th>${t('tech.col.use')}</th><th class="n">${t('opt.col.m')}</th><th class="n">${t('opt.col.Ts')}</th><th class="n">${t('opt.col.Q')}</th><th class="n">${t('opt.col.Pe')}</th>
+        <th class="n">${t('opt.col.capex')}</th><th class="n">${t('tech.col.cash')}</th><th class="n">NPV (${bnU()})</th><th class="n">${t('tech.col.lcoe')}</th><th class="n">${t('tech.col.co2')}</th><th>${t('opt.col.note')}</th></tr></thead><tbody>
+        ${rows.flatMap(({ w, r }) => r.options.map((o, i) => `<tr${i === 0 ? ' style="border-top:2px solid var(--line)"' : ''}><td>${i === 0 ? `<b>${esc(w.name || w.id)}</b>` : ''}</td><td>${t('tech.' + o.id)}</td><td><span class="src ${o.status === 'ok' ? 'dst' : o.status === 'cond' ? 'log' : 'field'}">${t('tst.' + o.status)}</span></td>
+          <td>${esc(useLabel(o))}</td><td class="n">${fmt(o.m, 1)}</td><td class="n">${fmt(o.Ts, 0)}</td><td class="n">${fmt(o.Q)}</td><td class="n">${o.Pe > 0 ? fmt(o.Pe, 0) : '–'}</td><td class="n">${fmt(o.capex, 0)}</td><td class="n">${fmt(o.yearly, 2)}</td>
+          <td class="n ${o.npv < 0 ? 'npv-neg' : 'npv-pos'}">${fmt(o.npv, 1)}</td><td class="n">${fmt(o.lcoe)}</td><td class="n">${o.co2t > 0 ? fmt(o.co2t / 1000, 1) : '–'}</td><td class="use">${esc(techWhy(o))}</td></tr>`)).join('')}
+      </tbody></table></div><p class="hint">${t('tech.detailHint')}</p></div>
+      <div class="card" style="margin-top:14px"><h3>${t('tech.about')}</h3><div class="tscroll"><table class="tbl"><thead><tr><th>${t('tech.col.tech')}</th><th>TRL</th><th>${t('tech.col.how')}</th><th>${t('tech.col.need')}</th><th>${t('tech.col.risk')}</th></tr></thead><tbody>
+        ${TECHS.map((k) => `<tr><td><b>${t('tech.' + k)}</b></td><td>${(rows[0].r.options.find((o) => o.id === k) || {}).trl || ''}</td><td class="use">${t('tinfo.' + k + '.how')}</td><td class="use">${t('tinfo.' + k + '.need')}</td><td class="use">${t('tinfo.' + k + '.risk')}</td></tr>`).join('')}
+      </tbody></table></div><p class="hint">${t('tech.disclaimer', { g: fmt(techParams().co2Gain, 1) })}</p></div></div>`;
+    const col = { clgs: '#90caf9', ags: '#1565c0', hydro: '#2e7d32', egs: '#ef6c00', cpg: '#8e24aa' };
+    mk('chTech', { type: 'bar', data: { labels: rows.map(({ w }) => w.name || w.id), datasets: TECHS.map((k) => ({ label: t('tech.' + k), backgroundColor: col[k], data: rows.map(({ r }) => { const o = r.options.find((x) => x.id === k); return o && isFinite(o.npv) && o.npv !== null ? o.npv : null; }) })) },
+      options: { indexAxis: 'y', maintainAspectRatio: false, plugins: { tooltip: { callbacks: { label: (c) => `${c.dataset.label}: NPV ${fmt(c.parsed.x, 1)} ${bnU()}` } } }, scales: { x: { title: { display: true, text: `NPV (${bnU()})` }, ticks: { callback: numTick(0) } } } } });
+    $('#btnTechCsv').onclick = () => download(safeName(S.project.name) + '_technologies.csv', toCSV(techRows(rows), TECH_CSV), 'text/csv');
+  }
+  const TECH_CSV = ['well', 'T_bottom_C', 'technology', 'trl', 'status', 'use', 'flow_kg_s', 'T_source_C', 'heat_kWth', 'power_kWe', 'capex_bnVND', 'net_cash_bnVND_yr', 'npv_bnVND', 'dNPV_vs_CLGS', 'lcoe_VND_kWh', 'co2_stored_t_yr', 'notes'];
+  function techRows(rows) {
+    return rows.flatMap(({ w, r }) => r.options.map((o) => ({ well: w.name || w.id, T_bottom_C: Math.round(w.Tbottom), technology: t('tech.' + o.id), trl: o.trl, status: t('tst.' + o.status), use: useLabel(o),
+      flow_kg_s: o.m === undefined || o.m === null ? '' : +(+o.m).toFixed(1), T_source_C: isFinite(o.Ts) ? Math.round(o.Ts) : '', heat_kWth: Math.round(o.Q || 0), power_kWe: Math.round(o.Pe || 0),
+      capex_bnVND: isFinite(o.capex) ? +o.capex.toFixed(1) : '', net_cash_bnVND_yr: isFinite(o.yearly) ? +o.yearly.toFixed(2) : '', npv_bnVND: isFinite(o.npv) && o.npv !== null ? +o.npv.toFixed(1) : '',
+      dNPV_vs_CLGS: o.dNpv !== null && isFinite(o.dNpv) ? +o.dNpv.toFixed(1) : '', lcoe_VND_kWh: isFinite(o.lcoe) && o.lcoe !== null ? Math.round(o.lcoe) : '', co2_stored_t_yr: Math.round(o.co2t || 0), notes: techWhy(o) })));
+  }
+  $('#docArea').addEventListener('dblclick', (e) => { const r = e.target.closest('#techTbl tbody tr'); if (r) openDoc('opt:' + r.dataset.u); });
+  /* read-only hook used to export results into the private results workbook */
+  window.AWApp = { techTable: () => techRows(techAll()), project: () => S.project && { name: S.project.name, wells: S.project.wells.length } };
 
   /* ---------- machine learning (temperature model) ---------- */
   function trainML() {
@@ -1348,6 +1416,7 @@
     report() { openDoc('rep:' + selWell().uid); },
     optimize() { openDoc('opt:' + selWell().uid); },
     optAll() { openDoc('optall'); },
+    tech() { openDoc('tech'); },
     ml() { openDoc('ml'); },
     importSurvey() { $('#fileSurvey').click(); },
     importDst() { $('#fileDst').click(); },

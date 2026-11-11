@@ -109,6 +109,27 @@
       detail: `${D.wells.length} giếng, ${pts.length} điểm, G = ${G.toFixed(2)} °C/100 m, ${wells.length} giếng tính được; ${D.seismic.cubes.length} khối 3D` };
   });
 
+  /* 8. Technology comparison (CLGS / AGS / hydrothermal / EGS / CO2-EGS) */
+  test('So sánh công nghệ: AGS thu nhiệt > CLGS, CO₂-EGS ≈ 1,5× nhiệt vỉa, EGS vốn lớn nhất, giới hạn nhu cầu', () => {
+    const P = { T0: 27, k: 2.5, years: 10, upLoss: 0.1, geom: {} };
+    const eco = { heatPrice: 735, capexOn: 6, capexOff: 25, pipeCost: 1.5, opexPct: 3, pumpKW: 15, hours: 8000, rate: 10, life: 25, elecPrice: 2204, pumpAuto: true, co2Price: 0 };
+    const U = { Tamb: 30, approach: 10, Tdry: 60, elecValue: 2204, heatHigh: 2204, heatLow: 735, capexORC: 100, capexHX: 2, capexOpen: 30, whLoss: 5, Tret: 30, Treinj: 40, Rf: 0.1, pinch: 5, dpMax: 20 };
+    const base = { L: 4000, Lv: 4000, G: 3.5, T0: 27, k: 2.5, m: 5, Tin: 30, years: 10, Rw: 0.1, upLoss: 0.1 };
+    const w = { depth: 4000, md: 4000, G: 3.5, Tbottom: 167, location: 'offshore', integrity: 'good', base };
+    const resIn = { A: 2, h: 20, phi: 0.15, flow: 5, z: 4000, Tres: 160, Treinj: 40, Rf: 0.1, PI: 0, spacing: 0, co2: 0 };
+    const ev = U && window.AWUtil.evaluate(base, U, eco, 25, resIn);
+    const run = (T) => window.AWTech.evaluate(w, ev, { P, U, eco, resIn, wellCapex: 25, T });
+    const r = run({ heatDemOff: 0, elecDem: 0 });
+    const o = (id) => r.options.find((x) => x.id === id);
+    const Qhydro = ev.reservoir.mSust * 4180 * (ev.reservoir.Twh - 40) / 1000;
+    const Qcpg = o('cpg').Qall || o('cpg').Q, ratio = Qcpg / Qhydro;
+    const capped = run({ heatDemOff: 500, elecDem: 200 });
+    const capOk = capped.options.every((x) => !(x.Pe > 200.01) && !(x.use && x.use.startsWith('heat') && x.Q > 500.01));
+    const all5 = ['clgs', 'ags', 'hydro', 'egs', 'cpg'].every((k) => r.options.some((x) => x.id === k));
+    const ok = all5 && (o('ags').Qall || o('ags').Q) > o('clgs').Q && o('egs').capex > o('ags').capex && o('egs').capex > o('clgs').capex && ratio > 1.2 && ratio < 1.8 && capOk && !!r.best;
+    return { ok, detail: `Q CLGS ${o('clgs').Q.toFixed(0)}, AGS ${(o('ags').Qall || o('ags').Q).toFixed(0)}, vỉa ${Qhydro.toFixed(0)}, CO₂ ${Qcpg.toFixed(0)} kWth (×${ratio.toFixed(2)}); vốn EGS ${o('egs').capex.toFixed(0)} tỷ đ; tốt nhất ${r.best.id}` };
+  });
+
   const tb = document.getElementById('rows'); let pass = 0;
   results.forEach((r, i) => {
     if (r.ok) pass++;
