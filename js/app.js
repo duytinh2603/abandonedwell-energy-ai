@@ -406,7 +406,7 @@
   };
   const selWell = () => (S.sel && (S.sel.t === 'well' || S.sel.t === 'curve') ? wellBy(S.sel.uid) : null);
   function enabled(a) {
-    if (['newProject', 'openProject', 'openFile', 'guide', 'about', 'lasHelp', 'sample', 'demo', 'volve', 'volveData', 'browser', 'props', 'output'].includes(a)) return true;
+    if (['newProject', 'openProject', 'openFile', 'guide', 'about', 'lasHelp', 'sample', 'demo', 'volve', 'volveData', 'volveAdd', 'browser', 'props', 'output'].includes(a)) return true;
     if (!S.project) return false;
     if (['report', 'optimize', 'exportLas', 'nullValue', 'logPlot'].includes(a)) return !!selWell() && (a === 'report' || a === 'optimize' || selWell().curves.length > 0);
     if (a === 'optAll' || a === 'ml' || a === 'importDst') return S.project.wells.length > 0;
@@ -631,6 +631,7 @@
           <button class="big-act" data-act="importLas" ${S.project ? '' : 'hidden'}>${ICON.importLas}${t('b.importLas')}</button>
           <button class="big-act" data-act="demo">${ICON.demo}${t('start.demo')}</button>
           <button class="big-act" data-act="volve">${ICON.volve}${t('start.volve')}</button>
+          ${S.project && !S.project.wells.length ? `<button class="big-act" data-act="volveAdd">${ICON.volve}${t('volve.addTo', { p: esc(S.project.name) })}</button>` : ''}
         </div>
         <div class="recent"><h3>${t('start.recent')}</h3><div id="recentList"></div></div>
       </div>
@@ -963,6 +964,7 @@
       </div>
       <div class="rep-head no-print" style="justify-content:flex-start;gap:8px;flex-wrap:wrap">
         <button class="btn" data-act="volve">${t('volve.open')}</button>
+        ${S.project && S.project.source !== 'volve' ? `<button class="btn" data-act="volveAdd">${t('volve.addTo', { p: esc(S.project.name) })}</button>` : ''}
         <button class="btn" id="btnVolveDst">${t('volve.dlDst')}</button>
         <button class="btn" id="btnVolveWells">${t('volve.dlWells')}</button>
       </div>
@@ -1376,17 +1378,40 @@
       const w = newWellObj({ id: 'SAMPLE-1', name: 'SAMPLE-1', field: 'DEMO', bht_c: 118, curves: L.synthLogs(500, 3000, 0.5, 3.3, 99), nullValue: -999.25 });
       download('sample_SAMPLE-1.las', L.writeLAS(w));
     },
-    async volve() {
+    /** Open the Volve project: reuse the one saved in this browser, otherwise build it from data/volve.json. */
+    async volve(opts = {}) {
       let D;
       try { D = await loadVolve(); } catch (e) { log(t('volve.loadErr', { e: e.message }), 'err'); return; }
+      if (S.project && S.project.source === 'volve' && S.project.wells.length) { if (!opts.stay) openDoc('rank'); return; }
       if (S.project) await Store.put(S.project);
+      const saved = (await Store.all()).filter((q) => q.source === 'volve' && q.wells.length).sort((x, y) => y.updated - x.updated)[0];
+      if (saved) { openProject(saved, 'msg.opened'); log(t('volve.reopen'), 'ok'); if (!opts.stay) openDoc('rank'); return; }
       const p = volveProject(D); await Store.put(p);
       openProject(p, 'msg.opened');
       log(t('volve.loaded', { n: p.wells.length, k: p.wells.filter((w) => w.gSource === 'lwd').length, s: D.wells.length - p.wells.length }), 'ok');
       log(t('volve.paramsSet', { T0: p.params.T0, Tin: p.params.Tin, Ta: p.params.u_Tamb }));
-      openDoc('rank');
+      if (!opts.stay) openDoc('rank');
     },
-    volveData() { openDoc('volve'); },
+    /** Volve data page; without an open project with wells, the Volve project is opened too so the browser tree is never empty. */
+    async volveData() {
+      if (!S.project || !S.project.wells.length) await ACT.volve({ stay: true });
+      openDoc('volve');
+    },
+    /** Add the Volve wells to the project that is open (e.g. an empty project the user created and named "Volve"). */
+    async volveAdd() {
+      if (!S.project) return ACT.volve();
+      let D;
+      try { D = await loadVolve(); } catch (e) { log(t('volve.loadErr', { e: e.message }), 'err'); return; }
+      snapshot();
+      const P = S.project, empty = !P.wells.length;
+      if (empty) { Object.assign(P.params, VOLVE_PARAMS); P.source = 'volve'; }
+      const have = new Set(P.wells.map((w) => normWell(w.name)));
+      const add = volveProject(D).wells.filter((w) => !have.has(normWell(w.name)));
+      add.forEach((w) => P.wells.push(w));
+      log(t('volve.added', { n: add.length, p: P.name }), 'ok');
+      if (!empty && +P.params.T0 !== VOLVE_PARAMS.T0) log(t('volve.t0Warn', { T0: P.params.T0 }), 'warn');
+      S.docs = S.docs.filter((d) => d !== 'start'); touch(); renderAll(); openDoc('rank');
+    },
     async demo() {
       if (S.project) await Store.put(S.project);
       const p = demoProject(); await Store.put(p);
@@ -1401,7 +1426,7 @@
   document.addEventListener('click', (e) => {
     const b = e.target.closest('[data-act]'); if (!b || b.disabled) return;
     const a = b.dataset.act;
-    if (!S.project && !['newProject', 'openProject', 'openFile', 'guide', 'about', 'lasHelp', 'sample', 'demo', 'volve', 'volveData', 'browser', 'props', 'output', 'clearLog', 'search', 'clearFilter', 'toggleTree'].includes(a)) return;
+    if (!S.project && !['newProject', 'openProject', 'openFile', 'guide', 'about', 'lasHelp', 'sample', 'demo', 'volve', 'volveData', 'volveAdd', 'browser', 'props', 'output', 'clearLog', 'search', 'clearFilter', 'toggleTree'].includes(a)) return;
     if (ACT[a]) Promise.resolve(ACT[a]()).catch((err) => log(String(err && err.message || err), 'err'));
   });
   $('#ribbonTabs').addEventListener('click', (e) => { const b = e.target.closest('[data-tab]'); if (b) { S.tab = b.dataset.tab; renderRibbon(); } });
