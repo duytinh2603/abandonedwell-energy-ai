@@ -1,38 +1,72 @@
 /* AbandonedWell Energy AI – geothermal technology comparison (screening level)
- * For one well, estimates what each technology could deliver and is worth:
- *   CLGS  – closed-loop coaxial retrofit of the existing well (conduction only)            TRL 7
- *   AGS   – advanced closed loop: U-loop with multilateral horizontal legs at reservoir depth TRL 6–7
- *   HYDRO – conventional hydrothermal doublet producing reservoir water (open loop)          TRL 9
- *   EGS   – enhanced system: hydraulic stimulation + new injector, water circulation          TRL 5–7
- *   CPG   – CO2-EGS / CO2-plume geothermal: supercritical CO2 circulated through the depleted
- *           reservoir (thermosiphon, no pump), part of the CO2 permanently stored             TRL 4–5
- * Each option picks the better use (electricity by ORC/direct turbine, or direct heat) by NPV.
- * Physics are deliberately simple and documented; results rank options, they do not design them.
+ *   CLGS  – closed-loop coaxial retrofit (conduction, Ramey 1962)                                   TRL 7
+ *   AGS   – multilateral closed loop (Eavor-type U-loop; line-source conduction)                    TRL 6–7
+ *   HYDRO – hydrothermal doublet (volumetric heat in place, Muffler & Cataldi 1978)                 TRL 9
+ *   EGS   – stimulated rock + new injector (Tester et al. 2006 "The Future of Geothermal Energy")   TRL 5–7
+ *   CPG   – CO2-EGS / CO2-plume geothermal (Brown 2000; Pruess 2006; Randolph & Saar 2011;
+ *           Atrens et al. 2009; Adams et al. 2014): CO2 properties from the Peng–Robinson (1976)
+ *           equation of state, flow from the CO2/water mobility ratio, driven by the thermosiphon      TRL 4–5
+ * Each option picks the NPV-best use (power, direct heat, cogeneration) under local demand caps.
  */
 (function (global) {
   'use strict';
-  const K = 273.15, CPW = 4180, SEC_YEAR = 365.25 * 86400;
+  const CPW = 4180, SEC_YEAR = 365.25 * 86400, G0 = 9.81;
 
   const DEF = {
-    latN: 2, latL: 2000, capexLat: 30,          // AGS: number of laterals, length each (m), drilling bn VND per km
-    egsFlow: 30, egsV: 0.2, egsRf: 0.2,         // EGS: circulation kg/s, stimulated rock volume km³, recovery of its heat
+    latN: 2, latL: 2000, capexLat: 30,             // AGS: laterals, length each (m), drilling bn VND per km
+    egsFlow: 30, egsV: 0.2, egsRf: 0.2,            // EGS: circulation kg/s, stimulated volume km³, heat recovery
     egsImp: 0.15, capexStim: 60, capexWellM: 0.08, // impedance MPa per kg/s, stimulation bn VND, new well bn VND per m MD
-    co2Gain: 1.5, co2Loss: 5, capexCPG: 40, co2Tmin: 31, // CPG: heat-extraction ratio vs water, fluid loss % of circulation, surface plant bn VND
-    heatDemOff: 1000, heatDemOn: 5000, elecDem: 5000,  // local demand that can actually be sold: heat kWth (offshore / onshore), power kWe
+    co2Loss: 5, capexCPG: 40, co2Tmin: 35,         // CPG: CO2 lost to the formation (% of circulation), surface plant bn VND, min injection T °C
+    heatDemOff: 1000, heatDemOn: 5000, elecDem: 5000, // saleable local demand: heat kWth (offshore / onshore), power kWe
+    mcN: 200,
   };
 
+  /* ---------------- fluid properties ---------------- */
+  /** Water: density (kg/m³) and viscosity (Pa·s) vs temperature °C (liquid, screening accuracy ~1–3 %). */
+  const rhoW = (T) => 1000 - 0.0178 * Math.pow(Math.abs(T - 4), 1.7);
+  const muW = (T) => 2.414e-5 * Math.pow(10, 247.8 / (T + 133.15));
+  /** CO2 by Peng–Robinson: state at P (Pa), T (°C) → {rho kg/m³, h J/kg, mu Pa·s}. Dense/supercritical branch. */
+  function co2(P, Tc) {
+    const R = 8.314462, TC = 304.13, PC = 7.3773e6, W = 0.22394, MW = 0.04401;
+    const T = Tc + 273.15, kap = 0.37464 + 1.54226 * W - 0.26992 * W * W;
+    const sq = 1 + kap * (1 - Math.sqrt(T / TC)), alpha = sq * sq;
+    const a0 = 0.45724 * R * R * TC * TC / PC, a = a0 * alpha, b = 0.0778 * R * TC / PC;
+    const A = a * P / (R * R * T * T), B = b * P / (R * T);
+    // Z³ − (1−B)Z² + (A−3B²−2B)Z − (AB−B²−B³) = 0 : Newton from the liquid-like side, then from the gas side
+    const f = (Z) => ((Z - (1 - B)) * Z + (A - 3 * B * B - 2 * B)) * Z - (A * B - B * B - B * B * B);
+    const df = (Z) => (3 * Z - 2 * (1 - B)) * Z + (A - 3 * B * B - 2 * B);
+    const newton = (Z) => { for (let i = 0; i < 60; i++) { const d = f(Z) / (df(Z) || 1e-12); Z -= d; if (Math.abs(d) < 1e-10) break; } return Z; };
+    const zl = newton(B * 1.001 + 1e-6), zg = newton(1 + B);
+    const Z = P > PC && zl > B ? zl : zg; // above the critical pressure the dense root applies
+    const rho = P * MW / (Z * R * T);
+    const dadT = -a0 * kap * Math.sqrt(alpha / (T * TC));
+    const hig = (x) => 22.26 * x + 5.981e-2 * x * x / 2 - 3.501e-5 * x * x * x / 3 + 7.469e-9 * x * x * x * x / 4; // ∫cp_ig dT, J/mol
+    const s2 = Math.SQRT2;
+    const hdep = R * T * (Z - 1) + (T * dadT - a) / (2 * s2 * b) * Math.log((Z + (1 + s2) * B) / (Z + (1 - s2) * B));
+    const h = (hig(T) - hig(298.15) + hdep) / MW;
+    const mu = 1.5e-5 * Math.pow(T / 300, 0.8) + 8.9e-5 * Math.pow(rho / 1000, 2.07); // dilute gas + residual (fit to NIST data, ±10 %)
+    return { rho, h, mu, Z };
+  }
+  /** Temperature (°C) of CO2 at pressure P with specific enthalpy h (bisection). */
+  function co2TofH(P, h) {
+    let lo = 5, hi = 350;
+    for (let i = 0; i < 50; i++) { const m = (lo + hi) / 2; if (co2(P, m).h < h) lo = m; else hi = m; }
+    return (lo + hi) / 2;
+  }
+
   const npv = (capex, yearly, rate, life) => { let v = -capex; for (let y = 1; y <= life; y++) v += yearly / Math.pow(1 + rate, y); return v; };
-  /** Levelised cost of electricity (VND/kWh) or heat when Pe = 0. */
+  /** Levelised cost per kWh of energy sold (power; heat; power + heat for cogeneration). */
   const lcoe = (capex, opexYr, energyKWh, rate, life) => {
     if (!(energyKWh > 0)) return null;
     const crf = rate > 0 ? rate / (1 - Math.pow(1 + rate, -life)) : 1 / life;
     return (capex * crf + opexYr) * 1e9 / energyKWh;
   };
+  function rng(seed) { return function () { seed |= 0; seed = (seed + 0x6D2B79F5) | 0; let t = Math.imul(seed ^ (seed >>> 15), 1 | seed); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+  const gauss = (r) => Math.sqrt(-2 * Math.log(Math.max(1e-12, r()))) * Math.cos(2 * Math.PI * r());
 
   /**
-   * Best use of a hot stream (m kg/s at Ts °C, returned at Tret): electricity (best ORC fluid, or a CO2 direct
-   * turbine) vs direct heat. Returns the NPV-best use with its numbers.
-   * ctx: {U, eco, life, rate, hours, elecValue}
+   * NPV-best use of a hot stream (m kg/s at Ts °C, returned at Tret): power (best ORC fluid, or a CO2 direct
+   * turbine), cogeneration, or direct heat; sales capped by ctx.heatDem / ctx.elecDem.
    */
   function bestUse(ctx, m, Ts, Tret, capexBase, pumpKW, opts = {}) {
     const U = ctx.U, A = global.AWUtil, Tcond = U.Tamb + U.approach, hours = ctx.hours;
@@ -41,24 +75,23 @@
       o.capex = capexBase + o.capexSurf;
       o.opex = o.capex * ctx.eco.opexPct / 100;
       o.pumpCost = pumpKW * hours * ctx.eco.elecPrice / 1e9;
-      o.extra = opts.extraValue || 0; // e.g. CO2 storage credit
+      o.extra = opts.extraValue || 0;
       o.yearly = o.value + o.extra - o.opex - o.pumpCost;
-      o.npv = npv(o.capex, o.yearly, ctx.rate, ctx.life);
-      o.lcoe = lcoe(o.capex, o.opex + o.pumpCost, (o.Pe > 0 ? o.Pe + (o.Q2 || 0) : o.Q) * hours, ctx.rate, ctx.life); // per kWh of energy sold (power + heat for cogeneration)
+      o.npv = npv(o.capex, o.yearly, ctx.rate, ctx.life) + (ctx.eco.deferral || 0); // P&A deferral, same on every page
+      o.lcoe = lcoe(o.capex, o.opex + o.pumpCost, (o.Pe > 0 ? o.Pe + (o.Q2 || 0) : o.Q) * hours, ctx.rate, ctx.life);
       return o;
     };
-    // electricity (and cogeneration)
     let best = null, bestCo = null;
     const capE = ctx.elecDem > 0 ? ctx.elecDem : Infinity, capH = ctx.heatDem > 0 ? ctx.heatDem : Infinity;
+    const cp = opts.cp || CPW;
     const fluids = opts.directCO2 ? [{ id: 'sco2', name: 'CO₂ turbine', minT: 60, eps: 0.48, p40: null, tc: null }] : A.FLUIDS;
     fluids.forEach((f) => {
-      const r = A.orc(f, Ts, m, Tcond, Tret, opts.directCO2 ? 2 : U.pinch);
+      const r = A.orc(f, Ts, m * cp / CPW, Tcond, Tret, opts.directCO2 ? 2 : U.pinch); // orc() assumes water cp → pass the equivalent capacity rate
       if (!r.feasible || !(r.Pe > 0)) return;
       const Pe = Math.min(r.Pe, capE);
       const o = finish({ use: 'power', fluid: f.name, Q: r.Qin * Pe / r.Pe, Qall: r.Qin, Pe, PeAll: r.Pe, capped: Pe < r.Pe, eta: r.eta, value: Pe * hours * ctx.elecValue / 1e9, capexSurf: Pe * U.capexORC / 1000 });
       if (!best || o.npv > best.npv) best = o;
-      // cogeneration: ORC first, then direct heat from the ORC outlet down to the return temperature
-      const Q2all = Math.max(0, m * (opts.cp || CPW) * (r.Tout - Tret) / 1000), Q2 = Math.min(Q2all, capH);
+      const Q2all = Math.max(0, m * cp * (r.Tout - Tret) / 1000), Q2 = Math.min(Q2all, capH);
       if (Q2 > 0) {
         const price2 = r.Tout >= U.Tdry ? U.heatHigh : U.heatLow;
         const g = finish({ use: 'cogen', fluid: f.name, Q: r.Qin * Pe / r.Pe + Q2, Qall: r.Qin + Q2all, Q2, Pe, PeAll: r.Pe, capped: Pe < r.Pe || Q2 < Q2all, eta: r.eta, Tout: r.Tout,
@@ -68,8 +101,7 @@
     });
     if (best) cands.push(best);
     if (bestCo) cands.push(bestCo);
-    // direct heat
-    const Qall = Math.max(0, m * (opts.cp || CPW) * (Ts - Tret) / 1000);
+    const Qall = Math.max(0, m * cp * (Ts - Tret) / 1000);
     if (Qall > 0) {
       const price = Ts >= U.Tdry ? U.heatHigh : U.heatLow, Q = Math.min(Qall, capH);
       cands.push(finish({ use: Ts >= U.Tdry ? 'heatHigh' : 'heatLow', Q, Qall, capped: Q < Qall, Pe: 0, value: Q * hours * price / 1e9, capexSurf: Q * U.capexHX / 1000 }));
@@ -78,100 +110,139 @@
     return cands[0] || null;
   }
 
+  /** Hydrothermal doublet for given reservoir inputs (same rules as AWUtil.evaluate): sustainable flow and wellhead temperature. */
+  function hydroCase(res, U, life, hours) {
+    const A = global.AWUtil, R = A.reservoir(res, life);
+    const Twh = res.Tres - U.whLoss;
+    const flowCap = res.PI > 0 ? res.PI * U.dpMax / 86.4 : Infinity;
+    const flow = Math.min(res.flow, flowCap);
+    const Pfull = flow * CPW * Math.max(0, Twh - res.Treinj) / 1000;
+    if (U.RfSwept) { const sw = A.sweep(res, flow, life * hours * 3600, res.spacing); R.Psust = Pfull * Math.min(1, res.A / Math.max(sw.area, 1e-9)); }
+    const m = Pfull > 0 ? Math.min(flow, flow * R.Psust / Pfull) : 0;
+    return { m, Twh, flow, Pfull, Psust: R.Psust };
+  }
+
   /**
-   * w: screened well from AWModel.screen (depth TVD, md, G, Tbottom, base, integrity, location)
-   * ev: AWUtil.evaluate result for the well (closed loop and, if reservoir data exist, open loop)
-   * ctx: {P, U, eco, resIn, T: technology parameters, wellCapex}
+   * w: screened well (depth TVD, md, G, Tbottom, base, integrity, location)
+   * ev: AWUtil.evaluate result; ctx: {P, U, eco, resIn, T, wellCapex, hostCapex, conf:{A:'m'|'e', Q:'m'|'e'}}
    */
   function evaluate(w, ev, ctx) {
     const M = global.AWModel, P = ctx.P, U = ctx.U, T = Object.assign({}, DEF, ctx.T || {});
     const eco = ctx.eco, life = eco.life, rate = eco.rate / 100, hours = eco.hours;
     const offshore = w.location === 'offshore';
     const c = { U, eco, life, rate, hours, elecValue: U.elecValue, heatDem: offshore ? T.heatDemOff : T.heatDemOn, elecDem: T.elecDem };
-    const Trock = w.Tbottom, out = [];
+    const host = ctx.hostCapex || 0, wellCapex = ctx.wellCapex + host;
+    const Trock = w.Tbottom, out = [], D = {}; // D: derived engineering parameters
     const reasons = (arr) => arr.filter(Boolean);
+    const R = ev.reservoir, res = ctx.resIn;
 
-    /* ---- 1. CLGS: coaxial closed loop, flow optimised, same pricing and demand caps as the other technologies ---- */
+    /* ---- 1. CLGS ---- */
     {
       let best = null;
       [1, 2, 3, 4, 5, 6, 8, 10, 12].forEach((m) => {
         const Ts = M.wellOutput(Object.assign({}, w.base, { m, Tin: U.Tret, n: 250 })).Tout;
         const pump = eco.pumpAuto ? M.pumpPower(m, w.md, P.geom).kW : eco.pumpKW * m / 5;
-        const o = bestUse(c, m, Ts, U.Tret, ctx.wellCapex, pump);
-        if (o && (!best || o.npv > best.npv)) best = Object.assign(o, { m, Ts });
+        const o = bestUse(c, m, Ts, U.Tret, wellCapex, pump);
+        if (o && (!best || o.npv > best.npv)) best = Object.assign(o, { m, Ts, pumpKW: pump });
       });
-      out.push(Object.assign({ id: 'clgs', trl: '7', status: best ? 'ok' : 'no', reasons: reasons([!best && 'noFeasible', w.integrity === 'poor' && 'integrity']), co2t: 0 }, best || { Q: 0, Pe: 0, npv: null }));
+      out.push(Object.assign({ id: 'clgs', trl: '7', status: best ? 'ok' : 'no', reasons: reasons([!best && 'noFeasible', w.integrity === 'poor' && 'integrity', host > 0 && 'noHost']), co2t: 0 }, best || { Q: 0, Pe: 0, npv: null }));
+      D.rameyF = M.rameyF(Math.max(1, P.years) * SEC_YEAR, 1e-6, 0.108);
+      D.wPerM = best ? (best.Qall || best.Q) * 1000 / w.md : null;
     }
 
-    /* ---- 2. AGS: U-loop, N laterals of length L at rock temperature Trock (line-source conduction, Ramey f(t)) ---- */
+    /* ---- 2. AGS ---- */
     {
-      const f = M.rameyF(Math.max(1, P.years) * SEC_YEAR, 1e-6, 0.108);
-      let best = null;
+      const f = D.rameyF; let best = null;
       [2, 4, 6, 8, 10, 15, 20, 30].forEach((m) => {
-        const mi = m / T.latN; const Tin = U.Tret;
+        const mi = m / T.latN, Tin = U.Tret;
         const Tlat = Trock - (Trock - Tin) * Math.exp(-2 * Math.PI * P.k * T.latL / (f * mi * CPW));
         const Ts = Tin + (Tlat - Tin) * (1 - P.upLoss);
         const pump = M.pumpPower(m, w.md * 2 + T.latN * T.latL, P.geom).kW;
-        const capex = ctx.wellCapex + T.latN * T.latL / 1000 * T.capexLat;
-        const o = bestUse(c, m, Ts, Tin, capex, pump);
-        if (o && (!best || o.npv > best.npv)) best = Object.assign(o, { m, Ts });
+        const o = bestUse(c, m, Ts, Tin, wellCapex + T.latN * T.latL / 1000 * T.capexLat, pump);
+        if (o && (!best || o.npv > best.npv)) best = Object.assign(o, { m, Ts, pumpKW: pump });
       });
-      out.push(Object.assign({ id: 'ags', trl: '6–7', status: best ? 'cond' : 'no', reasons: reasons([w.integrity === 'poor' && 'integrity', 'sidetrack']), co2t: 0 }, best || {}));
+      out.push(Object.assign({ id: 'ags', trl: '6–7', status: best ? 'cond' : 'no', reasons: reasons([w.integrity === 'poor' && 'integrity', 'sidetrack', host > 0 && 'noHost']), co2t: 0 }, best || {}));
     }
 
-    /* ---- 3. Hydrothermal doublet (open loop) – needs reservoir data; flow and temperature from the reservoir model ---- */
+    /* ---- 3. Hydrothermal doublet, with P10–P90 from the uncertainty of the reservoir inputs ---- */
     {
-      const R = ev.reservoir;
-      if (!ctx.resIn || !R) out.push({ id: 'hydro', trl: '9', status: 'nodata', reasons: ['noRes'], Q: 0, Pe: 0, npv: null, co2t: 0 });
+      if (!res || !R) out.push({ id: 'hydro', trl: '9', status: 'nodata', reasons: ['noRes'], Q: 0, Pe: 0, npv: null, co2t: 0 });
       else {
-        const m = R.mSust, Tinj = ctx.resIn.Treinj;
-        const o = m > 0 ? bestUse(c, m, R.Twh, Tinj, U.capexOpen, eco.pumpKW * m / 5) : null;
-        out.push(Object.assign({ id: 'hydro', trl: '9', status: o ? (R.co2High ? 'cond' : 'ok') : 'no', m, Ts: R.Twh, co2t: 0,
-          reasons: reasons([!o && 'noFeasible', R.piLimited && 'piLimited', R.limited && 'resLimited', R.co2High && 'co2']) }, o || { Q: 0, Pe: 0, npv: null }));
+        const run = (r) => { const h = hydroCase(r, U, life, hours); const o = h.m > 0 ? bestUse(c, h.m, h.Twh, r.Treinj, U.capexOpen + host, eco.pumpKW * h.m / 5) : null; return { h, o }; };
+        const b = run(res), o = b.o;
+        // uncertainty: lognormal factors; estimated inputs are much wider than documented ones
+        const conf = ctx.conf || {}, sA = Math.log(conf.A === 'e' ? 3 : 1.3) / 1.2816, sQ = Math.log(conf.Q === 'e' ? 2 : 1.25) / 1.2816, sH = conf.A === 'e' ? 0.2 : 0.1;
+        const r = rng(97 + Math.round(w.depth)), sims = [];
+        for (let i = 0; i < T.mcN; i++) {
+          const x = run(Object.assign({}, res, { A: res.A * Math.exp(sA * gauss(r)), flow: res.flow * Math.exp(sQ * gauss(r)), h: res.h * Math.max(0.3, 1 + sH * gauss(r)), phi: Math.min(0.4, Math.max(0.02, res.phi * (1 + sH * gauss(r)))) }));
+          sims.push(x.o ? x.o.npv : -(U.capexOpen + host));
+        }
+        sims.sort((x, y) => x - y);
+        const q = (p) => sims[Math.min(sims.length - 1, Math.floor(p * sims.length))];
+        out.push(Object.assign({ id: 'hydro', trl: '9', status: o ? (R.co2High || conf.A === 'e' || conf.Q === 'e' ? 'cond' : 'ok') : 'no', m: b.h.m, Ts: b.h.Twh, co2t: 0,
+          p10: q(0.1), p50: q(0.5), p90: q(0.9), pPos: sims.filter((x) => x > 0).length / sims.length, est: conf.A === 'e' || conf.Q === 'e',
+          reasons: reasons([!o && 'noFeasible', R.piLimited && 'piLimited', R.limited && 'resLimited', R.co2High && 'co2', conf.A === 'e' && 'estA', conf.Q === 'e' && 'estQ', host > 0 && 'noHost']) }, o || { Q: 0, Pe: 0, npv: null }));
       }
     }
 
-    /* ---- 4. EGS: stimulated volume around the well + new injector, water circulation ---- */
+    /* ---- 4. EGS ---- */
+    let egs;
     {
-      const Tinj = Math.max(U.Treinj, U.Tret);
-      const rc = 2.5e6; // J/(m³K) rock
+      const Tinj = Math.max(U.Treinj, U.Tret), rc = 2.5e6;
       const Hrec = T.egsV * 1e9 * rc * Math.max(0, Trock - Tinj) * T.egsRf;
-      const Psust = Hrec / (life * SEC_YEAR) / 1000; // kWth
+      const Psust = Hrec / (life * SEC_YEAR) / 1000;
       const Ts = Trock - U.whLoss;
       const mFull = T.egsFlow, PFull = mFull * CPW * Math.max(0, Ts - Tinj) / 1000;
       const m = PFull > 0 ? Math.min(mFull, mFull * Psust / PFull) : 0;
-      const dp = T.egsImp * m; // MPa
-      const pump = m * dp * 1e6 / 1000 / 0.7 / 1000; // kW
-      const capex = ctx.wellCapex + T.capexStim + T.capexWellM * w.md;
-      const o = m > 0 ? bestUse(c, m, Ts, Tinj, capex, pump) : null;
-      out.push(Object.assign({ id: 'egs', trl: '5–7', status: o ? (Trock >= 150 ? 'cond' : 'low') : 'no',
-        reasons: reasons([Trock < 150 && 'egsLowT', w.depth < 3000 && 'shallow', w.integrity !== 'good' && 'stimIntegrity', 'seismic', m < mFull - 1e-9 && 'srvLimited']), m, Ts, co2t: 0, Psust }, o || { Q: 0, Pe: 0, npv: null }));
+      const pump = m * (T.egsImp * m) * 1e6 / 1000 / 0.7 / 1000;
+      const o = m > 0 ? bestUse(c, m, Ts, Tinj, wellCapex + T.capexStim + T.capexWellM * w.md, pump) : null;
+      egs = Object.assign({ id: 'egs', trl: '5–7', status: o ? (Trock >= 150 ? 'cond' : 'low') : 'no', m, Ts, co2t: 0, Psust, pumpKW: pump,
+        reasons: reasons([Trock < 150 && 'egsLowT', w.depth < 3000 && 'shallow', w.integrity !== 'good' && 'stimIntegrity', 'seismic', m < mFull - 1e-9 && 'srvLimited', host > 0 && 'noHost']) }, o || { Q: 0, Pe: 0, npv: null });
+      out.push(egs);
     }
 
-    /* ---- 5. CO2-EGS / CPG: CO2 through the depleted reservoir (or stimulated rock), thermosiphon, CO2 stored ---- */
+    /* ---- 5. CO2-EGS / CPG: PR-EOS properties, mobility ratio vs water, thermosiphon drive, wellbore cooling ---- */
     {
-      const R = ev.reservoir;
-      const water = R && R.mSust > 0 ? { Qw: R.mSust * CPW * Math.max(0, R.Twh - ctx.resIn.Treinj) / 1000, base: 'hydro' }
-        : { Qw: (() => { const e = out.find((x) => x.id === 'egs'); return e.Qall || e.Q || 0; })(), base: 'egs' };
-      const Ts = Trock - U.whLoss * 0.5; // smaller wellbore loss: higher mass rate, lower heat capacity, no pump heating
+      const onRes = !!(R && res && R.flow > 0);
+      const z = onRes ? (res.z || w.depth) : w.depth, Tres = onRes ? res.Tres : Trock;
+      const Pres = 1e5 + 1000 * G0 * z; // hydrostatic
       const Tinj = Math.max(T.co2Tmin, U.Tamb + U.approach);
-      const cpCO2 = 1900; // J/(kg K), supercritical average at reservoir conditions (screening value)
-      const Q = water.Qw * T.co2Gain;
-      const m = Q > 0 ? Q * 1000 / (cpCO2 * Math.max(1, Ts - Tinj)) : 0;
-      const co2t = m * T.co2Loss / 100 * hours * 3600 / 1000; // t/yr permanently stored (fluid loss to the formation)
-      const credit = co2t * (eco.co2Price || 0) / 1e9; // bn VND/yr
-      const capex = (water.base === 'egs' ? ctx.wellCapex + T.capexStim + T.capexWellM * w.md : (U.capexOpen || 0)) + T.capexCPG;
-      const o = m > 0 ? bestUse(c, m, Ts, Tinj, capex, 0, { directCO2: true, cp: cpCO2, extraValue: credit }) : null;
-      out.push(Object.assign({ id: 'cpg', trl: '4–5', status: o ? 'cond' : (water.Qw > 0 ? 'no' : 'nodata'),
-        reasons: reasons([w.depth < 800 && 'shallowCO2', 'co2Supply', water.base === 'egs' && 'cpgOnEgs', !(eco.co2Price > 0) && 'noCo2Price']), m, Ts, co2t, credit, base: water.base }, o || { Q: 0, Pe: 0, npv: null }));
+      const hot = co2(Pres, Tres), cold = co2(Pres, Tinj);
+      const mobC = (hot.rho / hot.mu + cold.rho / cold.mu) / 2;
+      const TinjW = onRes ? res.Treinj : Math.max(U.Treinj, U.Tret);
+      const mobW = (rhoW(Tres) / muW(Tres) + rhoW(TinjW) / muW(TinjW)) / 2;
+      const Mr = mobC / mobW;
+      // thermosiphon: weight difference of the cold (injection) and hot (production) CO2 columns
+      const colRho = (Tc) => (co2(Pres, Tc).rho + co2(Math.max(8e6, Pres / 2), Tc).rho) / 2;
+      const rhoCold = colRho(Tinj), rhoHot = colRho(Tres);
+      const dpTs = G0 * z * (rhoCold - rhoHot); // Pa
+      // water reference: mass flow at its pressure drop across the reservoir
+      const mW = onRes ? R.flow : T.egsFlow;
+      const dpW = onRes ? 2 * U.dpMax * 1e5 : T.egsImp * T.egsFlow * 1e6; // doublet: drawdown + injection overpressure
+      let m = dpTs > 0 ? mW * Mr * dpTs / dpW : 0;
+      const dh = Math.max(0, hot.h - cold.h); // J/kg at reservoir pressure
+      const Qfull = m * dh / 1000, Qcap = onRes ? R.Psust : egs.Psust;
+      if (Qfull > Qcap && Qfull > 0) m *= Qcap / Qfull;
+      // wellhead state: h falls by g·z on the way up, pressure by the hot column weight
+      const Pwh = Math.max(7.5e6, Pres - rhoHot * G0 * z);
+      const Twh = co2TofH(Pwh, hot.h - G0 * z);
+      const cpEff = Twh > Tinj + 1 ? Math.max(800, (co2(Pwh, Twh).h - co2(Pwh, Tinj).h) / (Twh - Tinj)) : 1500;
+      const co2t = m * T.co2Loss / 100 * hours * 3600 / 1000;
+      const credit = co2t * (eco.co2Price || 0) / 1e9;
+      const capex = (onRes ? (U.capexOpen || 0) + host : wellCapex + T.capexStim + T.capexWellM * w.md) + T.capexCPG;
+      const o = m > 0 && Twh > Tinj + 5 ? bestUse(c, m, Twh, Tinj, capex, 0, { directCO2: true, cp: cpEff, extraValue: credit }) : null;
+      const sameDp = Mr * dh / (CPW * Math.max(1, Tres - TinjW)); // heat extraction ratio CO2 / water at equal pressure drop
+      Object.assign(D, { co2RhoHot: hot.rho, co2RhoCold: cold.rho, co2MuHot: hot.mu, mobRatio: Mr, heatRatio: sameDp, dpTsBar: dpTs / 1e5, co2Twh: Twh, co2Pres: Pres / 1e5, co2PwhBar: Pwh / 1e5 });
+      out.push(Object.assign({ id: 'cpg', trl: '4–5', status: o ? 'cond' : (onRes || egs.m > 0 ? 'no' : 'nodata'), m, Ts: Twh, co2t, credit, base: onRes ? 'hydro' : 'egs', mobRatio: Mr, dpTsBar: dpTs / 1e5,
+        reasons: reasons([z < 800 && 'shallowCO2', 'co2Supply', !onRes && 'cpgOnEgs', !(eco.co2Price > 0) && 'noCo2Price', dpTs <= 0 && 'noSiphon', host > 0 && onRes && 'noHost']) }, o || { Q: 0, Pe: 0, npv: null }));
     }
 
     out.forEach((o) => { if (o.capped) o.reasons = (o.reasons || []).concat(o.use === 'power' ? ['capElec'] : ['capHeat']); });
     const clgs = out[0];
     out.forEach((o) => { o.dNpv = Number.isFinite(o.npv) && Number.isFinite(clgs.npv) ? o.npv - clgs.npv : null; });
     const ranked = out.filter((o) => Number.isFinite(o.npv)).sort((a, b) => b.npv - a.npv);
-    return { options: out, best: ranked[0] || null };
+    return { options: out, best: ranked[0] || null, derived: D };
   }
 
-  global.AWTech = { DEF, evaluate, bestUse };
+  global.AWTech = { DEF, evaluate, bestUse, co2, co2TofH, rhoW, muW, hydroCase };
 })(window);

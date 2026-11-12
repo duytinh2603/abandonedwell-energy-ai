@@ -21,6 +21,15 @@
   - BHT trong `~Parameter` → hiệu chỉnh Harrison (1983).
 - **CSV danh sách giếng**: `id,name,location,depth_m,gradient_c100m,bht_c,bht1_c,dt1_h,bht2_c,dt2_h,tc_h,integrity,distance_km`
 
+## Cơ sở khoa học và giao diện kỹ sư (v0.7)
+
+- Giá nhiệt thống nhất mọi trang: nhiệt công nghiệp = nhiệt lò hơi khí được thay thế (≈ 950 đ/kWh), không còn tính bằng giá điện; nhu cầu nhiệt/điện tại chỗ giới hạn phần bán được ở mọi trang.
+- CO₂-EGS: tính chất CO₂ theo Peng–Robinson, tỷ số linh động CO₂/nước, chênh áp tự tuần hoàn, nhiệt độ miệng giếng có giãn nở (kiểm thử so với NIST).
+- Vỉa: NPV vòng hở có khoảng P10–P90 theo độ tin cậy của diện tích và lưu lượng; số ước tính đánh dấu “≈”.
+- Giếng ngoài khơi: gradient tính từ đáy biển (độ sâu nước); giếng không có giàn cộng vốn kết nối.
+- **Địa nhiệt → Bảng thông số**: mọi thông số suy ra cho kỹ sư; **Xuất Excel** toàn bộ kết quả; chữ giải thích gom vào ghi chú “ⓘ”.
+- Hướng dẫn mục 17: bảng phương pháp, tài liệu tham khảo và mức tin cậy.
+
 ## Cập nhật và đồng bộ tự động (v0.6)
 
 - Web tự kiểm tra `version.json` và tự tải bản mới (không cần Ctrl+F5).
@@ -45,7 +54,7 @@
 - **Nhập DST (CSV)**: `well,tvd_m,temp_c,label` (hoặc `md_m`), gradient tính lại theo số đo.
 - **Kinh tế:** công suất bơm theo thủy lực, giá trị hoãn hủy giếng (P&A), tín chỉ CO₂, NPV P10–P90 và xác suất NPV > 0, giá trị điện trên giàn.
 - **Phương án sử dụng:** nguồn nước khai thác kèm (không tốn vốn giếng), pinch ORC, chỉ số khai thác PI, khoảng cách giếng và thời gian nước lạnh tới, vùng nước lạnh quét qua, cảnh báo CO₂, tổng hợp theo mỏ.
-- **Hoàn tác** (Ctrl+Z), **dùng ngoại tuyến** (service worker, Chart.js lưu trong repo), **kiểm thử tự động** tại `tests.html` (26 kiểm tra).
+- **Hoàn tác** (Ctrl+Z), **dùng ngoại tuyến** (service worker, Chart.js lưu trong repo), **kiểm thử tự động** tại `tests.html` (29 kiểm tra).
 
 ## Mô hình
 

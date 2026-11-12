@@ -78,7 +78,7 @@
    * Normalise a raw well record and derive the geothermal gradient.
    * Priority: Horner (2 BHT readings) > single BHT (empirical) > gradient given.
    */
-  function normaliseWell(raw, T0) {
+  function normaliseWell(raw, T0, wd = 0) {
     const w = {
       uid: raw.uid,
       id: String(raw.id || '').trim(),
@@ -100,6 +100,7 @@
     if (!isFinite(w.distance)) w.distance = 5;
     if (!isFinite(w.depth) || w.depth <= 0) { w.warnings.push('depth'); }
     if (!(w.md >= w.depth)) w.md = w.depth; // MD defaults to TVD (vertical well)
+    w.wd = w.location === 'offshore' && wd > 0 && wd < w.depth ? wd : 0; // rock starts at the seabed: T(z) = T0 + G·(z − wd)
 
     // A downhole temperature must exceed the surface temperature; 0 or tiny values are typos
     // (e.g. a gradient typed into the BHT box) and must not override a valid gradient.
@@ -116,7 +117,7 @@
     }
     if (isFinite(Tstatic) && isFinite(w.depth) && w.depth > 0) {
       w.Tstatic = Tstatic;
-      w.G = ((Tstatic - T0) / w.depth) * 100;
+      w.G = ((Tstatic - T0) / (w.depth - w.wd)) * 100;
     } else if (isFinite(w.gIn)) {
       w.G = w.gIn; w.gSource = 'given';
     } else {
@@ -235,10 +236,10 @@
 
   /** Full screening of a list of raw well records. */
   function screen(rawWells, params) {
-    const wells = rawWells.map((r) => normaliseWell(r, params.T0));
+    const wells = rawWells.map((r) => normaliseWell(r, params.T0, params.wd || 0));
     const ok = wells.filter((w) => w.valid);
     ok.forEach((w) => {
-      const base = { L: w.md, Lv: w.depth, G: w.G, T0: params.T0, k: params.k, m: params.m, Tin: params.Tin, years: params.years, Rw: params.Rw, upLoss: params.upLoss };
+      const base = { L: w.md, Lv: w.depth, G: w.G, T0: params.T0 - w.G / 100 * w.wd, k: params.k, m: params.m, Tin: params.Tin, years: params.years, Rw: params.Rw, upLoss: params.upLoss };
       const hyd = params.eco.pumpAuto ? pumpPower(params.m, w.md, params.geom) : null;
       w.pumpKW = hyd ? hyd.kW : params.eco.pumpKW; w.dpBar = hyd ? hyd.dpBar : null;
       const r = wellOutput(base);

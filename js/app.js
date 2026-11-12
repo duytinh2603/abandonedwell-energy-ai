@@ -11,15 +11,18 @@
     purpose: 'hp', heatPrice: 735, capexOn: 6, capexOff: 25, pipe: 1.5, opex: 3, pump: 15, hours: 8000, rate: 10, life: 25,
     w_thermal: 0.5, w_integrity: 0.25, w_distance: 0.15, w_econ: 0.10, threshold: 60,
     // utilisation optimiser
-    u_Tamb: 30, u_approach: 10, u_Tdry: 60, u_elec: 2204, u_heatHigh: 2204, u_heatLow: 735,
+    u_Tamb: 30, u_approach: 10, u_Tdry: 60, u_elec: 2204, u_heatHigh: 950, u_heatLow: 735,
     u_capexORC: 100, u_capexHX: 2, u_capexOpen: 30, u_whLoss: 5, u_Rf: 10, u_Treinj: 40,
     u_elecOff: 2204, u_pinch: 5, u_dpMax: 20, u_RfSwept: 0,
     // hydraulics & extra economics
     pumpAuto: 1, csgID: 157, tubOD: 89, tubID: 76, paCost: 0, paYears: 10, co2Factor: 0.2, co2Price: 0,
     // technology comparison (AGS, EGS, CO2-EGS/CPG)
-    t_latN: 2, t_latL: 2000, t_capexLat: 30, t_egsFlow: 30, t_egsV: 0.2, t_egsRf: 20, t_egsImp: 0.15, t_capexStim: 60, t_capexWellM: 0.08, t_co2Gain: 1.5, t_co2Loss: 5, t_capexCPG: 40, t_heatDemOff: 1000, t_heatDemOn: 5000, t_elecDem: 5000,
+    t_latN: 2, t_latL: 2000, t_capexLat: 30, t_egsFlow: 30, t_egsV: 0.2, t_egsRf: 20, t_egsImp: 0.15, t_capexStim: 60, t_capexWellM: 0.08, t_co2Loss: 5, t_capexCPG: 40, t_heatDemOff: 1000, t_heatDemOn: 5000, t_elecDem: 5000,
+    // offshore datum & wells without a host facility
+    wd: 0, capexHost: 250,
   };
-  const APP_VERSION = 'v0.6.1'; const APP_DATE = '11/11/2026';
+  const APP_VERSION = 'v0.7.0'; const APP_DATE = '12/11/2026';
+  const PARAM_VER = 2; // 2: industrial heat valued at the displaced gas-boiler heat, not at the electricity price
   const ELEC_PRICE = 2204;
   const PURPOSE_PRICE = { res: 2204, hp: Math.round(2204 / 3) };
   const WELL_COLS = ['id', 'name', 'location', 'depth_m', 'md_m', 'gradient_c100m', 'bht_c', 'bht1_c', 'dt1_h', 'bht2_c', 'dt2_h', 'tc_h', 'integrity', 'distance_km'];
@@ -80,6 +83,8 @@
   ICON.volveData = svg(`<rect x="5" y="6" width="30" height="28" fill="#fff" stroke="${B}" stroke-width="2"/><path d="M9 28l6-8 5 4 6-10 5 6" stroke="#ef6c00" stroke-width="2" fill="none"/><path d="M5 12h30" stroke="${B}" stroke-width="2"/><circle cx="29" cy="29" r="6" fill="#2e7d32"/><path d="M26.5 29l2 2 3.5-4" stroke="#fff" stroke-width="1.8" fill="none"/>`);
   ICON.tech = svg(`<rect x="4" y="22" width="6" height="12" fill="#90caf9"/><rect x="12" y="15" width="6" height="19" fill="#66bb6a"/><rect x="20" y="9" width="6" height="25" fill="#ef6c00"/><rect x="28" y="18" width="6" height="16" fill="#ab47bc"/><path d="M3 34h33" stroke="${B}" stroke-width="2"/><path d="M6 8h6M9 5v6" stroke="${R}" stroke-width="2"/>`);
   ICON.syncFile = svg(`<path d="M8 22a12 12 0 0 1 21-8" fill="none" stroke="${B}" stroke-width="2.6" stroke-linecap="round"/><path d="M30 8v7h-7" fill="none" stroke="${B}" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M32 18a12 12 0 0 1-21 8" fill="none" stroke="#2e7d32" stroke-width="2.6" stroke-linecap="round"/><path d="M10 32v-7h7" fill="none" stroke="#2e7d32" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>`);
+  ICON.eng = svg(`<rect x="5" y="6" width="30" height="28" rx="2" fill="#fff" stroke="${B}" stroke-width="2"/><path d="M5 13h30M15 6v28M25 6v28" stroke="${G}" stroke-width="1.4"/><path d="M8 19h4M8 24h4M8 29h4" stroke="${B}" stroke-width="2"/><path d="M18 19h4M18 24h4M28 19h4M28 29h4" stroke="${R}" stroke-width="2"/>`);
+  ICON.exportAll = svg(`<rect x="6" y="5" width="22" height="28" rx="2" fill="#e8f5e9" stroke="#2e7d32" stroke-width="2"/><path d="M11 13l8 12M19 13l-8 12" stroke="#2e7d32" stroke-width="2.4"/><circle cx="29" cy="29" r="7" fill="${B}"/><path d="M29 25v7m-3-3 3 3 3-3" stroke="#fff" stroke-width="1.8"/>`);
   ICON.optAll = svg(`<rect x="5" y="6" width="30" height="28" fill="#fff" stroke="${B}" stroke-width="2"/><path d="M5 13h30M5 20h30M5 27h30" stroke="${G}" stroke-width="1.4"/><path d="M14 6v28" stroke="${G}" stroke-width="1.4"/><circle cx="25" cy="16.5" r="2.6" fill="#2e7d32"/><circle cx="21" cy="23.5" r="2.6" fill="${R}"/><circle cx="29" cy="30.5" r="2.6" fill="#ef6c00"/>`);
 
   /* ================= state ================= */
@@ -149,7 +154,7 @@
   let docTimer = null;
   function scheduleDocRefresh() {
     clearTimeout(docTimer);
-    docTimer = setTimeout(() => { const a = S.active; if (a === 'rank' || a === 'sens' || a === 'optall' || a === 'tech' || a.startsWith('rep:') || a.startsWith('opt:')) renderDoc(); }, 300);
+    docTimer = setTimeout(() => { const a = S.active; if (a === 'rank' || a === 'sens' || a === 'optall' || a === 'tech' || a === 'eng' || a.startsWith('rep:') || a.startsWith('opt:')) renderDoc(); }, 300);
   }
 
   /* ================= project ops ================= */
@@ -160,6 +165,10 @@
   function openProject(p, msgKey = 'msg.opened', opts = {}) {
     S.project = p; S.sel = { t: 'project' }; S.result = null; S.collapsed = {}; S.logView = {};
     p.params = Object.assign({}, DEFAULTS, p.params || {});
+    if (!(p.paramVer >= PARAM_VER)) {
+      if (+p.params.u_heatHigh === 2204) { p.params.u_heatHigh = DEFAULTS.u_heatHigh; setTimeout(() => log(t('msg.paramMig', { v: DEFAULTS.u_heatHigh }), 'warn'), 0); }
+      p.paramVer = PARAM_VER;
+    }
     S.docs = p.wells.length ? ['rank'] : ['start'];
     S.active = S.docs[0];
     lsSet('aw-last', p.id);
@@ -333,6 +342,7 @@
 
   /* ================= automatic sync: linked project file, other tabs, app version ================= */
   const SYNC = { handle: null, state: 'off', name: '', timer: null };
+  const baseKey = (id) => 'aw-syncbase-' + id; // project.updated at the last successful sync with the file
   const chan = 'BroadcastChannel' in window ? new BroadcastChannel('aw-projects') : null;
   const canSync = () => !!(window.AWSync && window.AWSync.supported());
   /** Swap in a newer copy of the open project without closing the user's tabs. */
@@ -361,18 +371,27 @@
       try { q = JSON.parse(f.text); } catch (e) { q = null; }
       if (!q || !Array.isArray(q.wells)) { await syncPush(true); return; }
       const fileT = +q.updated || f.lastModified, mine = +S.project.updated || 0;
+      const base = +lsGet(baseKey(S.project.id)) || 0;
+      if (fileT > mine + 1000 && base && mine > base + 1000 && fileT > base + 1000) {
+        // both sides changed since the last sync → let the user decide instead of silently dropping one
+        const ans = await dialog(t('sync.conflictT'), `<p>${esc(t('sync.conflict', { f: f.name, a: new Date(fileT).toLocaleString(loc()), b: new Date(mine).toLocaleString(loc()) }))}</p>`,
+          [{ label: t('sync.keepMine'), value: 'mine' }, { label: t('sync.keepBoth'), value: 'both' }, { label: t('sync.takeFile'), value: 'file', primary: true }]);
+        if (ans === 'mine') { await syncPush(true); return; }
+        if (ans === 'both') { const copy = JSON.parse(JSON.stringify(S.project)); copy.id = makeProject('x').id; copy.name += ' (' + t('sync.myCopy') + ')'; await Store.put(copy); log(t('sync.copied', { n: copy.name }), 'ok'); }
+        if (!ans) return;
+      }
       if (fileT > mine + 1000) {
         q.id = S.project.id; q.updated = fileT;
         q.wells.forEach((w) => { w.uid = w.uid || uid(); w.curves = w.curves || []; });
-        await Store.put(q); replaceProject(q);
+        await Store.put(q); replaceProject(q); lsSet(baseKey(q.id), String(fileT));
         log(t('sync.pulled', { f: f.name, d: new Date(fileT).toLocaleString(loc()) }), 'ok');
-      } else if (mine > fileT + 1000) await syncPush(true);
+      } else if (mine > fileT + 1000) await syncPush(true); else lsSet(baseKey(S.project.id), String(mine));
     } catch (e) { SYNC.state = 'err'; log(t('sync.err', { e: e.message }), 'err'); renderRibbon(); }
   }
   async function syncPush(now) {
     if (!SYNC.handle || SYNC.state !== 'on' || !S.project) return;
     clearTimeout(SYNC.timer);
-    const go = async () => { try { await AWSync.write(SYNC.handle, JSON.stringify(S.project)); } catch (e) { SYNC.state = 'err'; log(t('sync.err', { e: e.message }), 'err'); renderRibbon(); } };
+    const go = async () => { try { await AWSync.write(SYNC.handle, JSON.stringify(S.project)); lsSet(baseKey(S.project.id), String(S.project.updated || 0)); } catch (e) { SYNC.state = 'err'; log(t('sync.err', { e: e.message }), 'err'); renderRibbon(); } };
     if (now) return go();
     SYNC.timer = setTimeout(go, 1500);
   }
@@ -409,7 +428,7 @@
     VOLVE = await r.json();
     return VOLVE;
   }
-  const VOLVE_PARAMS = { T0: 6, Tin: 25, u_Tamb: 10, purpose: 'res', capexOff: 25 };
+  const VOLVE_PARAMS = { T0: 6, wd: 91, Tin: 25, u_Tamb: 10, purpose: 'res', capexOff: 25 };
   /** Rebuild the wells of a Volve project when data/volve.json has a newer version (parameters are kept). */
   async function volveRefresh(p) {
     let D; try { D = await loadVolve(); } catch (e) { return; }
@@ -438,7 +457,7 @@
       if (vw.temps.length) {
         w.tempPoints = vw.temps.map((q) => ({ z: Math.round(q.tvd - kb), T: q.t, src: `${q.how === 'pTEMP' ? 'LWD FPWD' : 'LWD FT'} · MD ${fmt(q.md)} m · ${q.file.split('/').pop()}` }));
         w.tempPoints.forEach((q) => fieldPts.push(q));
-        const g = fitGradient(w.tempPoints, T0);
+        const g = fitGradient(w.tempPoints, T0, p.params.wd || 0);
         w.gradient_c100m = Math.round(g.G * 1000) / 1000; w.gSource = 'lwd';
         w.gNote = t('volve.gNote', { n: w.tempPoints.length, rms: fmt(g.rms, 1) });
       }
@@ -452,7 +471,7 @@
     });
     // wells with no temperature measurement get the field gradient (all LWD points, T0 fixed)
     if (fieldPts.length) {
-      const g = fitGradient(fieldPts, T0);
+      const g = fitGradient(fieldPts, T0, p.params.wd || 0);
       p.wells.filter((w) => !(w.tempPoints || []).length).forEach((w) => { w.gradient_c100m = Math.round(g.G * 1000) / 1000; w.gSource = 'field'; w.gNote = t('volve.gField', { n: fieldPts.length }); });
     }
     return p;
@@ -464,7 +483,7 @@
     const n = (k) => (isFinite(+p[k]) ? +p[k] : DEFAULTS[k]);
     const k = Math.max(0.3, n('k'));
     return {
-      m: Math.max(0.1, n('m')), Tin: n('Tin'), years: Math.max(0.1, n('years')), T0: n('T0'), k, Rw: Math.max(0, n('Rw')),
+      m: Math.max(0.1, n('m')), Tin: n('Tin'), years: Math.max(0.1, n('years')), T0: n('T0'), wd: Math.max(0, n('wd')), capexHost: Math.max(0, n('capexHost')), k, Rw: Math.max(0, n('Rw')),
       upLoss: Math.min(0.9, Math.max(0, n('upLoss') / 100)), sigmaG: Math.max(0, n('sigmaG')), kMin: Math.max(0.5, k - 0.5), kMax: k + 0.5, mcN: 150,
       maxDist: 20, threshold: n('threshold'),
       eco: { heatPrice: n('heatPrice'), capexOn: n('capexOn'), capexOff: n('capexOff'), pipeCost: n('pipe'), opexPct: n('opex'), pumpKW: n('pump'), hours: n('hours'), rate: n('rate'), life: Math.round(Math.min(50, Math.max(1, n('life')))), elecPrice: ELEC_PRICE,
@@ -486,7 +505,7 @@
   const RIBBON = {
     home: [['g.project', ['newProject', 'openProject', 'closeProject', 'saveFile', 'openFile', 'syncFile', 'undo']], ['g.well', ['newWell', 'importLas', 'importCsv']], ['g.ai', ['ml']], ['g.view', ['browser', 'props', 'output']]],
     data: [['g.import', ['importLas', 'importCsv', 'importSurvey', 'importDst']], ['g.export', ['exportLas', 'exportCsv']], ['g.tools', ['nullValue', 'delete']]],
-    geo: [['g.eval', ['params', 'run', 'report', 'sens']], ['g.ai', ['ml']], ['g.util', ['optimize', 'optAll', 'tech']], ['g.export', ['exportRank']]],
+    geo: [['g.eval', ['params', 'run', 'eng', 'report', 'sens']], ['g.ai', ['ml']], ['g.util', ['optimize', 'optAll', 'tech']], ['g.export', ['exportRank', 'exportAll']]],
     plot: [['g.plots', ['logPlot', 'report', 'sens']]],
     help: [['g.help', ['guide', 'about', 'lasHelp', 'sample', 'demo']], ['g.volve', ['volve', 'volveData']]],
   };
@@ -567,22 +586,22 @@
 
   /* ================= properties editor ================= */
   const PROJECT_FIELDS = [
-    ['pg.tech', [['m', 'p.m', 0.5], ['Tin', 'p.Tin', 1], ['years', 'p.years', 1], ['T0', 'p.T0', 1], ['k', 'p.k', 0.1], ['Rw', 'p.Rw', 0.01], ['upLoss', 'p.upLoss', 1], ['sigmaG', 'p.sigmaG', 0.05],
+    ['pg.tech', [['m', 'p.m', 0.5], ['Tin', 'p.Tin', 1], ['years', 'p.years', 1], ['T0', 'p.T0', 1], ['wd', 'p.wd', 10], ['k', 'p.k', 0.1], ['Rw', 'p.Rw', 0.01], ['upLoss', 'p.upLoss', 1], ['sigmaG', 'p.sigmaG', 0.05],
       ['pumpAuto', 'p.pumpAuto', 'yesno'], ['csgID', 'p.csgID', 1], ['tubOD', 'p.tubOD', 1], ['tubID', 'p.tubID', 1]]],
-    ['pg.econ', [['purpose', 'p.purpose', 'purpose'], ['heatPrice', 'p.heatPrice', 10], ['capexOn', 'p.capexOn', 0.5], ['capexOff', 'p.capexOff', 0.5], ['pipe', 'p.pipe', 0.1], ['opex', 'p.opex', 0.5], ['pump', 'p.pump', 1], ['hours', 'p.hours', 100], ['rate', 'p.rate', 0.5], ['life', 'p.life', 1],
+    ['pg.econ', [['purpose', 'p.purpose', 'purpose'], ['heatPrice', 'p.heatPrice', 10], ['capexOn', 'p.capexOn', 0.5], ['capexOff', 'p.capexOff', 0.5], ['capexHost', 'p.capexHost', 10], ['pipe', 'p.pipe', 0.1], ['opex', 'p.opex', 0.5], ['pump', 'p.pump', 1], ['hours', 'p.hours', 100], ['rate', 'p.rate', 0.5], ['life', 'p.life', 1],
       ['paCost', 'p.paCost', 1], ['paYears', 'p.paYears', 1], ['co2Factor', 'p.co2Factor', 0.01], ['co2Price', 'p.co2Price', 10000]]],
     ['pg.score', [['w_thermal', 'p.wT', 0.05], ['w_integrity', 'p.wI', 0.05], ['w_distance', 'p.wD', 0.05], ['w_econ', 'p.wE', 0.05], ['threshold', 'p.threshold', 5]]],
     ['pg.util', [['u_Tamb', 'u.Tamb', 1], ['u_approach', 'u.approach', 1], ['u_Tdry', 'u.Tdry', 5], ['u_elec', 'u.elec', 50], ['u_heatHigh', 'u.heatHigh', 50], ['u_heatLow', 'u.heatLow', 50],
       ['u_capexORC', 'u.capexORC', 5], ['u_capexHX', 'u.capexHX', 0.5], ['u_capexOpen', 'u.capexOpen', 1], ['u_whLoss', 'u.whLoss', 1], ['u_Treinj', 'u.Treinj', 1], ['u_Rf', 'u.Rf', 1],
       ['u_RfSwept', 'u.RfSwept', 'yesno'], ['u_elecOff', 'u.elecOff', 50], ['u_pinch', 'u.pinch', 1], ['u_dpMax', 'u.dpMax', 1]]],
-    ['pg.tech', [['t_latN', 'tp.latN', 1], ['t_latL', 'tp.latL', 100], ['t_capexLat', 'tp.capexLat', 1], ['t_egsFlow', 'tp.egsFlow', 5], ['t_egsV', 'tp.egsV', 0.05], ['t_egsRf', 'tp.egsRf', 5],
-      ['t_egsImp', 'tp.egsImp', 0.01], ['t_capexStim', 'tp.capexStim', 5], ['t_capexWellM', 'tp.capexWellM', 0.01], ['t_co2Gain', 'tp.co2Gain', 0.1], ['t_co2Loss', 'tp.co2Loss', 1], ['t_capexCPG', 'tp.capexCPG', 5], ['t_heatDemOff', 'tp.heatDemOff', 100], ['t_heatDemOn', 'tp.heatDemOn', 100], ['t_elecDem', 'tp.elecDem', 100]]],
+    ['pg.techcmp', [['t_latN', 'tp.latN', 1], ['t_latL', 'tp.latL', 100], ['t_capexLat', 'tp.capexLat', 1], ['t_egsFlow', 'tp.egsFlow', 5], ['t_egsV', 'tp.egsV', 0.05], ['t_egsRf', 'tp.egsRf', 5],
+      ['t_egsImp', 'tp.egsImp', 0.01], ['t_capexStim', 'tp.capexStim', 5], ['t_capexWellM', 'tp.capexWellM', 0.01], ['t_co2Loss', 'tp.co2Loss', 1], ['t_capexCPG', 'tp.capexCPG', 5], ['t_heatDemOff', 'tp.heatDemOff', 100], ['t_heatDemOn', 'tp.heatDemOn', 100], ['t_elecDem', 'tp.elecDem', 100]]],
   ];
   const WELL_FIELDS = [
     ['pg.general', [['id', 'f.id', 'text'], ['name', 'f.name', 'text'], ['field', 'f.field', 'text'], ['location', 'f.location', 'location'], ['depth_m', 'f.depth', 1], ['md_m', 'f.md', 1]]],
     ['pg.thermal', [['gradient_c100m', 'f.g', 0.01], ['bht_c', 'f.bht', 0.1], ['bht1_c', 'f.bht1', 0.1], ['dt1_h', 'f.dt1', 0.5], ['bht2_c', 'f.bht2', 0.1], ['dt2_h', 'f.dt2', 0.5], ['tc_h', 'f.tc', 0.5]]],
-    ['pg.status', [['integrity', 'f.integrity', 'integrity'], ['distance_km', 'f.dist', 0.5]]],
-    ['pg.res', [['res_A', 'r2.A', 0.1], ['res_h', 'r2.h', 1], ['res_phi', 'r2.phi', 1], ['res_z', 'r2.z', 10], ['res_T', 'r2.T', 1], ['res_flow', 'r2.flow', 0.5], ['res_PI', 'r2.PI', 1], ['res_spacing', 'r2.spacing', 50], ['res_co2', 'r2.co2', 1]]],
+    ['pg.status', [['integrity', 'f.integrity', 'integrity'], ['host', 'f.host', 'yesno'], ['distance_km', 'f.dist', 0.5]]],
+    ['pg.res', [['res_A', 'r2.A', 0.1], ['res_h', 'r2.h', 1], ['res_phi', 'r2.phi', 1], ['res_z', 'r2.z', 10], ['res_T', 'r2.T', 1], ['res_flow', 'r2.flow', 0.5], ['res_PI', 'r2.PI', 1], ['res_spacing', 'r2.spacing', 50], ['res_co2', 'r2.co2', 1], ['res_cA', 'r2.cA', 'conf'], ['res_cQ', 'r2.cQ', 'conf']]],
     ['pg.coprod', [['cp_flow', 'cp.flow', 0.5], ['cp_T', 'cp.T', 1]]],
   ];
   const roRow = (k, v) => `<tr><td>${t(k)}</td><td><span class="ro" title="${esc(v)}">${esc(v)}</span></td></tr>`;
@@ -593,7 +612,8 @@
     if (kind === 'location') return `<select data-k="${key}">${['onshore', 'offshore'].map((o) => `<option value="${o}"${v === o ? ' selected' : ''}>${t('loc.' + o)}</option>`).join('')}</select>`;
     if (kind === 'integrity') return `<select data-k="${key}">${['good', 'fair', 'poor'].map((o) => `<option value="${o}"${v === o ? ' selected' : ''}>${t('int.' + o)}</option>`).join('')}</select>`;
     if (kind === 'purpose') return `<select data-k="${key}">${[['hp', 'p.purpHP'], ['res', 'p.purpRes'], ['custom', 'p.purpCustom']].map(([o, l]) => `<option value="${o}"${v === o ? ' selected' : ''}>${t(l)}</option>`).join('')}</select>`;
-    if (kind === 'yesno') return `<select data-k="${key}" data-num="1">${[[1, 'yes'], [0, 'no']].map(([o, l]) => `<option value="${o}"${+v === o ? ' selected' : ''}>${t('opt.' + l)}</option>`).join('')}</select>`;
+    if (kind === 'yesno') return `<select data-k="${key}" data-num="1">${[[1, 'yes'], [0, 'no']].map(([o, l]) => `<option value="${o}"${(v === undefined || v === null || v === '' ? 1 : +v) === o ? ' selected' : ''}>${t('opt.' + l)}</option>`).join('')}</select>`;
+    if (kind === 'conf') return `<select data-k="${key}">${[['m', 'conf.m'], ['e', 'conf.e']].map(([o, l]) => `<option value="${o}"${(v || 'm') === o ? ' selected' : ''}>${t(l)}</option>`).join('')}</select>`;
     if (kind === 'family') return `<select data-k="${key}">${L.FAMILIES.map((o) => `<option${v === o ? ' selected' : ''}>${o}</option>`).join('')}</select>`;
     return `<input data-k="${key}" type="number" step="${kind}" value="${v === undefined || v === null || Number.isNaN(v) ? '' : v}">`;
   }
@@ -660,6 +680,7 @@
     if (id === 'sens') return [ICON.docSens, t('doc.sens')];
     if (id === 'optall') return [ICON.optAll, t('doc.optall')];
     if (id === 'tech') return [ICON.tech, t('doc.tech')];
+    if (id === 'eng') return [ICON.eng, t('doc.eng')];
     if (id === 'guide') return [ICON.guide, t('b.guide')];
     if (id === 'volve') return [ICON.volveData, t('doc.volve')];
     if (id === 'ml') return [ICON.ml, t('doc.ml')];
@@ -690,6 +711,20 @@
     const d = e.target.closest('[data-doc]'); if (d && d.dataset.doc !== S.active) { S.active = d.dataset.doc; renderDocTabs(); renderDoc(); }
   });
 
+  /* long explanatory paragraphs fold into a small "ⓘ" note so the pages show numbers first */
+  function compactText() {
+    const a = $('#docArea'); if (!a || a.querySelector('.guide')) return;
+    $$('p.muted, .hint', a).forEach((el) => {
+      if (el.closest('details') || el.closest('.start') || el.dataset.keep || el.textContent.trim().length < 90 || el.querySelector('button, input, select, canvas')) return;
+      const d = document.createElement('details'); d.className = 'info';
+      const sm = document.createElement('summary'); sm.textContent = 'ⓘ ' + t('ui.note');
+      const body = document.createElement('div'); body.innerHTML = el.innerHTML;
+      d.appendChild(sm); d.appendChild(body); el.replaceWith(d);
+    });
+  }
+  let compactTimer = null;
+  new MutationObserver(() => { clearTimeout(compactTimer); compactTimer = setTimeout(compactText, 60); }).observe($('#docArea'), { childList: true, subtree: true });
+
   let charts = {};
   function killCharts() { Object.values(charts).forEach((c) => c.destroy()); charts = {}; }
   function renderDoc() {
@@ -706,6 +741,7 @@
     if (id.startsWith('opt:')) return renderOpt(a, id.slice(4));
     if (id === 'optall') return renderOptAll(a);
     if (id === 'tech') return renderTech(a);
+    if (id === 'eng') return renderEng(a);
     if (id === 'ml') return renderML(a);
     if (id.startsWith('log:')) return renderLog(a, id.slice(4));
   }
@@ -747,8 +783,9 @@
       <h2>${t('doc.rank')}</h2><div class="hint">${t('rank.hint')}</div>
       <div class="rep-head no-print" style="justify-content:flex-start;gap:8px;flex-wrap:wrap;margin:10px 0">
         <button class="btn" data-act="ml">${ICON.ml}<span>${t('b.mlRun')}</span></button>
-        <button class="btn ghost" data-act="optAll">${t('b.optAll')}</button>
-        <button class="btn ghost" data-act="tech">${t('b.tech')}</button></div>
+        <button class="btn ghost" data-act="eng">${t('b.eng')}</button>
+        <button class="btn ghost" data-act="tech">${t('b.tech')}</button>
+        <button class="btn ghost" data-act="exportAll">${t('b.exportAll')}</button></div>
       <div class="kpis">
         <div class="kpi"><span>${t('kpi.n')}</span><b>${fmt(res.ranked.length)}</b></div>
         <div class="kpi"><span>${t('kpi.pass')} ≥ ${fmt(P.threshold)}</span><b>${fmt(pass.length)}</b></div>
@@ -758,15 +795,25 @@
       ${res.invalid.length ? `<div class="warnbox">${esc(t('rank.invalid', { n: res.invalid.length, list: res.invalid.map((w) => w.name || w.id || '?').join(', ') }))}</div>` : ''}
       ${(() => { const bad = res.ranked.concat(res.invalid).filter((w) => w.warnings.includes('bhtIgnored') || w.warnings.includes('hornerIgnored')); return bad.length ? `<div class="warnbox">${esc(t('rank.bhtIgnored', { list: bad.map((w) => w.name || w.id || '?').join(', '), t0: fmt(modelParams().T0) }))}</div>` : ''; })()}
       <div class="tscroll"><table class="tbl" id="rankTbl"><thead><tr>
-        <th>${t('r.rank')}</th><th>${t('r.well')}</th><th class="n">${t('r.depth')}</th><th class="n">${t('r.g')}</th><th>${t('r.src')}</th><th class="n">${t('r.tb')}</th><th class="n">${t('r.tout')}</th><th class="n">${t('r.q')}</th><th class="n">${t('r.p1090')}</th><th>${t('r.integ')}</th><th class="n">${t('r.npv')}</th><th>${t('r.use')}</th><th>${t('r.score')}</th>
+        <th>${t('r.rank')}</th><th>${t('r.well')}</th><th class="n">${t('r.depth')}</th><th class="n">${t('r.g')}</th><th>${t('r.src')}</th><th class="n">${t('r.tb')}</th><th class="n">${t('r.tout')}</th><th class="n">${t('r.q')}</th><th class="n">${t('r.p1090')}</th><th>${t('r.integ')}</th><th>${t('r.best')}</th><th class="n">${t('r.bestNpv')}</th><th>${t('r.score')}</th>
       </tr></thead><tbody>${res.ranked.map((w, i) => {
         const ok = w.score >= P.threshold;
         return `<tr class="${ok ? 'pass' : ''}${w.uid === selU ? ' sel' : ''}" data-u="${w.uid}"><td>${i + 1}</td><td><b>${esc(w.name || w.id)}</b> <span class="hint">${t('loc.' + w.location)}</span></td>
           <td class="n">${fmt(w.depth)}</td><td class="n">${fmt(w.G, 2)}</td><td><span class="src ${srcOf(w)}">${t('src.' + srcOf(w))}</span></td><td class="n">${fmt(w.Tbottom)}</td><td class="n">${fmt(w.Tout, 1)}</td>
           <td class="n"><b>${fmt(w.Q)}</b></td><td class="n">${fmt(w.mc.p10)}–${fmt(w.mc.p90)}</td><td><span class="badge ${w.integrity}">${t('int.' + w.integrity)}</span></td>
-          <td class="n ${w.eco.npv < 0 ? 'npv-neg' : 'npv-pos'}">${fmt(w.eco.npv, 1)}</td><td class="use">${t(w.use)}</td>
+          <td data-bt="${w.uid}" class="use">…</td><td data-bn="${w.uid}" class="n">…</td>
           <td><div class="bar ${ok ? 'pass' : ''}"><i><b style="width:${w.score}%"></b></i><span>${w.score}</span></div></td></tr>`;
       }).join('')}</tbody></table></div></div>`;
+    // best technology per well: computed after the table is on screen so the page stays responsive
+    setTimeout(() => {
+      if (S.active !== 'rank' || !S.project) return;
+      techAll().forEach(({ w, r }) => {
+        const a1 = a.querySelector(`[data-bt="${w.uid}"]`), a2 = a.querySelector(`[data-bn="${w.uid}"]`); if (!a1 || !a2) return;
+        const b = r.best;
+        a1.innerHTML = b ? `<span class="chip ${b.id}">${t('techs.' + b.id)}</span> ${esc(t('tuse.' + b.use))}` : '–';
+        a2.innerHTML = b ? `<b class="${b.npv < 0 ? 'npv-neg' : 'npv-pos'}">${fmt(b.npv, 1)}</b>` : '–';
+      });
+    }, 30);
   }
   $('#docArea').addEventListener('click', (e) => {
     const r = e.target.closest('#rankTbl tbody tr'); if (!r) return;
@@ -915,7 +962,7 @@
     const A = +well.res_A, h = +well.res_h, flow = +well.res_flow;
     if (!(A > 0 && h > 0 && flow > 0)) return null;
     const z = +well.res_z > 0 ? +well.res_z : w.depth;
-    const Tres = +well.res_T > 0 ? +well.res_T : P.T0 + (w.G / 100) * z;
+    const Tres = +well.res_T > 0 ? +well.res_T : P.T0 + (w.G / 100) * (z - (w.wd || 0));
     const phi = +well.res_phi > 0 ? +well.res_phi / 100 : 0.1;
     return { A, h, phi, flow, z, Tres, Treinj: Math.max(U.Treinj, U.Tret), Rf: U.Rf, PI: +well.res_PI || 0, spacing: +well.res_spacing || 0, co2: +well.res_co2 || 0 };
   }
@@ -923,11 +970,16 @@
     const P = modelParams(), U = utilParams(), well = wellBy(w.uid);
     const resIn = reservoirInput(well, w, P, U);
     if (w.location === 'offshore') U.elecValue = U.elecOff; // platform power displaces gas-turbine/diesel generation
+    const T = techParams();
+    U.heatDem = w.location === 'offshore' ? T.heatDemOff : T.heatDemOn; U.elecDem = T.elecDem; // same demand caps on every page
     if (+well.cp_flow > 0 && +well.cp_T > 0) U.coprod = { flow: +well.cp_flow, T: +well.cp_T };
-    const eco = Object.assign({}, P.eco, { pumpKW: w.pumpKW });
+    const eco = Object.assign({}, P.eco, { pumpKW: w.pumpKW, deferral: (P.eco.paCost || 0) * (1 - Math.pow(1 + P.eco.rate / 100, -(P.eco.paYears || 0))) });
     if (P.eco.pumpAuto) eco.pumpAt = (m) => M.pumpPower(m, w.md, P.geom).kW;
-    const ev = AWUtil.evaluate(w.base, U, eco, w.eco.capex, resIn);
-    return { ev, resIn, U, P };
+    const hostCapex = (well.host === 0 || well.host === '0') ? P.capexHost : 0; // no platform/host at the well → tie-back cost
+    if (resIn && hostCapex) U.capexOpen += hostCapex;
+    const ev = AWUtil.evaluate(w.base, U, eco, w.eco.capex + hostCapex, resIn);
+    if (resIn && hostCapex) U.capexOpen -= hostCapex;
+    return { ev, resIn, U, P, hostCapex, conf: { A: well.res_cA === 'e' ? 'e' : 'm', Q: well.res_cQ === 'e' ? 'e' : 'm' } };
   }
   const optLabel = (o) => o.id === 'orc' ? `${t('opt.orc')} – ${o.fluid.name}` : o.id === 'cascade' ? `${t('opt.cascade')} (${o.fluid.name})` : t('opt.' + o.id);
   const bnU = () => (S.lang === 'vi' ? 'tỷ đ' : 'bn VND');
@@ -1032,16 +1084,20 @@
     const p = Object.assign({}, DEFAULTS, S.project ? S.project.params : {});
     const n = (k) => (isFinite(+p[k]) ? +p[k] : DEFAULTS[k]);
     return { latN: Math.max(1, Math.round(n('t_latN'))), latL: Math.max(100, n('t_latL')), capexLat: n('t_capexLat'), egsFlow: Math.max(1, n('t_egsFlow')), egsV: Math.max(0.001, n('t_egsV')), egsRf: n('t_egsRf') / 100,
-      egsImp: n('t_egsImp'), capexStim: n('t_capexStim'), capexWellM: n('t_capexWellM'), co2Gain: n('t_co2Gain'), co2Loss: n('t_co2Loss'), capexCPG: n('t_capexCPG'), heatDemOff: n('t_heatDemOff'), heatDemOn: n('t_heatDemOn'), elecDem: n('t_elecDem') };
+      egsImp: n('t_egsImp'), capexStim: n('t_capexStim'), capexWellM: n('t_capexWellM'), co2Loss: n('t_co2Loss'), capexCPG: n('t_capexCPG'), heatDemOff: n('t_heatDemOff'), heatDemOn: n('t_heatDemOn'), elecDem: n('t_elecDem') };
   }
   function techWell(w) {
-    const { ev, resIn, U, P } = evalWell(w);
-    const eco = Object.assign({}, P.eco);
-    return window.AWTech.evaluate(w, ev, { P, U, eco, resIn, T: techParams(), wellCapex: w.eco.capex });
+    const { ev, resIn, U, P, hostCapex, conf } = evalWell(w);
+    const eco = Object.assign({}, P.eco, { deferral: (P.eco.paCost || 0) * (1 - Math.pow(1 + P.eco.rate / 100, -(P.eco.paYears || 0))) });
+    const r = window.AWTech.evaluate(w, ev, { P, U, eco, resIn, T: techParams(), wellCapex: w.eco.capex, hostCapex, conf });
+    r.ev = ev; r.resIn = resIn; r.conf = conf; r.hostCapex = hostCapex;
+    return r;
   }
+  /** Technology results for every screened well; cached until the project changes. */
   function techAll() {
     const res = screen(); if (!res) return [];
-    return res.ranked.map((w) => ({ w, r: techWell(w) }));
+    if (S.techFor !== res) { S.techRows = res.ranked.map((w) => ({ w, r: techWell(w) })); S.techFor = res; }
+    return S.techRows;
   }
   const useLabel = (o) => (o && o.use ? t('tuse.' + o.use) + ((o.use === 'power' || o.use === 'cogen') && o.fluid ? ` (${o.fluid})` : '') : '–');
   const techWhy = (o) => (o.reasons || []).map((r) => t('tw.' + r)).join('; ');
@@ -1050,7 +1106,7 @@
     if (!rows.length) { a.innerHTML = `<div class="doc"><h2>${t('doc.tech')}</h2><p class="muted">${t('proj.empty')}</p></div>`; return; }
     const tot = {}; TECHS.forEach((k) => { tot[k] = { n: 0, pos: 0, npv: 0, pe: 0, q: 0, co2: 0 }; });
     rows.forEach(({ r }) => r.options.forEach((o) => { const x = tot[o.id]; if (isFinite(o.npv) && o.npv !== null) { x.n++; x.q += o.Q || 0; x.pe += o.Pe || 0; x.co2 += o.co2t || 0; if (o.npv > 0) { x.pos++; x.npv += o.npv; } } }));
-    const cell = (o) => (o && isFinite(o.npv) && o.npv !== null ? `<td class="n ${o.npv < 0 ? 'npv-neg' : 'npv-pos'}" title="${esc(useLabel(o))}">${fmt(o.npv, 1)}</td>` : `<td class="n" style="color:var(--muted)" title="${esc(o ? techWhy(o) : '')}">${o && o.status === 'nodata' ? t('tech.nodata') : '–'}</td>`);
+    const cell = (o) => (o && isFinite(o.npv) && o.npv !== null ? `<td class="n ${o.npv < 0 ? 'npv-neg' : 'npv-pos'}" title="${esc(useLabel(o) + (techWhy(o) ? ' · ' + techWhy(o) : ''))}">${fmt(o.npv, 1)}${o.p10 !== undefined ? `<br><small class="${o.est ? 'est' : 'muted'}">P10–P90 ${fmt(o.p10, 0)}…${fmt(o.p90, 0)}</small>` : ''}</td>` : `<td class="n" style="color:var(--muted)" title="${esc(o ? techWhy(o) : '')}">${o && o.status === 'nodata' ? t('tech.nodata') : '–'}</td>`);
     a.innerHTML = `<div class="doc"><h2>${t('doc.tech')}</h2><p class="muted">${t('tech.intro')}</p>
       <div class="card"><h3>${t('tech.matrix')}</h3><div class="tscroll"><table class="tbl" id="techTbl"><thead><tr><th>${t('r.well')}</th><th class="n">${t('r.tb')}</th>
         ${TECHS.map((k) => `<th class="n">${t('tech.' + k)}<br><small>NPV (${bnU()})</small></th>`).join('')}<th>${t('tech.best')}</th><th class="n">${t('tech.dnpv')}</th></tr></thead><tbody>
@@ -1070,7 +1126,7 @@
       </tbody></table></div><p class="hint">${t('tech.detailHint')}</p></div>
       <div class="card" style="margin-top:14px"><h3>${t('tech.about')}</h3><div class="tscroll"><table class="tbl"><thead><tr><th>${t('tech.col.tech')}</th><th>TRL</th><th>${t('tech.col.how')}</th><th>${t('tech.col.need')}</th><th>${t('tech.col.risk')}</th></tr></thead><tbody>
         ${TECHS.map((k) => `<tr><td><b>${t('tech.' + k)}</b></td><td>${(rows[0].r.options.find((o) => o.id === k) || {}).trl || ''}</td><td class="use">${t('tinfo.' + k + '.how')}</td><td class="use">${t('tinfo.' + k + '.need')}</td><td class="use">${t('tinfo.' + k + '.risk')}</td></tr>`).join('')}
-      </tbody></table></div><p class="hint">${t('tech.disclaimer', { g: fmt(techParams().co2Gain, 1) })}</p></div></div>`;
+      </tbody></table></div><p class="hint">${t('tech.disclaimer')}</p></div></div>`;
     const col = { clgs: '#90caf9', ags: '#1565c0', hydro: '#2e7d32', egs: '#ef6c00', cpg: '#8e24aa' };
     mk('chTech', { type: 'bar', data: { labels: rows.map(({ w }) => w.name || w.id), datasets: TECHS.map((k) => ({ label: t('tech.' + k), backgroundColor: col[k], data: rows.map(({ r }) => { const o = r.options.find((x) => x.id === k); return o && isFinite(o.npv) && o.npv !== null ? o.npv : null; }) })) },
       options: { indexAxis: 'y', maintainAspectRatio: false, plugins: { tooltip: { callbacks: { label: (c) => `${c.dataset.label}: NPV ${fmt(c.parsed.x, 1)} ${bnU()}` } } }, scales: { x: { title: { display: true, text: `NPV (${bnU()})` }, ticks: { callback: numTick(0) } } } } });
@@ -1085,7 +1141,79 @@
   }
   $('#docArea').addEventListener('dblclick', (e) => { const r = e.target.closest('#techTbl tbody tr'); if (r) openDoc('opt:' + r.dataset.u); });
   /* read-only hook used to export results into the private results workbook */
-  window.AWApp = { techTable: () => techRows(techAll()), project: () => S.project && { name: S.project.name, wells: S.project.wells.length } };
+  window.AWApp = { techTable: () => techRows(techAll()), exportSheets: () => exportSheets(), project: () => S.project && { name: S.project.name, wells: S.project.wells.length } };
+
+  /* ---------- derived engineering parameters ---------- */
+  /** One flat record per well with everything the models derive (also used by the exports). */
+  function engRows() {
+    const P = modelParams();
+    return techAll().map(({ w, r }) => {
+      const well = wellBy(w.uid) || {}, R = r.ev.reservoir, D = r.derived, o = (id) => r.options.find((x) => x.id === id) || {};
+      const cl = o('clgs'), hy = o('hydro'), cp = o('cpg'), b = r.best || {};
+      return {
+        well: w.name || w.id, field: well.field || '', loc: w.location, host: r.hostCapex ? 0 : 1,
+        tvd: w.depth, md: w.md, wd: w.wd || 0, G: w.G, gsrc: srcOf(w), Tb: w.Tbottom, score: w.score, integ: w.integrity,
+        fT: D.rameyF, wpm: D.wPerM, clM: cl.m, clT: cl.Ts, clQ: cl.Qall || cl.Q, clPump: cl.pumpKW, dp: w.dpBar, q10: w.mc.p10, q90: w.mc.p90,
+        rA: r.resIn ? r.resIn.A : null, rH: r.resIn ? r.resIn.h : null, rPhi: r.resIn ? r.resIn.phi * 100 : null, rT: r.resIn ? r.resIn.Tres : null, rQ: r.resIn ? r.resIn.flow : null,
+        cA: r.resIn ? r.conf.A : '', cQ: r.resIn ? r.conf.Q : '',
+        Hip: R ? R.HGWh : null, Psust: R ? R.Psust : null, mSust: R ? R.mSust : null, sweepR: R ? R.sweep.r : null, tCool: R && isFinite(R.breakthroughYears) ? R.breakthroughYears : null, Amin: R && isFinite(R.Amin) ? R.Amin : null,
+        hyNpv: hy.npv, hyP10: hy.p10, hyP90: hy.p90, hyPos: hy.pPos,
+        pRes: D.co2Pres, rhoHot: D.co2RhoHot, rhoCold: D.co2RhoCold, muHot: D.co2MuHot ? D.co2MuHot * 1e6 : null, mob: D.mobRatio, heatRatio: D.heatRatio, dpTs: D.dpTsBar, cTwh: D.co2Twh, cM: cp.m, cCO2: cp.co2t ? cp.co2t / 1000 : null,
+        best: b.id ? t('techs.' + b.id) : '', use: b.use ? t('tuse.' + b.use) : '', bM: b.m, bT: b.Ts, bQ: b.Q, bPe: b.Pe, bCapex: b.capex, bNpv: b.npv, bLcoe: b.lcoe, hours: P.eco.hours,
+      };
+    });
+  }
+  const ENG_COLS = [
+    ['eng.g.well', [['well', 'r.well', -1], ['tvd', 'eng.tvd', 0], ['md', 'eng.md', 0], ['G', 'eng.G', 2], ['Tb', 'eng.Tb', 0]]],
+    ['eng.g.clgs', [['fT', 'eng.fT', 2], ['wpm', 'eng.wpm', 0], ['clM', 'eng.m', 1], ['clT', 'eng.Tout', 0], ['clQ', 'eng.Q', 0], ['clPump', 'eng.pump', 1], ['dp', 'eng.dp', 1]]],
+    ['eng.g.res', [['rA', 'eng.A', 2], ['rH', 'eng.h', 1], ['rPhi', 'eng.phi', 0], ['rT', 'eng.Tres', 0], ['rQ', 'eng.q', 2], ['Hip', 'eng.Hip', 0], ['Psust', 'eng.Psust', 0], ['mSust', 'eng.mSust', 2], ['sweepR', 'eng.sweep', 0], ['tCool', 'eng.tCool', 0]]],
+    ['eng.g.co2', [['pRes', 'eng.pRes', 0], ['rhoHot', 'eng.rhoHot', 0], ['rhoCold', 'eng.rhoCold', 0], ['muHot', 'eng.mu', 1], ['mob', 'eng.mob', 1], ['heatRatio', 'eng.heatRatio', 2], ['dpTs', 'eng.dpTs', 0], ['cTwh', 'eng.cTwh', 0]]],
+    ['eng.g.best', [['best', 'tech.best', -1], ['bQ', 'eng.Q', 0], ['bPe', 'eng.Pe', 0], ['bCapex', 'eng.capex', 0], ['bNpv', 'eng.npv', 1], ['bLcoe', 'eng.lcoe', 0]]],
+  ];
+  function renderEng(a) {
+    const rows = engRows();
+    if (!rows.length) { a.innerHTML = `<div class="doc"><h2>${t('doc.eng')}</h2><p class="muted">${t('proj.empty')}</p></div>`; return; }
+    const cell = (r, [k, , d]) => {
+      const v = r[k];
+      if (d < 0) return `<td>${k === 'well' ? `<b>${esc(v)}</b>${r.host ? '' : ` <span class="chip warn" title="${esc(t('tw.noHost'))}">${t('eng.noHost')}</span>`}` : (v ? `<span class="chip ${(TECHS.find((x) => t('techs.' + x) === v) || '')}">${esc(v)}</span>` : '–')}</td>`;
+      const est = (k === 'rA' && r.cA === 'e') || (k === 'rQ' && r.cQ === 'e');
+      const cls = k === 'bNpv' ? (v < 0 ? ' npv-neg' : ' npv-pos') : '';
+      return `<td class="n${cls}"${est ? ` title="${esc(t('conf.e'))}"` : ''}>${v === null || v === undefined || !isFinite(v) ? '–' : fmt(v, d)}${est ? '<sup class="est">≈</sup>' : ''}</td>`;
+    };
+    a.innerHTML = `<div class="doc"><div class="rep-head"><h2 style="margin:0">${t('doc.eng')}</h2><div class="no-print" style="display:flex;gap:8px"><button class="btn ghost" id="btnEngCsv">CSV</button><button class="btn" data-act="exportAll">${t('b.exportAll')}</button></div></div>
+      <div class="tscroll" style="margin-top:10px"><table class="tbl eng"><thead>
+        <tr>${ENG_COLS.map(([g, cs]) => `<th colspan="${cs.length}" class="grp">${t(g)}</th>`).join('')}</tr>
+        <tr>${ENG_COLS.flatMap(([, cs]) => cs.map(([, lab, d]) => `<th class="${d < 0 ? '' : 'n'}">${t(lab)}</th>`)).join('')}</tr></thead><tbody>
+        ${rows.map((r) => `<tr>${ENG_COLS.flatMap(([, cs]) => cs.map((c) => cell(r, c))).join('')}</tr>`).join('')}
+      </tbody></table></div>
+      <p class="hint">${t('eng.foot')}</p></div>`;
+    $('#btnEngCsv').onclick = () => download(safeName(S.project.name) + '_thong_so.csv', toCSV(rows, Object.keys(rows[0])), 'text/csv');
+  }
+  /** Every result table as named sheets (array of rows) – for the Excel export and external reporting. */
+  function exportSheets() {
+    const P = modelParams(), res = screen(), tr = techAll(), eng = engRows();
+    const head = (cols) => cols.map((c) => t(c));
+    const rank = [head(['r.rank', 'r.well', 'r.depth', 'eng.md', 'r.g', 'r.src', 'r.tb', 'r.tout', 'r.q', 'r.p1090', 'r.integ', 'r.best', 'r.bestNpv', 'r.score'])]
+      .concat(res.ranked.map((w, i) => { const b = (tr.find((x) => x.w.uid === w.uid) || {}).r.best || {}; return [i + 1, w.name || w.id, Math.round(w.depth), Math.round(w.md), +w.G.toFixed(2), t('src.' + srcOf(w)), Math.round(w.Tbottom), +w.Tout.toFixed(1), Math.round(w.Q), `${Math.round(w.mc.p10)}–${Math.round(w.mc.p90)}`, t('int.' + w.integrity), b.id ? t('tech.' + b.id) + ' · ' + t('tuse.' + b.use) : '', isFinite(b.npv) ? +b.npv.toFixed(1) : '', w.score]; }));
+    const matrix = [[t('r.well'), t('r.tb')].concat(TECHS.map((k) => t('tech.' + k) + ' NPV')).concat(['Hydrothermal P10', 'Hydrothermal P90', t('tech.best'), t('tech.col.use')])]
+      .concat(tr.map(({ w, r }) => { const hy = r.options.find((o) => o.id === 'hydro') || {}; return [w.name || w.id, Math.round(w.Tbottom)].concat(TECHS.map((k) => { const o = r.options.find((x) => x.id === k); return o && Number.isFinite(o.npv) ? +o.npv.toFixed(1) : (o && o.status === 'nodata' ? t('tech.nodata') : ''); })).concat([Number.isFinite(hy.p10) ? +hy.p10.toFixed(0) : '', Number.isFinite(hy.p90) ? +hy.p90.toFixed(0) : '', r.best ? t('tech.' + r.best.id) : '', r.best ? useLabel(r.best) : '']); }));
+    const detail = [TECH_CSV].concat(techRows(tr).map((x) => TECH_CSV.map((c) => x[c])));
+    const ek = Object.keys(eng[0] || {});
+    const engS = [ek].concat(eng.map((x) => ek.map((c) => (typeof x[c] === 'number' && isFinite(x[c]) ? +x[c].toPrecision(6) : x[c] === null || x[c] === undefined ? '' : x[c]))));
+    const pk = Object.keys(DEFAULTS);
+    const params = [[t('exp.param'), t('exp.value')], ['version', APP_VERSION], ['project', S.project.name], ['date', new Date().toLocaleString(loc())]].concat(pk.map((k) => [k, S.project.params[k] === undefined ? DEFAULTS[k] : S.project.params[k]]));
+    const resS = [[t('r.well'), t('r2.A'), t('r2.h'), t('r2.phi'), t('r2.z'), t('r2.T'), t('r2.flow'), t('r2.co2'), t('r2.cA'), t('r2.cQ'), t('f.host'), t('f.note')]]
+      .concat(S.project.wells.map((w) => [wellLabel(w), w.res_A, w.res_h, w.res_phi, w.res_z, w.res_T, w.res_flow, w.res_co2, t('conf.' + (w.res_cA === 'e' ? 'e' : 'm')), t('conf.' + (w.res_cQ === 'e' ? 'e' : 'm')), t('opt.' + ((w.host === 0 || w.host === '0') ? 'no' : 'yes')), w.res_note || ''].map((v) => (v === undefined || v === null ? '' : v))));
+    void P;
+    return [{ name: t('exp.rank'), rows: rank }, { name: t('exp.matrix'), rows: matrix }, { name: t('exp.detail'), rows: detail }, { name: t('exp.eng'), rows: engS }, { name: t('exp.res'), rows: resS }, { name: t('exp.params'), rows: params }];
+  }
+  /** Minimal SpreadsheetML (Excel 2003 XML): several worksheets in one text file that Excel opens directly. */
+  function toSpreadsheetML(sheets) {
+    const x = (v) => String(v).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    const cellX = (v, hd) => (typeof v === 'number' && isFinite(v) ? `<Cell><Data ss:Type="Number">${v}</Data></Cell>` : `<Cell${hd ? ' ss:StyleID="h"' : ''}><Data ss:Type="String">${x(v === null || v === undefined ? '' : v)}</Data></Cell>`);
+    return '<?xml version="1.0" encoding="UTF-8"?>\n<?mso-application progid="Excel.Sheet"?>\n<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"><Styles><Style ss:ID="h"><Font ss:Bold="1" ss:Color="#FFFFFF"/><Interior ss:Color="#1565C0" ss:Pattern="Solid"/></Style></Styles>'
+      + sheets.map((sh) => `<Worksheet ss:Name="${x(sh.name.replace(/[/?*:\[\]\\]/g, ' ').slice(0, 31))}"><Table>${sh.rows.map((r, i) => `<Row>${r.map((v) => cellX(v, i === 0)).join('')}</Row>`).join('')}</Table></Worksheet>`).join('') + '</Workbook>';
+  }
 
   /* ---------- machine learning (temperature model) ---------- */
   function trainML() {
@@ -1101,7 +1229,7 @@
     if (S.active !== 'volve') return;
     const T0 = VOLVE_PARAMS.T0, F = D.field;
     const pts = []; D.wells.forEach((w) => w.temps.forEach((q) => pts.push({ w: w.name, z: q.tvd - (w.kb || 54.9), T: q.t, md: q.md, how: q.how })));
-    const fg = pts.length ? fitGradient(pts, T0) : null;
+    const fg = pts.length ? fitGradient(pts, T0, VOLVE_PARAMS.wd) : null;
     const usable = D.wells.filter(volveUsable);
     const cubes = D.seismic.cubes, by = (s) => cubes.filter((c) => c.survey === s);
     const flagTxt = (f) => t(/view/i.test(f) ? 'volve.flag.view' : /to[aạ]\s*đ|coord/i.test(f) ? 'volve.flag.coord' : 'volve.flag.other');
@@ -1129,7 +1257,7 @@
       </div>
       <div class="card" style="margin-top:14px"><h3>${t('volve.tWells')}</h3><div class="tscroll"><table class="tbl"><thead><tr>
         <th>${t('r.well')}</th><th class="n">MD TD (m)</th><th class="n">TVD TD (m RKB)</th><th class="n">KB (m)</th><th class="n">${t('volve.nT')}</th><th class="n">T (°C)</th><th class="n">${t('volve.gW')}</th><th>${t('volve.logs')}</th><th>${t('volve.status')}</th></tr></thead><tbody>
-        ${D.wells.map((w) => { const ts = w.temps.map((q) => q.t); const g = w.temps.length ? fitGradient(w.temps.map((q) => ({ z: q.tvd - (w.kb || 54.9), T: q.t })), T0).G : null; return `<tr><td><b>${esc(w.name)}</b></td><td class="n">${fmt(w.tdMD)}</td><td class="n">${fmt(w.tdTVD)}</td><td class="n" title="${esc(w.kbSrc)}">${fmt(w.kb, 1)}</td>
+        ${D.wells.map((w) => { const ts = w.temps.map((q) => q.t); const g = w.temps.length ? fitGradient(w.temps.map((q) => ({ z: q.tvd - (w.kb || 54.9), T: q.t })), T0, VOLVE_PARAMS.wd).G : null; return `<tr><td><b>${esc(w.name)}</b></td><td class="n">${fmt(w.tdMD)}</td><td class="n">${fmt(w.tdTVD)}</td><td class="n" title="${esc(w.kbSrc)}">${fmt(w.kb, 1)}</td>
           <td class="n">${w.temps.length || '–'}</td><td class="n">${ts.length ? `${fmt(Math.min(...ts), 1)}–${fmt(Math.max(...ts), 1)}` : '–'}</td><td class="n">${g ? fmt(g, 2) : '–'}</td><td>${esc(curvesOf(w))}</td>
           <td>${volveUsable(w) ? `<span class="src dst">${t('volve.inProj')}</span>` : `<span class="src field">${t('volve.noTvd')}</span>`}</td></tr>`; }).join('')}
         </tbody></table></div><p class="hint">${t('volve.wellsFoot')}</p></div>
@@ -1173,7 +1301,7 @@
     if (!ml.ok) { a.innerHTML = `<div class="doc"><div class="rep-head"><h2 style="margin:0">${t('doc.ml')}</h2><button class="btn no-print" data-act="ml">${t('b.mlRun')}</button></div><div class="warnbox">${t(ml.reason === 'wells' ? 'ml.needWells' : 'ml.needPts', { n: ml.n })}</div><p class="muted">${t('ml.intro')}</p></div>`; return; }
     const gain = ml.cv.rmseBase > 0 ? (1 - ml.cv.rmseML / ml.cv.rmseBase) * 100 : 0;
     const rows = S.project.wells.map((w) => {
-      const pr = ml.predictWell(w), nw = M.normaliseWell(w, P.T0), measured = (w.tempPoints || []).length || MEASURED.includes(nw.gSource) || w.gSource === 'dst';
+      const pr = ml.predictWell(w), nw = M.normaliseWell(w, P.T0, P.wd), measured = (w.tempPoints || []).length || MEASURED.includes(nw.gSource) || w.gSource === 'dst';
       return { w, pr, nw, measured };
     });
     const target = rows.filter((r) => !r.measured && r.pr && (r.w.gSource === 'field' || r.w.gSource === 'ml' || !(+r.w.gradient_c100m > 0))); // never overwrite an entered gradient
@@ -1262,9 +1390,9 @@
     touch(); renderAll();
   };
   /** Gradient fitted to measured temperatures with T0 fixed: G = Σz(T−T0)/Σz² ×100. */
-  function fitGradient(points, T0) {
-    const sz2 = points.reduce((a, p) => a + p.z * p.z, 0), szt = points.reduce((a, p) => a + p.z * (p.T - T0), 0);
-    const g = szt / sz2, rms = Math.sqrt(points.reduce((a, p) => a + (p.T - T0 - g * p.z) ** 2, 0) / points.length);
+  function fitGradient(points, T0, wd = 0) {
+    const sz2 = points.reduce((a, p) => a + (p.z - wd) * (p.z - wd), 0), szt = points.reduce((a, p) => a + (p.z - wd) * (p.T - T0), 0);
+    const g = szt / sz2, rms = Math.sqrt(points.reduce((a, p) => a + (p.T - T0 - g * (p.z - wd)) ** 2, 0) / points.length);
     return { G: g * 100, rms };
   }
   $('#fileDst').onchange = async (e) => {
@@ -1287,7 +1415,7 @@
       if (!isFinite(T) || !isFinite(z) || T <= T0 + 5) return;
       (w.tempPoints = w.tempPoints || []).push({ z: Math.round(z), T, src: (iL >= 0 && c[iL]) || `DST ${fmt(z)} m` }); n++; touched.add(w);
     });
-    touched.forEach((w) => { const g = fitGradient(w.tempPoints, T0); w.gradient_c100m = Math.round(g.G * 1000) / 1000; w.gSource = 'dst'; w.gNote = `DST: ${w.tempPoints.length} ${t('ml.pts')}, rms ${fmt(g.rms, 1)} °C`; });
+    touched.forEach((w) => { const g = fitGradient(w.tempPoints, T0, /off|ngoài/i.test(w.location || '') ? modelParams().wd : 0); w.gradient_c100m = Math.round(g.G * 1000) / 1000; w.gSource = 'dst'; w.gNote = `DST: ${w.tempPoints.length} ${t('ml.pts')}, rms ${fmt(g.rms, 1)} °C`; });
     log(t('msg.dstOk', { n, w: touched.size, f: f.name }), 'ok');
     if (miss.size) log(t('msg.dstMiss', { list: Array.from(miss).join(', ') }), 'warn');
     touch(); renderAll();
@@ -1539,6 +1667,8 @@
     optimize() { openDoc('opt:' + selWell().uid); },
     optAll() { openDoc('optall'); },
     tech() { openDoc('tech'); },
+    eng() { openDoc('eng'); },
+    exportAll() { download(safeName(S.project.name) + '_ket_qua.xls', toSpreadsheetML(exportSheets()), 'application/vnd.ms-excel'); },
     ml() { if (S.active === 'ml') renderDoc(); else openDoc('ml'); log(t('ml.started')); },
     importSurvey() { $('#fileSurvey').click(); },
     importDst() { $('#fileDst').click(); },

@@ -90,11 +90,13 @@
       o.capex = capexWell + o.capexSurf;
       o.opex = o.capex * eco.opexPct / 100;
       o.yearly = o.value - o.opex - pumpCost(m);
-      o.npv = npv(o.capex, o.yearly, rate, life);
+      o.npv = npv(o.capex, o.yearly, rate, life) + (eco.deferral || 0); // re-use defers the plugging & abandonment spend
       o.m = m;
       return o;
     }
     const heatGrade = (T) => (T >= U.Tdry ? U.heatHigh : U.heatLow);
+    // only what the local consumers can take is sold (0 = no limit)
+    const capH = (Q) => (U.heatDem > 0 ? Math.min(Q, U.heatDem) : Q), capE = (P) => (U.elecDem > 0 ? Math.min(P, U.elecDem) : P);
 
     // ---- option builders for a source returning {Ts} for given (m, Treturn)
     function options(src) {
@@ -102,12 +104,12 @@
       const best = (build) => { let b = null; for (const m of src.flows) { const o = build(m); if (o && (!b || o.npv > b.npv)) b = o; } return b; };
       // A. direct heat, heat-pump substitute
       out.push(best((m) => {
-        const Ts = src.Ts(m, src.Tret); const Q = Math.max(0, m * CP * (Ts - src.Tret) / 1000);
+        const Ts = src.Ts(m, src.Tret); const Q = capH(Math.max(0, m * CP * (Ts - src.Tret) / 1000));
         return finish({ id: 'hp', src: src.id, Ts, Q, Pe: 0, value: toBn(Q * hours * U.heatLow), capexSurf: Q * U.capexHX / 1000, feasible: Q > 0 }, src.capex, m);
       }));
       // B. direct heat for drying / industry (needs Ts >= Tdry)
       out.push(best((m) => {
-        const Ts = src.Ts(m, src.Tret); const Q = Math.max(0, m * CP * (Ts - src.Tret) / 1000);
+        const Ts = src.Ts(m, src.Tret); const Q = capH(Math.max(0, m * CP * (Ts - src.Tret) / 1000));
         const ok = Ts >= U.Tdry;
         return finish({ id: 'dry', src: src.id, Ts, Q, Pe: 0, value: ok ? toBn(Q * hours * U.heatHigh) : 0, capexSurf: Q * U.capexHX / 1000, feasible: ok && Q > 0 }, src.capex, m);
       }));
@@ -116,7 +118,7 @@
         const o = best((m) => {
           let Tret = Tcond + 10, Ts = src.Ts(m, Tret), r = null;
           for (let i = 0; i < 6; i++) { r = orc(f, Ts, m, Tcond, src.open ? src.Tret : null, U.pinch); Tret = r.Tout; Ts = src.Ts(m, Tret); }
-          r = orc(f, Ts, m, Tcond, src.open ? src.Tret : null, U.pinch);
+          r = orc(f, Ts, m, Tcond, src.open ? src.Tret : null, U.pinch); r.Pe = capE(r.Pe);
           return finish({ id: 'orc', fluid: f, src: src.id, Ts, Q: r.Qin, Pe: r.Pe, eta: r.eta, Tout: r.Tout, reasons: r.reasons, notes: r.notes,
             value: toBn(r.Pe * hours * U.elecValue), capexSurf: r.Pe * U.capexORC / 1000, feasible: r.feasible && r.Pe > 0 }, src.capex, m);
         });
@@ -131,7 +133,8 @@
         out.push(best((m) => {
           const Ts = src.Ts(m, src.Tret); const r = orc(f, Ts, m, Tcond, null, U.pinch);
           if (!r.feasible) return null;
-          const Q2 = Math.max(0, m * CP * (r.Tout - src.Tret) / 1000);
+          r.Pe = capE(r.Pe);
+          const Q2 = capH(Math.max(0, m * CP * (r.Tout - src.Tret) / 1000));
           return finish({ id: 'cascade', fluid: f, src: src.id, Ts, Q: r.Qin + Q2, Q2, Pe: r.Pe, eta: r.eta, Tout: r.Tout,
             value: toBn(r.Pe * hours * U.elecValue + Q2 * hours * heatGrade(r.Tout)), capexSurf: (r.Pe * U.capexORC + Q2 * U.capexHX) / 1000, feasible: true }, src.capex, m);
         }));

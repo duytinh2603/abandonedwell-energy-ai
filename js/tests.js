@@ -110,24 +110,45 @@
   });
 
   /* 8. Technology comparison (CLGS / AGS / hydrothermal / EGS / CO2-EGS) */
-  test('So sánh công nghệ: AGS thu nhiệt > CLGS, CO₂-EGS ≈ 1,5× nhiệt vỉa, EGS vốn lớn nhất, giới hạn nhu cầu', () => {
+  const techSetup = () => {
     const P = { T0: 27, k: 2.5, years: 10, upLoss: 0.1, geom: {} };
     const eco = { heatPrice: 735, capexOn: 6, capexOff: 25, pipeCost: 1.5, opexPct: 3, pumpKW: 15, hours: 8000, rate: 10, life: 25, elecPrice: 2204, pumpAuto: true, co2Price: 0 };
-    const U = { Tamb: 30, approach: 10, Tdry: 60, elecValue: 2204, heatHigh: 2204, heatLow: 735, capexORC: 100, capexHX: 2, capexOpen: 30, whLoss: 5, Tret: 30, Treinj: 40, Rf: 0.1, pinch: 5, dpMax: 20 };
+    const U = { Tamb: 30, approach: 10, Tdry: 60, elecValue: 2204, heatHigh: 950, heatLow: 735, capexORC: 100, capexHX: 2, capexOpen: 30, whLoss: 5, Tret: 30, Treinj: 40, Rf: 0.1, pinch: 5, dpMax: 20 };
     const base = { L: 4000, Lv: 4000, G: 3.5, T0: 27, k: 2.5, m: 5, Tin: 30, years: 10, Rw: 0.1, upLoss: 0.1 };
     const w = { depth: 4000, md: 4000, G: 3.5, Tbottom: 167, location: 'offshore', integrity: 'good', base };
     const resIn = { A: 2, h: 20, phi: 0.15, flow: 5, z: 4000, Tres: 160, Treinj: 40, Rf: 0.1, PI: 0, spacing: 0, co2: 0 };
-    const ev = U && window.AWUtil.evaluate(base, U, eco, 25, resIn);
-    const run = (T) => window.AWTech.evaluate(w, ev, { P, U, eco, resIn, wellCapex: 25, T });
+    const ev = window.AWUtil.evaluate(base, U, eco, 25, resIn);
+    const run = (T, extra) => window.AWTech.evaluate(w, ev, Object.assign({ P, U, eco, resIn, wellCapex: 25, T }, extra || {}));
+    return { run, ev };
+  };
+  test('So sánh công nghệ: đủ 5 công nghệ, AGS thu nhiệt > CLGS, EGS vốn lớn nhất, giới hạn nhu cầu, vốn kết nối khi không có giàn', () => {
+    const { run } = techSetup();
     const r = run({ heatDemOff: 0, elecDem: 0 });
-    const o = (id) => r.options.find((x) => x.id === id);
-    const Qhydro = ev.reservoir.mSust * 4180 * (ev.reservoir.Twh - 40) / 1000;
-    const Qcpg = o('cpg').Qall || o('cpg').Q, ratio = Qcpg / Qhydro;
+    const o = (id, rr = r) => rr.options.find((x) => x.id === id);
     const capped = run({ heatDemOff: 500, elecDem: 200 });
     const capOk = capped.options.every((x) => !(x.Pe > 200.01) && !(x.use && x.use.startsWith('heat') && x.Q > 500.01));
+    const noHost = run({ heatDemOff: 0, elecDem: 0 }, { hostCapex: 250 });
+    const hostOk = Math.abs(o('clgs', noHost).capex - o('clgs').capex - 250) < 1e-6 && o('hydro', noHost).npv < o('hydro').npv;
     const all5 = ['clgs', 'ags', 'hydro', 'egs', 'cpg'].every((k) => r.options.some((x) => x.id === k));
-    const ok = all5 && (o('ags').Qall || o('ags').Q) > o('clgs').Q && o('egs').capex > o('ags').capex && o('egs').capex > o('clgs').capex && ratio > 1.2 && ratio < 1.8 && capOk && !!r.best;
-    return { ok, detail: `Q CLGS ${o('clgs').Q.toFixed(0)}, AGS ${(o('ags').Qall || o('ags').Q).toFixed(0)}, vỉa ${Qhydro.toFixed(0)}, CO₂ ${Qcpg.toFixed(0)} kWth (×${ratio.toFixed(2)}); vốn EGS ${o('egs').capex.toFixed(0)} tỷ đ; tốt nhất ${r.best.id}` };
+    const ok = all5 && (o('ags').Qall || o('ags').Q) > o('clgs').Q && o('egs').capex > o('ags').capex && capOk && hostOk && !!r.best;
+    return { ok, detail: `Q CLGS ${o('clgs').Q.toFixed(0)}, AGS ${(o('ags').Qall || o('ags').Q).toFixed(0)} kWth; vốn EGS ${o('egs').capex.toFixed(0)} tỷ đ; không giàn: +250 tỷ đ; tốt nhất ${r.best.id}` };
+  });
+  test('CO₂ (Peng–Robinson): khối lượng riêng 200 bar/40 °C ≈ 840, 300 bar/150 °C ≈ 480 kg/m³ (NIST ±8 %); linh động CO₂ > nước; có tự tuần hoàn', () => {
+    const a = window.AWTech.co2(200e5, 40), b = window.AWTech.co2(300e5, 150);
+    const { run } = techSetup(); const r = run({ heatDemOff: 0, elecDem: 0 }); const D = r.derived;
+    const ok = Math.abs(a.rho / 840 - 1) < 0.08 && Math.abs(b.rho / 480 - 1) < 0.08 && a.mu > 5e-5 && a.mu < 1.1e-4 && D.mobRatio > 1.5 && D.mobRatio < 8 && D.dpTsBar > 20 && D.co2Twh < 160 && D.co2Twh > 60;
+    return { ok, detail: `ρ ${a.rho.toFixed(0)} / ${b.rho.toFixed(0)} kg/m³, μ ${(a.mu * 1e6).toFixed(0)} µPa·s; linh động ×${D.mobRatio.toFixed(1)}, nhiệt ×${D.heatRatio.toFixed(2)}, Δp tự tuần hoàn ${D.dpTsBar.toFixed(0)} bar, T miệng giếng ${D.co2Twh.toFixed(0)} °C` };
+  });
+  test('Vỉa: P10 ≤ P50 ≤ P90 và khoảng rộng hơn khi thông số là ước tính', () => {
+    const { run } = techSetup();
+    const m = run({}, { conf: { A: 'm', Q: 'm' } }).options.find((x) => x.id === 'hydro'), e = run({}, { conf: { A: 'e', Q: 'e' } }).options.find((x) => x.id === 'hydro');
+    const ok = m.p10 <= m.p50 && m.p50 <= m.p90 && (e.p90 - e.p10) > (m.p90 - m.p10) * 1.3;
+    return { ok, detail: `tài liệu: ${m.p10.toFixed(0)}…${m.p90.toFixed(0)}; ước tính: ${e.p10.toFixed(0)}…${e.p90.toFixed(0)} tỷ đ` };
+  });
+  test('Độ sâu nước biển: gradient tính từ đáy biển, nhiệt độ đáy giếng không đổi', () => {
+    const a = M.normaliseWell({ id: 'x', depth_m: 3000, bht_c: 120, location: 'offshore' }, 20, 0), b = M.normaliseWell({ id: 'x', depth_m: 3000, bht_c: 120, location: 'offshore' }, 20, 120);
+    const Ta = 20 + a.G / 100 * 3000, Tb = 20 + b.G / 100 * (3000 - 120);
+    return { ok: b.G > a.G && Math.abs(Ta - Tb) < 1e-6 && b.wd === 120, detail: `G ${a.G.toFixed(3)} → ${b.G.toFixed(3)} °C/100 m, T đáy ${Tb.toFixed(1)} °C` };
   });
 
   const tb = document.getElementById('rows'); let pass = 0;

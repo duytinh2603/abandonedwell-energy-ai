@@ -2,12 +2,12 @@
 window.GUIDE = {
   vi: `
 <h2>Hướng dẫn sử dụng AbandonedWell Energy AI</h2>
-<p class="muted">Phiên bản web v0.6 · Công cụ sàng lọc giếng dầu khí ngừng khai thác để cải tạo thành giếng địa nhiệt.</p>
+<p class="muted">Phiên bản web v0.7 · Công cụ sàng lọc giếng dầu khí ngừng khai thác để cải tạo thành giếng địa nhiệt.</p>
 <nav class="toc"><b>Mục lục</b><ol>
 <li><a href="#g1">Giao diện</a></li><li><a href="#g2">Tạo và quản lý dự án</a></li><li><a href="#g3">Nhập dữ liệu (LAS, CSV, nhập tay)</a></li>
 <li><a href="#g4">Thuộc tính giếng và nguồn gradient</a></li><li><a href="#g4b">Học máy – mô hình nhiệt độ</a></li><li><a href="#g5">Biểu đồ log</a></li><li><a href="#g6">Sàng lọc và xếp hạng</a></li>
 <li><a href="#g7">Báo cáo giếng</a></li><li><a href="#g8">Phương án sử dụng (ORC, nhiệt trực tiếp, vỉa chứa)</a></li><li><a href="#g9">Độ nhạy</a></li>
-<li><a href="#g10">Thông số dự án</a></li><li><a href="#g11">Bảo mật dữ liệu</a></li><li><a href="#g12">Xử lý sự cố</a></li><li><a href="#g13">Giới hạn của mô hình</a></li><li><a href="#g14">Dự án mẫu mỏ Volve (dữ liệu thật)</a></li><li><a href="#g15">So sánh công nghệ địa nhiệt</a></li><li><a href="#g16">Cập nhật và đồng bộ tự động</a></li></ol></nav>
+<li><a href="#g10">Thông số dự án</a></li><li><a href="#g11">Bảo mật dữ liệu</a></li><li><a href="#g12">Xử lý sự cố</a></li><li><a href="#g13">Giới hạn của mô hình</a></li><li><a href="#g14">Dự án mẫu mỏ Volve (dữ liệu thật)</a></li><li><a href="#g15">So sánh công nghệ địa nhiệt</a></li><li><a href="#g16">Cập nhật và đồng bộ tự động</a></li><li><a href="#g17">Cơ sở khoa học và mức tin cậy</a></li></ol></nav>
 
 <h3 id="g1">1. Giao diện</h3>
 <ul>
@@ -131,7 +131,7 @@ window.GUIDE = {
 <tr><td>Giếng bị “bỏ qua”</td><td>Thiếu chiều sâu hoặc gradient/BHT hợp lệ.</td></tr>
 <tr><td>Không thấy dự án cũ</td><td>Đang dùng trình duyệt/máy khác → Mở tệp dự án.</td></tr>
 <tr><td>Web không cập nhật bản mới</td><td>Nhấn Ctrl+F5 (có thể hai lần vì bản ngoại tuyến).</td></tr>
-<tr><td>Muốn kiểm tra phép tính</td><td>Mở <a href="tests.html" target="_blank">tests.html</a>: 26 kiểm thử tự động so với mô hình Python v0.1 và công thức chuẩn.</td></tr></table>
+<tr><td>Muốn kiểm tra phép tính</td><td>Mở <a href="tests.html" target="_blank">tests.html</a>: 29 kiểm thử tự động so với mô hình Python v0.1 và công thức chuẩn.</td></tr></table>
 
 <h3 id="g13">13. Giới hạn của mô hình</h3>
 <p>Gradient tuyến tính, đá đồng nhất, tổn thất ống đi lên cố định; ORC tính theo hệ số exergy; vỉa tính theo phương pháp thể tích. Kết quả dùng để <b>sàng lọc</b>, chưa thay cho thiết kế chi tiết, mô phỏng thủy động hay đánh giá toàn vẹn giếng thực tế. Mô hình học máy chỉ tốt như số điểm đo nhiệt độ có trong dự án. Chưa đọc DLIS/LIS, chưa có bản đồ tọa độ, toàn vẹn giếng vẫn chọn tay, và mô hình chưa được so với số đo sản lượng địa nhiệt thực tế.</p>
@@ -152,7 +152,7 @@ window.GUIDE = {
 <tr><td>AGS – vòng kín nhiều nhánh ngang</td><td>6–7</td><td>Nhánh ngang ở nhiệt độ đáy giếng, dẫn nhiệt Ramey; vốn = cải tạo + khoan nhánh.</td></tr>
 <tr><td>Hydrothermal – vòng hở</td><td>9</td><td>Lưu lượng DST giới hạn theo PI và trữ nhiệt vỉa (cần thông số vỉa).</td></tr>
 <tr><td>EGS – kích thích, nước</td><td>5–7</td><td>Trữ nhiệt trong thể tích đá kích thích × hệ số thu hồi; bơm theo trở kháng; vốn gồm kích thích và giếng bơm ép mới.</td></tr>
-<tr><td>CO₂-EGS / CPG</td><td>4–5</td><td>CO₂ siêu tới hạn trên vỉa cạn (hoặc đá kích thích): thu nhiệt gấp 1,5 lần nước, tự tuần hoàn, tuabin CO₂; CO₂ thất thoát vào vỉa tính là lưu trữ (tín chỉ theo “Giá CO₂”).</td></tr></table>
+<tr><td>CO₂-EGS / CPG</td><td>4–5</td><td>CO₂ siêu tới hạn trên vỉa cạn (hoặc đá kích thích): tính chất CO₂ theo Peng–Robinson, lưu lượng theo tỷ số linh động và chênh áp tự tuần hoàn, tuabin CO₂; CO₂ thất thoát vào vỉa tính là lưu trữ (tín chỉ theo “Giá CO₂”).</td></tr></table>
 <p>Năng lượng bán được bị giới hạn bởi nhu cầu tại chỗ (mặc định ngoài khơi 1.000 kWth nhiệt, 5.000 kWe điện). Mọi giả định chỉnh trong Thuộc tính dự án → <b>So sánh công nghệ</b>. Nút “Xuất CSV” lưu bảng chi tiết.</p>
 
 <h3 id="g16">16. Cập nhật và đồng bộ tự động</h3>
@@ -163,15 +163,30 @@ window.GUIDE = {
 <li><b>Nhiều tab:</b> sửa ở một tab, các tab khác đang mở cùng dự án tự cập nhật.</li>
 <li><b>Dự án Volve:</b> tự làm mới giếng khi dữ liệu Volve trên web được cập nhật, giữ nguyên thông số bạn đã chỉnh.</li>
 </ul>
+
+<h3 id="g17">17. Cơ sở khoa học và mức tin cậy</h3>
+<table><tr><th>Phần tính</th><th>Phương pháp – tài liệu</th><th>Mức tin cậy</th></tr>
+<tr><td>Nhiệt độ tĩnh từ BHT</td><td>Horner (1951); Harrison và nnk. (1983)</td><td>Chuẩn ngành</td></tr>
+<tr><td>Gradient ngoài khơi</td><td>T(z) = T đáy biển + G·(z − độ sâu nước); khớp bình phương nhỏ nhất qua các điểm đo</td><td>Tốt khi có ≥ 3 điểm DST</td></tr>
+<tr><td>Giếng đồng trục kín (CLGS)</td><td>Ramey (1962), hàm thời gian f(t); thủy lực Darcy–Weisbach, Swamee–Jain</td><td>Chuẩn; chưa hiệu chuẩn với giếng thật</td></tr>
+<tr><td>AGS nhiều nhánh</td><td>Nguồn đường dẫn nhiệt (Ramey) cho từng nhánh ở nhiệt độ đá; kiểu Eavor-Loop (Beckers và nnk. 2022)</td><td>Trung bình: bỏ qua giao thoa nhiệt giữa các nhánh</td></tr>
+<tr><td>Vỉa chứa – vòng hở</td><td>Phương pháp thể tích (Muffler &amp; Cataldi 1978), hệ số thu hồi 10 % (Williams và nnk. 2008); mặt lạnh và khoảng cách giếng (Gringarten &amp; Sauty 1975); khoảng P10–P90 bằng Monte Carlo theo độ tin cậy của diện tích và lưu lượng</td><td>Phụ thuộc dữ liệu vỉa; số ước tính đánh dấu “≈”</td></tr>
+<tr><td>EGS</td><td>Trữ nhiệt đá kích thích × hệ số thu hồi, trở kháng dòng chảy (Tester và nnk. 2006, MIT)</td><td>Trung bình: thông số chung, không phải của mỏ</td></tr>
+<tr><td>CO₂-EGS / CPG</td><td>Tính chất CO₂: phương trình trạng thái Peng–Robinson (1976), độ nhớt khớp dữ liệu NIST; lưu lượng theo tỷ số linh động CO₂/nước (Brown 2000; Pruess 2006); tự tuần hoàn (Atrens và nnk. 2009); nhiệt độ miệng giếng có giãn nở (Adams và nnk. 2014); CPG trên vỉa trầm tích (Randolph &amp; Saar 2011)</td><td>Vật lý có cơ sở; tỷ lệ CO₂ thất thoát 5 % và hiệu suất tuabin là giả định; TRL 4–5</td></tr>
+<tr><td>ORC</td><td>Hệ số exergy × hiệu suất Carnot tại nhiệt độ trung bình logarit, có pinch (DiPippo 2016)</td><td>Sàng lọc (±20 %)</td></tr>
+<tr><td>Giá trị nhiệt</td><td>Bằng chi phí nhiệt được thay thế: lò hơi khí ≈ 950 đ/kWh (khí ≈ 10 USD/MMBtu, η 90 %); bơm nhiệt 735 đ/kWh (điện/COP 3)</td><td>Giả định – sửa theo hộ tiêu thụ thật</td></tr>
+<tr><td>Chi phí đầu tư</td><td>ORC ≈ 3.800 USD/kW; khoan nhánh ≈ 1.200 USD/m; giếng ngoài khơi mới ≈ 3.000 USD/m; kết nối giếng không có giàn 250 tỷ đ</td><td>Giả định cấp sàng lọc (±50 %)</td></tr>
+<tr><td>Kinh tế</td><td>NPV, LCOE (hệ số thu hồi vốn), hoãn hủy giếng, tín chỉ CO₂; nhu cầu nhiệt/điện tại chỗ giới hạn phần bán được</td><td>Công thức chuẩn</td></tr></table>
+<p>Trên bảng <b>Thông số kỹ thuật</b> và <b>So sánh công nghệ</b>: dấu “≈” là số ước tính, “P10–P90” là khoảng bất định của NPV vòng hở. Chưa có: đánh giá toàn vẹn giếng từ log xi măng, mô phỏng thủy động vỉa, chi phí theo báo giá.</p>
 `,
   en: `
 <h2>AbandonedWell Energy AI – User Guide</h2>
-<p class="muted">Web version v0.6 · Screening tool for repurposing shut-in oil &amp; gas wells as geothermal wells.</p>
+<p class="muted">Web version v0.7 · Screening tool for repurposing shut-in oil &amp; gas wells as geothermal wells.</p>
 <nav class="toc"><b>Contents</b><ol>
 <li><a href="#g1">Interface</a></li><li><a href="#g2">Creating and managing projects</a></li><li><a href="#g3">Importing data (LAS, CSV, manual)</a></li>
 <li><a href="#g4">Well properties and gradient source</a></li><li><a href="#g4b">Machine learning – temperature model</a></li><li><a href="#g5">Log plot</a></li><li><a href="#g6">Screening and ranking</a></li>
 <li><a href="#g7">Well report</a></li><li><a href="#g8">Utilisation options (ORC, direct heat, reservoir)</a></li><li><a href="#g9">Sensitivity</a></li>
-<li><a href="#g10">Project parameters</a></li><li><a href="#g11">Data privacy</a></li><li><a href="#g12">Troubleshooting</a></li><li><a href="#g13">Model limitations</a></li><li><a href="#g14">Volve field case study (real data)</a></li><li><a href="#g15">Geothermal technology comparison</a></li><li><a href="#g16">Automatic updates and sync</a></li></ol></nav>
+<li><a href="#g10">Project parameters</a></li><li><a href="#g11">Data privacy</a></li><li><a href="#g12">Troubleshooting</a></li><li><a href="#g13">Model limitations</a></li><li><a href="#g14">Volve field case study (real data)</a></li><li><a href="#g15">Geothermal technology comparison</a></li><li><a href="#g16">Automatic updates and sync</a></li><li><a href="#g17">Scientific basis and confidence</a></li></ol></nav>
 
 <h3 id="g1">1. Interface</h3>
 <ul>
@@ -295,7 +310,7 @@ window.GUIDE = {
 <tr><td>Well “skipped”</td><td>Missing depth or a valid gradient/BHT.</td></tr>
 <tr><td>Old project missing</td><td>Different browser/computer → Open Project File.</td></tr>
 <tr><td>Site not updating</td><td>Press Ctrl+F5 (possibly twice because of the offline copy).</td></tr>
-<tr><td>Check the calculations</td><td>Open <a href="tests.html" target="_blank">tests.html</a>: 26 automated checks against the Python v0.1 model and standard formulas.</td></tr></table>
+<tr><td>Check the calculations</td><td>Open <a href="tests.html" target="_blank">tests.html</a>: 29 automated checks against the Python v0.1 model and standard formulas.</td></tr></table>
 
 <h3 id="g13">13. Model limitations</h3>
 <p>Linear gradient, homogeneous rock, fixed up-flow loss; ORC by exergy factor; reservoir by the volumetric method. Results are for <b>screening</b> and do not replace detailed design, reservoir simulation or real well-integrity assessment. The ML model is only as good as the measured temperatures in the project. DLIS/LIS files, a coordinate map and log-based integrity are not supported yet, and the model has not been compared with measured geothermal production.</p>
@@ -316,7 +331,7 @@ window.GUIDE = {
 <tr><td>AGS – multilateral closed loop</td><td>6–7</td><td>Laterals at bottom-hole rock temperature, Ramey conduction; capex = retrofit + lateral drilling.</td></tr>
 <tr><td>Hydrothermal – open loop</td><td>9</td><td>DST flow capped by PI and reservoir heat in place (needs reservoir data).</td></tr>
 <tr><td>EGS – stimulated, water</td><td>5–7</td><td>Heat in the stimulated volume × recovery factor; pumping from impedance; capex includes stimulation and a new injector.</td></tr>
-<tr><td>CO₂-EGS / CPG</td><td>4–5</td><td>Supercritical CO₂ in the depleted reservoir (or stimulated rock): 1.5× the heat extraction of water, thermosiphon, CO₂ turbine; CO₂ lost to the formation counts as stored (credit at the “CO₂ price”).</td></tr></table>
+<tr><td>CO₂-EGS / CPG</td><td>4–5</td><td>Supercritical CO₂ in the depleted reservoir (or stimulated rock): CO₂ properties from Peng–Robinson, flow from the mobility ratio and thermosiphon pressure, CO₂ turbine; CO₂ lost to the formation counts as stored (credit at the “CO₂ price”).</td></tr></table>
 <p>Saleable energy is capped by local demand (default offshore 1,000 kWth heat, 5,000 kWe power). All assumptions are under Project properties → <b>Technology comparison</b>. “Export CSV” saves the detail table.</p>
 
 <h3 id="g16">16. Automatic updates and sync</h3>
@@ -327,5 +342,20 @@ window.GUIDE = {
 <li><b>Several tabs:</b> a change in one tab updates the other tabs showing the same project.</li>
 <li><b>Volve project:</b> its wells refresh automatically when the Volve data on the web is updated; your parameter changes are kept.</li>
 </ul>
+
+<h3 id="g17">17. Scientific basis and confidence</h3>
+<table><tr><th>Calculation</th><th>Method – reference</th><th>Confidence</th></tr>
+<tr><td>Static temperature from BHT</td><td>Horner (1951); Harrison et al. (1983)</td><td>Industry standard</td></tr>
+<tr><td>Offshore gradient</td><td>T(z) = seabed T + G·(z − water depth); least squares through the measured points</td><td>Good with ≥ 3 DST points</td></tr>
+<tr><td>Coaxial closed loop (CLGS)</td><td>Ramey (1962) time function f(t); Darcy–Weisbach hydraulics, Swamee–Jain</td><td>Standard; not calibrated on a real well</td></tr>
+<tr><td>Multilateral AGS</td><td>Line-source conduction (Ramey) per lateral at rock temperature; Eavor-Loop type (Beckers et al. 2022)</td><td>Medium: no thermal interference between laterals</td></tr>
+<tr><td>Reservoir – open loop</td><td>Volumetric method (Muffler &amp; Cataldi 1978), 10 % recovery (Williams et al. 2008); cold front and spacing (Gringarten &amp; Sauty 1975); P10–P90 by Monte Carlo on the confidence of area and flow</td><td>Depends on reservoir data; estimates marked “≈”</td></tr>
+<tr><td>EGS</td><td>Heat in the stimulated rock × recovery factor, flow impedance (Tester et al. 2006, MIT)</td><td>Medium: generic, not field-specific</td></tr>
+<tr><td>CO₂-EGS / CPG</td><td>CO₂ properties: Peng–Robinson (1976) equation of state, viscosity fitted to NIST data; flow from the CO₂/water mobility ratio (Brown 2000; Pruess 2006); thermosiphon (Atrens et al. 2009); wellhead temperature with expansion (Adams et al. 2014); CPG in sedimentary reservoirs (Randolph &amp; Saar 2011)</td><td>Physics-based; 5 % CO₂ loss and turbine efficiency are assumptions; TRL 4–5</td></tr>
+<tr><td>ORC</td><td>Exergy factor × Carnot efficiency at the log-mean source temperature, with pinch (DiPippo 2016)</td><td>Screening (±20 %)</td></tr>
+<tr><td>Value of heat</td><td>Cost of the displaced heat: gas boiler ≈ 950 VND/kWh (gas ≈ 10 USD/MMBtu, η 90 %); heat pump 735 VND/kWh (electricity/COP 3)</td><td>Assumption – set from the real consumer</td></tr>
+<tr><td>Capital costs</td><td>ORC ≈ 3,800 USD/kW; lateral drilling ≈ 1,200 USD/m; new offshore well ≈ 3,000 USD/m; tie-back of a well without a host 250 bn VND</td><td>Screening-level assumptions (±50 %)</td></tr>
+<tr><td>Economics</td><td>NPV, LCOE (capital recovery factor), P&amp;A deferral, CO₂ credit; local heat/power demand caps what can be sold</td><td>Standard formulas</td></tr></table>
+<p>In the <b>Parameter Table</b> and <b>Technology Comparison</b>: “≈” marks estimates, “P10–P90” is the uncertainty range of the open-loop NPV. Not included yet: well integrity from cement logs, reservoir flow simulation, quoted costs.</p>
 `,
 };
