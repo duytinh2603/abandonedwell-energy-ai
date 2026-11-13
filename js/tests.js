@@ -76,9 +76,11 @@
     const e = M.economics(base, { life: 25, capexOn: 10, capexOff: 10, pipeCost: 0, opexPct: 0, rate: 10, hours: 8000, heatPrice: 0, pumpKW: 0, elecPrice: 0 }, { location: 'onshore', distance: 0 });
     return { ok: near(e.npv, -10, 1e-6) && near(e.annuity, 9.077, 0.001), detail: `NPV ${e.npv.toFixed(3)}, niên kim ${e.annuity.toFixed(3)}` };
   });
-  test('Giá trị hoãn hủy giếng: 20 tỷ hoãn 10 năm ở 10% = 12,29 tỷ', () => {
-    const e = M.economics({ L: 3000, G: 3.3 }, { life: 5, capexOn: 0, capexOff: 0, pipeCost: 0, opexPct: 0, rate: 10, hours: 0, heatPrice: 0, pumpKW: 0, elecPrice: 0, paCost: 20, paYears: 10 }, { location: 'onshore', distance: 0 });
-    return { ok: near(e.deferral, 12.289, 0.01), detail: `${e.deferral.toFixed(3)} tỷ` };
+  test('Giá trị hoãn hủy giếng: 20 tỷ hủy sau 10 năm ở 10 % = 12,29 tỷ; trượt giá 3 %/năm còn 9,64 tỷ', () => {
+    const eco = { life: 10, capexOn: 0, capexOff: 0, pipeCost: 0, opexPct: 0, rate: 10, hours: 0, heatPrice: 0, pumpKW: 0, elecPrice: 0, paCost: 20 };
+    const e = M.economics({ L: 3000, G: 3.3 }, eco, { location: 'onshore', distance: 0 });
+    const f = M.economics({ L: 3000, G: 3.3 }, Object.assign({}, eco, { paEsc: 3 }), { location: 'onshore', distance: 0 });
+    return { ok: near(e.deferral, 12.289, 0.01) && near(f.deferral, 20 * (1 - Math.pow(1.03 / 1.1, 10)), 0.01), detail: `${e.deferral.toFixed(3)} và ${f.deferral.toFixed(3)} tỷ` };
   });
 
   /* 6. Machine learning */
@@ -149,6 +151,25 @@
     const a = M.normaliseWell({ id: 'x', depth_m: 3000, bht_c: 120, location: 'offshore' }, 20, 0), b = M.normaliseWell({ id: 'x', depth_m: 3000, bht_c: 120, location: 'offshore' }, 20, 120);
     const Ta = 20 + a.G / 100 * 3000, Tb = 20 + b.G / 100 * (3000 - 120);
     return { ok: b.G > a.G && Math.abs(Ta - Tb) < 1e-6 && b.wd === 120, detail: `G ${a.G.toFixed(3)} → ${b.G.toFixed(3)} °C/100 m, T đáy ${Tb.toFixed(1)} °C` };
+  });
+
+  /* 9. Well decision and CO2 storage */
+  test('Quyết định giếng: hủy ngay = −C; hoãn có trượt giá; trượt giá bằng lãi suất thì hoãn không lợi', () => {
+    const base = { C: 100, g: 0, r: 0.10, n: 10, hold: 0, L: 25, geo: 20, co2: null };
+    const a = window.AWTech.decide(base), o = (r, id) => r.options.find((x) => x.id === id);
+    const b = window.AWTech.decide(Object.assign({}, base, { g: 0.10 })), c = window.AWTech.decide(Object.assign({}, base, { hold: 3 }));
+    const ok = o(a, 'now').npv === -100 && near(o(a, 'defer').npv, -100 / Math.pow(1.1, 10), 1e-9) && near(o(a, 'geo').npv, 20 - 100 / Math.pow(1.1, 25), 1e-9)
+      && near(o(b, 'defer').npv, -100, 1e-9) && o(c, 'defer').npv < o(a, 'defer').npv && a.best.id === 'geo' && near(a.best.gain, a.best.npv + 100, 1e-9);
+    return { ok, detail: `hủy ngay −100; hoãn 10 năm ${o(a, 'defer').npv.toFixed(1)}; địa nhiệt ${o(a, 'geo').npv.toFixed(1)}; trượt giá 10 %: hoãn ${o(b, 'defer').npv.toFixed(1)}` };
+  });
+  test('Lưu trữ CO₂: sức chứa = A·h·φ·ρ·E; phí hòa vốn làm NPV = 0', () => {
+    const res = { A: 2, h: 20, phi: 0.15, z: 3000, Tres: 120, flow: 5 };
+    const o = { E: 0.05, life: 25, hours: 8000, fee: 0, capex: 80, opexPct: 3, rate: 0.10, integrity: 'good' };
+    const s0 = window.AWTech.co2Storage(res, o), exp = 2e6 * 20 * 0.15 * s0.rho * 0.05 / 1000;
+    const s1 = window.AWTech.co2Storage(res, Object.assign({}, o, { fee: s0.breakEvenFee }));
+    const none = window.AWTech.co2Storage(null, o), shallow = window.AWTech.co2Storage(Object.assign({}, res, { z: 500 }), o);
+    const ok = near(s0.capT, exp, 1) && s0.rho > 400 && s0.rho < 800 && Math.abs(s1.npv) < 1e-6 && none.status === 'nodata' && shallow.status === 'no';
+    return { ok, detail: `ρ ${s0.rho.toFixed(0)} kg/m³, sức chứa ${(s0.capT / 1000).toFixed(0)} nghìn tấn, ${(s0.rateT / 1000).toFixed(1)} nghìn tấn/năm, phí hòa vốn ${(s0.breakEvenFee / 1000).toFixed(0)} nghìn đ/tấn` };
   });
 
   const tb = document.getElementById('rows'); let pass = 0;

@@ -2,12 +2,12 @@
 window.GUIDE = {
   vi: `
 <h2>Hướng dẫn sử dụng AbandonedWell Energy AI</h2>
-<p class="muted">Phiên bản web v0.7 · Công cụ sàng lọc giếng dầu khí ngừng khai thác để cải tạo thành giếng địa nhiệt.</p>
+<p class="muted">Phiên bản web v0.8 · Công cụ sàng lọc giếng dầu khí ngừng khai thác để cải tạo thành giếng địa nhiệt.</p>
 <nav class="toc"><b>Mục lục</b><ol>
 <li><a href="#g1">Giao diện</a></li><li><a href="#g2">Tạo và quản lý dự án</a></li><li><a href="#g3">Nhập dữ liệu (LAS, CSV, nhập tay)</a></li>
 <li><a href="#g4">Thuộc tính giếng và nguồn gradient</a></li><li><a href="#g4b">Học máy – mô hình nhiệt độ</a></li><li><a href="#g5">Biểu đồ log</a></li><li><a href="#g6">Sàng lọc và xếp hạng</a></li>
 <li><a href="#g7">Báo cáo giếng</a></li><li><a href="#g8">Phương án sử dụng (ORC, nhiệt trực tiếp, vỉa chứa)</a></li><li><a href="#g9">Độ nhạy</a></li>
-<li><a href="#g10">Thông số dự án</a></li><li><a href="#g11">Bảo mật dữ liệu</a></li><li><a href="#g12">Xử lý sự cố</a></li><li><a href="#g13">Giới hạn của mô hình</a></li><li><a href="#g14">Dự án mẫu mỏ Volve (dữ liệu thật)</a></li><li><a href="#g15">So sánh công nghệ địa nhiệt</a></li><li><a href="#g16">Cập nhật và đồng bộ tự động</a></li><li><a href="#g17">Cơ sở khoa học và mức tin cậy</a></li></ol></nav>
+<li><a href="#g10">Thông số dự án</a></li><li><a href="#g11">Bảo mật dữ liệu</a></li><li><a href="#g12">Xử lý sự cố</a></li><li><a href="#g13">Giới hạn của mô hình</a></li><li><a href="#g14">Dự án mẫu mỏ Volve (dữ liệu thật)</a></li><li><a href="#g15">So sánh công nghệ địa nhiệt</a></li><li><a href="#g16">Cập nhật và đồng bộ tự động</a></li><li><a href="#g17">Cơ sở khoa học và mức tin cậy</a></li><li><a href="#g18">Quyết định cho từng giếng</a></li></ol></nav>
 
 <h3 id="g1">1. Giao diện</h3>
 <ul>
@@ -131,7 +131,7 @@ window.GUIDE = {
 <tr><td>Giếng bị “bỏ qua”</td><td>Thiếu chiều sâu hoặc gradient/BHT hợp lệ.</td></tr>
 <tr><td>Không thấy dự án cũ</td><td>Đang dùng trình duyệt/máy khác → Mở tệp dự án.</td></tr>
 <tr><td>Web không cập nhật bản mới</td><td>Nhấn Ctrl+F5 (có thể hai lần vì bản ngoại tuyến).</td></tr>
-<tr><td>Muốn kiểm tra phép tính</td><td>Mở <a href="tests.html" target="_blank">tests.html</a>: 29 kiểm thử tự động so với mô hình Python v0.1 và công thức chuẩn.</td></tr></table>
+<tr><td>Muốn kiểm tra phép tính</td><td>Mở <a href="tests.html" target="_blank">tests.html</a>: 31 kiểm thử tự động so với mô hình Python v0.1 và công thức chuẩn.</td></tr></table>
 
 <h3 id="g13">13. Giới hạn của mô hình</h3>
 <p>Gradient tuyến tính, đá đồng nhất, tổn thất ống đi lên cố định; ORC tính theo hệ số exergy; vỉa tính theo phương pháp thể tích. Kết quả dùng để <b>sàng lọc</b>, chưa thay cho thiết kế chi tiết, mô phỏng thủy động hay đánh giá toàn vẹn giếng thực tế. Mô hình học máy chỉ tốt như số điểm đo nhiệt độ có trong dự án. Chưa đọc DLIS/LIS, chưa có bản đồ tọa độ, toàn vẹn giếng vẫn chọn tay, và mô hình chưa được so với số đo sản lượng địa nhiệt thực tế.</p>
@@ -178,15 +178,30 @@ window.GUIDE = {
 <tr><td>Chi phí đầu tư</td><td>ORC ≈ 3.800 USD/kW; khoan nhánh ≈ 1.200 USD/m; giếng ngoài khơi mới ≈ 3.000 USD/m; kết nối giếng không có giàn 250 tỷ đ</td><td>Giả định cấp sàng lọc (±50 %)</td></tr>
 <tr><td>Kinh tế</td><td>NPV, LCOE (hệ số thu hồi vốn), hoãn hủy giếng, tín chỉ CO₂; nhu cầu nhiệt/điện tại chỗ giới hạn phần bán được</td><td>Công thức chuẩn</td></tr></table>
 <p>Trên bảng <b>Thông số kỹ thuật</b> và <b>So sánh công nghệ</b>: dấu “≈” là số ước tính, “P10–P90” là khoảng bất định của NPV vòng hở. Chưa có: đánh giá toàn vẹn giếng từ log xi măng, mô phỏng thủy động vỉa, chi phí theo báo giá.</p>
+
+<h3 id="g18">18. Quyết định cho từng giếng</h3>
+<p>Trang mở đầu của mỗi dự án. Mỗi giếng có bốn lựa chọn, tính bằng giá trị hiện tại (tỷ đ, số âm là chi phí):</p>
+<table><tr><th>Lựa chọn</th><th>Phép tính</th></tr>
+<tr><td>Hủy ngay</td><td>− chi phí hủy giếng hôm nay (C)</td></tr>
+<tr><td>Hoãn n năm</td><td>− chi phí giữ giếng mỗi năm, quy về hôm nay − C·((1 + trượt giá) ÷ (1 + lãi suất))ⁿ</td></tr>
+<tr><td>Địa nhiệt</td><td>NPV năng lượng của công nghệ tốt nhất − chi phí hủy giếng ở cuối đời dự án, quy về hôm nay</td></tr>
+<tr><td>Lưu trữ CO₂</td><td>(phí lưu trữ × tấn/năm − vận hành) quy về hôm nay − vốn − chi phí hủy giếng cuối đời dự án</td></tr></table>
+<ol>
+<li>Nhập 4 ô ở đầu trang: chi phí hủy giếng, trượt giá, số năm hoãn, phí lưu trữ CO₂. Bảng tự tính lại.</li>
+<li>Ô tô xanh là lựa chọn tốt nhất của giếng; cột cuối là số tiền lợi hơn so với hủy ngay.</li>
+<li>Bấm một giếng để xem phép cộng trừ của cả bốn lựa chọn.</li>
+<li>Giếng có chi phí hủy riêng (ví dụ giếng khai thác rẻ hơn giếng thăm dò): nhập ở Thuộc tính giếng → “Chi phí hủy giếng riêng”.</li>
+</ol>
+<p class="warnbox">Lưu trữ CO₂ mới ở mức sức chứa thể tích và tốc độ bơm ép; chưa đánh giá độ kín của giếng và tầng chắn. Chi phí giữ giếng, trượt giá và hệ số E là giả định cần thay bằng số của đơn vị.</p>
 `,
   en: `
 <h2>AbandonedWell Energy AI – User Guide</h2>
-<p class="muted">Web version v0.7 · Screening tool for repurposing shut-in oil &amp; gas wells as geothermal wells.</p>
+<p class="muted">Web version v0.8 · Screening tool for repurposing shut-in oil &amp; gas wells as geothermal wells.</p>
 <nav class="toc"><b>Contents</b><ol>
 <li><a href="#g1">Interface</a></li><li><a href="#g2">Creating and managing projects</a></li><li><a href="#g3">Importing data (LAS, CSV, manual)</a></li>
 <li><a href="#g4">Well properties and gradient source</a></li><li><a href="#g4b">Machine learning – temperature model</a></li><li><a href="#g5">Log plot</a></li><li><a href="#g6">Screening and ranking</a></li>
 <li><a href="#g7">Well report</a></li><li><a href="#g8">Utilisation options (ORC, direct heat, reservoir)</a></li><li><a href="#g9">Sensitivity</a></li>
-<li><a href="#g10">Project parameters</a></li><li><a href="#g11">Data privacy</a></li><li><a href="#g12">Troubleshooting</a></li><li><a href="#g13">Model limitations</a></li><li><a href="#g14">Volve field case study (real data)</a></li><li><a href="#g15">Geothermal technology comparison</a></li><li><a href="#g16">Automatic updates and sync</a></li><li><a href="#g17">Scientific basis and confidence</a></li></ol></nav>
+<li><a href="#g10">Project parameters</a></li><li><a href="#g11">Data privacy</a></li><li><a href="#g12">Troubleshooting</a></li><li><a href="#g13">Model limitations</a></li><li><a href="#g14">Volve field case study (real data)</a></li><li><a href="#g15">Geothermal technology comparison</a></li><li><a href="#g16">Automatic updates and sync</a></li><li><a href="#g17">Scientific basis and confidence</a></li><li><a href="#g18">Decision for each well</a></li></ol></nav>
 
 <h3 id="g1">1. Interface</h3>
 <ul>
@@ -310,7 +325,7 @@ window.GUIDE = {
 <tr><td>Well “skipped”</td><td>Missing depth or a valid gradient/BHT.</td></tr>
 <tr><td>Old project missing</td><td>Different browser/computer → Open Project File.</td></tr>
 <tr><td>Site not updating</td><td>Press Ctrl+F5 (possibly twice because of the offline copy).</td></tr>
-<tr><td>Check the calculations</td><td>Open <a href="tests.html" target="_blank">tests.html</a>: 29 automated checks against the Python v0.1 model and standard formulas.</td></tr></table>
+<tr><td>Check the calculations</td><td>Open <a href="tests.html" target="_blank">tests.html</a>: 31 automated checks against the Python v0.1 model and standard formulas.</td></tr></table>
 
 <h3 id="g13">13. Model limitations</h3>
 <p>Linear gradient, homogeneous rock, fixed up-flow loss; ORC by exergy factor; reservoir by the volumetric method. Results are for <b>screening</b> and do not replace detailed design, reservoir simulation or real well-integrity assessment. The ML model is only as good as the measured temperatures in the project. DLIS/LIS files, a coordinate map and log-based integrity are not supported yet, and the model has not been compared with measured geothermal production.</p>
@@ -357,5 +372,20 @@ window.GUIDE = {
 <tr><td>Capital costs</td><td>ORC ≈ 3,800 USD/kW; lateral drilling ≈ 1,200 USD/m; new offshore well ≈ 3,000 USD/m; tie-back of a well without a host 250 bn VND</td><td>Screening-level assumptions (±50 %)</td></tr>
 <tr><td>Economics</td><td>NPV, LCOE (capital recovery factor), P&amp;A deferral, CO₂ credit; local heat/power demand caps what can be sold</td><td>Standard formulas</td></tr></table>
 <p>In the <b>Parameter Table</b> and <b>Technology Comparison</b>: “≈” marks estimates, “P10–P90” is the uncertainty range of the open-loop NPV. Not included yet: well integrity from cement logs, reservoir flow simulation, quoted costs.</p>
+
+<h3 id="g18">18. Decision for each well</h3>
+<p>The landing page of every project. Each well has four options, as present values (bn VND, negative = cost):</p>
+<table><tr><th>Option</th><th>Arithmetic</th></tr>
+<tr><td>Plug now</td><td>− today’s P&amp;A cost (C)</td></tr>
+<tr><td>Defer n years</td><td>− yearly cost of keeping the well, discounted − C·((1 + escalation) ÷ (1 + discount rate))ⁿ</td></tr>
+<tr><td>Geothermal</td><td>energy NPV of the best technology − P&amp;A at the end of the project, discounted</td></tr>
+<tr><td>CO₂ storage</td><td>(storage fee × t/yr − O&amp;M) discounted − capital − P&amp;A at the end of the project</td></tr></table>
+<ol>
+<li>Fill the four boxes at the top: P&amp;A cost, escalation, years deferred, CO₂ storage fee. The table recalculates.</li>
+<li>The green cell is the well’s best option; the last column is the gain over plugging now.</li>
+<li>Click a well to see the plus-and-minus arithmetic of all four options.</li>
+<li>A well-specific P&amp;A cost (e.g. production wells are cheaper than exploration wells) goes in Well properties → “Well-specific P&amp;A cost”.</li>
+</ol>
+<p class="warnbox">CO₂ storage covers volumetric capacity and injection rate only; well and caprock containment are not assessed. The cost of keeping a well, escalation and E are assumptions to replace with your own figures.</p>
 `,
 };

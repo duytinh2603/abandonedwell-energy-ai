@@ -244,5 +244,47 @@
     return { options: out, best: ranked[0] || null, derived: D };
   }
 
-  global.AWTech = { DEF, evaluate, bestUse, co2, co2TofH, rhoW, muW, hydroCase };
+  /**
+   * CO2 storage in the well's reservoir (screening).
+   * Capacity: volumetric method G = A·h·φ·ρCO2·E (US DOE/NETL, Goodman et al. 2011); E = storage efficiency.
+   * Rate: the smaller of capacity/life and the injectivity scaled from the tested water rate by the CO2/water mobility ratio.
+   * res: {A km², h m, phi 0–1, z m, Tres °C, flow kg/s}; o: {E 0–1, life, hours, dpMax bar, fee VND/t, capex bn, opexPct, rate 0–1, integrity}
+   */
+  function co2Storage(res, o) {
+    if (!res || !(res.A > 0 && res.h > 0)) return { status: 'nodata' };
+    const z = res.z, P = 1e5 + 1000 * G0 * z, c = co2(P, res.Tres);
+    const capT = res.A * 1e6 * res.h * res.phi * c.rho * o.E / 1000; // tonnes
+    const Mr = (c.rho / c.mu) / (rhoW(res.Tres) / muW(res.Tres));
+    const injT = res.flow > 0 ? res.flow * Mr * o.hours * 3.6 : Infinity; // t/yr at the same pressure difference as the water test
+    const rateT = Math.min(capT / o.life, injT);
+    const capex = o.capex, opex = capex * o.opexPct / 100;
+    const ann = o.rate > 0 ? (1 - Math.pow(1 + o.rate, -o.life)) / o.rate : o.life;
+    const yearly = rateT * o.fee / 1e9 - opex;
+    const ok = z >= 800 && o.integrity !== 'poor';
+    return { status: ok ? 'ok' : 'no', why: z < 800 ? 'shallowCO2' : o.integrity === 'poor' ? 'integrity' : '', capT, rateT, injLimited: injT < capT / o.life, rho: c.rho, Mr,
+      capex, opex, yearly, revenue: rateT * o.fee / 1e9, ann, npv: -capex + yearly * ann, breakEvenFee: rateT > 0 ? (capex / ann + opex) * 1e9 / rateT : null };
+  }
+
+  /**
+   * What to do with a well that must eventually be plugged: the four options as present values (bn VND, cost negative).
+   * d: {C: P&A cost today, g: yearly escalation of that cost, r: discount rate, n: years of plain deferral, hold: yearly cost
+   *     of keeping a suspended well, L: project life, geo: energy NPV of the best geothermal option (without P&A) or null,
+   *     co2: storage NPV (without P&A) or null}
+   * P&A paid in year y costs C·(1+g)^y, worth C·((1+g)/(1+r))^y today.
+   */
+  function decide(d) {
+    const pv = (y) => d.C * Math.pow((1 + d.g) / (1 + d.r), y);
+    const annN = d.r > 0 ? (1 - Math.pow(1 + d.r, -d.n)) / d.r : d.n;
+    const opts = [
+      { id: 'now', npv: -d.C, pa: -d.C },
+      { id: 'defer', npv: -d.hold * annN - pv(d.n), pa: -pv(d.n), hold: -d.hold * annN },
+    ];
+    if (Number.isFinite(d.geo)) opts.push({ id: 'geo', npv: d.geo - pv(d.L), pa: -pv(d.L), ops: d.geo });
+    if (Number.isFinite(d.co2)) opts.push({ id: 'co2', npv: d.co2 - pv(d.L), pa: -pv(d.L), ops: d.co2 });
+    opts.forEach((o) => { o.gain = o.npv - (-d.C); });
+    const best = opts.slice().sort((a, b) => b.npv - a.npv)[0];
+    return { options: opts, best };
+  }
+
+  global.AWTech = { DEF, evaluate, bestUse, co2, co2TofH, rhoW, muW, hydroCase, co2Storage, decide };
 })(window);

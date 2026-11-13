@@ -20,8 +20,10 @@
     t_latN: 2, t_latL: 2000, t_capexLat: 30, t_egsFlow: 30, t_egsV: 0.2, t_egsRf: 20, t_egsImp: 0.15, t_capexStim: 60, t_capexWellM: 0.08, t_co2Loss: 5, t_capexCPG: 40, t_heatDemOff: 1000, t_heatDemOn: 5000, t_elecDem: 5000,
     // offshore datum & wells without a host facility
     wd: 0, capexHost: 250,
+    // well decision: P&A cost escalation (%/yr), yearly cost of a suspended well (bn VND), CO2 storage efficiency (%)
+    paEsc: 3, paHold: 2, t_co2E: 5,
   };
-  const APP_VERSION = 'v0.7.0'; const APP_DATE = '12/11/2026';
+  const APP_VERSION = 'v0.8.0'; const APP_DATE = '13/11/2026';
   const PARAM_VER = 2; // 2: industrial heat valued at the displaced gas-boiler heat, not at the electricity price
   const ELEC_PRICE = 2204;
   const PURPOSE_PRICE = { res: 2204, hp: Math.round(2204 / 3) };
@@ -85,6 +87,7 @@
   ICON.syncFile = svg(`<path d="M8 22a12 12 0 0 1 21-8" fill="none" stroke="${B}" stroke-width="2.6" stroke-linecap="round"/><path d="M30 8v7h-7" fill="none" stroke="${B}" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M32 18a12 12 0 0 1-21 8" fill="none" stroke="#2e7d32" stroke-width="2.6" stroke-linecap="round"/><path d="M10 32v-7h7" fill="none" stroke="#2e7d32" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>`);
   ICON.eng = svg(`<rect x="5" y="6" width="30" height="28" rx="2" fill="#fff" stroke="${B}" stroke-width="2"/><path d="M5 13h30M15 6v28M25 6v28" stroke="${G}" stroke-width="1.4"/><path d="M8 19h4M8 24h4M8 29h4" stroke="${B}" stroke-width="2"/><path d="M18 19h4M18 24h4M28 19h4M28 29h4" stroke="${R}" stroke-width="2"/>`);
   ICON.exportAll = svg(`<rect x="6" y="5" width="22" height="28" rx="2" fill="#e8f5e9" stroke="#2e7d32" stroke-width="2"/><path d="M11 13l8 12M19 13l-8 12" stroke="#2e7d32" stroke-width="2.4"/><circle cx="29" cy="29" r="7" fill="${B}"/><path d="M29 25v7m-3-3 3 3 3-3" stroke="#fff" stroke-width="1.8"/>`);
+  ICON.decide = svg(`<path d="M20 34V20" stroke="${B}" stroke-width="3"/><path d="M20 20 8 9M20 20l12-11" stroke="${B}" stroke-width="3" stroke-linecap="round"/><circle cx="8" cy="8" r="4.5" fill="${R}"/><circle cx="32" cy="8" r="4.5" fill="#2e7d32"/><circle cx="20" cy="5.5" r="4" fill="#ef6c00"/><path d="M20 20V10" stroke="${B}" stroke-width="3"/><rect x="14" y="33" width="12" height="4" rx="1" fill="${B}"/>`);
   ICON.optAll = svg(`<rect x="5" y="6" width="30" height="28" fill="#fff" stroke="${B}" stroke-width="2"/><path d="M5 13h30M5 20h30M5 27h30" stroke="${G}" stroke-width="1.4"/><path d="M14 6v28" stroke="${G}" stroke-width="1.4"/><circle cx="25" cy="16.5" r="2.6" fill="#2e7d32"/><circle cx="21" cy="23.5" r="2.6" fill="${R}"/><circle cx="29" cy="30.5" r="2.6" fill="#ef6c00"/>`);
 
   /* ================= state ================= */
@@ -154,7 +157,7 @@
   let docTimer = null;
   function scheduleDocRefresh() {
     clearTimeout(docTimer);
-    docTimer = setTimeout(() => { const a = S.active; if (a === 'rank' || a === 'sens' || a === 'optall' || a === 'tech' || a === 'eng' || a.startsWith('rep:') || a.startsWith('opt:')) renderDoc(); }, 300);
+    docTimer = setTimeout(() => { const a = S.active; if (a === 'rank' || a === 'sens' || a === 'optall' || a === 'tech' || a === 'eng' || a === 'decide' || a.startsWith('rep:') || a.startsWith('opt:')) renderDoc(); }, 300);
   }
 
   /* ================= project ops ================= */
@@ -169,7 +172,7 @@
       if (+p.params.u_heatHigh === 2204) { p.params.u_heatHigh = DEFAULTS.u_heatHigh; setTimeout(() => log(t('msg.paramMig', { v: DEFAULTS.u_heatHigh }), 'warn'), 0); }
       p.paramVer = PARAM_VER;
     }
-    S.docs = p.wells.length ? ['rank'] : ['start'];
+    S.docs = p.wells.length ? ['decide'] : ['start'];
     S.active = S.docs[0];
     lsSet('aw-last', p.id);
     log(t(msgKey, { n: p.name, w: p.wells.length }), 'ok');
@@ -487,7 +490,7 @@
       upLoss: Math.min(0.9, Math.max(0, n('upLoss') / 100)), sigmaG: Math.max(0, n('sigmaG')), kMin: Math.max(0.5, k - 0.5), kMax: k + 0.5, mcN: 150,
       maxDist: 20, threshold: n('threshold'),
       eco: { heatPrice: n('heatPrice'), capexOn: n('capexOn'), capexOff: n('capexOff'), pipeCost: n('pipe'), opexPct: n('opex'), pumpKW: n('pump'), hours: n('hours'), rate: n('rate'), life: Math.round(Math.min(50, Math.max(1, n('life')))), elecPrice: ELEC_PRICE,
-        pumpAuto: n('pumpAuto') > 0, paCost: n('paCost'), paYears: n('paYears'), co2Factor: n('co2Factor'), co2Price: n('co2Price') },
+        pumpAuto: n('pumpAuto') > 0, paCost: n('paCost'), paYears: n('paYears'), paEsc: n('paEsc'), paHold: Math.max(0, n('paHold')), co2Factor: n('co2Factor'), co2Price: n('co2Price') },
       geom: { csgID: n('csgID'), tubOD: n('tubOD'), tubID: n('tubID') },
       weights: { thermal: n('w_thermal'), integrity: n('w_integrity'), distance: n('w_distance'), econ: n('w_econ') },
     };
@@ -503,9 +506,9 @@
 
   /* ================= ribbon ================= */
   const RIBBON = {
-    home: [['g.project', ['newProject', 'openProject', 'closeProject', 'saveFile', 'openFile', 'syncFile', 'undo']], ['g.well', ['newWell', 'importLas', 'importCsv']], ['g.ai', ['ml']], ['g.view', ['browser', 'props', 'output']]],
+    home: [['g.project', ['newProject', 'openProject', 'closeProject', 'saveFile', 'openFile', 'syncFile', 'undo']], ['g.well', ['newWell', 'importLas', 'importCsv']], ['g.eval', ['decide', 'run']], ['g.ai', ['ml']], ['g.view', ['browser', 'props', 'output']]],
     data: [['g.import', ['importLas', 'importCsv', 'importSurvey', 'importDst']], ['g.export', ['exportLas', 'exportCsv']], ['g.tools', ['nullValue', 'delete']]],
-    geo: [['g.eval', ['params', 'run', 'eng', 'report', 'sens']], ['g.ai', ['ml']], ['g.util', ['optimize', 'optAll', 'tech']], ['g.export', ['exportRank', 'exportAll']]],
+    geo: [['g.eval', ['decide', 'run', 'eng', 'report', 'params']], ['g.ai', ['ml']], ['g.util', ['optimize', 'optAll', 'tech']], ['g.export', ['exportRank', 'exportAll']]],
     plot: [['g.plots', ['logPlot', 'report', 'sens']]],
     help: [['g.help', ['guide', 'about', 'lasHelp', 'sample', 'demo']], ['g.volve', ['volve', 'volveData']]],
   };
@@ -589,18 +592,18 @@
     ['pg.tech', [['m', 'p.m', 0.5], ['Tin', 'p.Tin', 1], ['years', 'p.years', 1], ['T0', 'p.T0', 1], ['wd', 'p.wd', 10], ['k', 'p.k', 0.1], ['Rw', 'p.Rw', 0.01], ['upLoss', 'p.upLoss', 1], ['sigmaG', 'p.sigmaG', 0.05],
       ['pumpAuto', 'p.pumpAuto', 'yesno'], ['csgID', 'p.csgID', 1], ['tubOD', 'p.tubOD', 1], ['tubID', 'p.tubID', 1]]],
     ['pg.econ', [['purpose', 'p.purpose', 'purpose'], ['heatPrice', 'p.heatPrice', 10], ['capexOn', 'p.capexOn', 0.5], ['capexOff', 'p.capexOff', 0.5], ['capexHost', 'p.capexHost', 10], ['pipe', 'p.pipe', 0.1], ['opex', 'p.opex', 0.5], ['pump', 'p.pump', 1], ['hours', 'p.hours', 100], ['rate', 'p.rate', 0.5], ['life', 'p.life', 1],
-      ['paCost', 'p.paCost', 1], ['paYears', 'p.paYears', 1], ['co2Factor', 'p.co2Factor', 0.01], ['co2Price', 'p.co2Price', 10000]]],
+      ['paCost', 'p.paCost', 1], ['paEsc', 'p.paEsc', 0.5], ['paYears', 'p.paYears', 1], ['paHold', 'p.paHold', 0.5], ['co2Factor', 'p.co2Factor', 0.01], ['co2Price', 'p.co2Price', 10000]]],
     ['pg.score', [['w_thermal', 'p.wT', 0.05], ['w_integrity', 'p.wI', 0.05], ['w_distance', 'p.wD', 0.05], ['w_econ', 'p.wE', 0.05], ['threshold', 'p.threshold', 5]]],
     ['pg.util', [['u_Tamb', 'u.Tamb', 1], ['u_approach', 'u.approach', 1], ['u_Tdry', 'u.Tdry', 5], ['u_elec', 'u.elec', 50], ['u_heatHigh', 'u.heatHigh', 50], ['u_heatLow', 'u.heatLow', 50],
       ['u_capexORC', 'u.capexORC', 5], ['u_capexHX', 'u.capexHX', 0.5], ['u_capexOpen', 'u.capexOpen', 1], ['u_whLoss', 'u.whLoss', 1], ['u_Treinj', 'u.Treinj', 1], ['u_Rf', 'u.Rf', 1],
       ['u_RfSwept', 'u.RfSwept', 'yesno'], ['u_elecOff', 'u.elecOff', 50], ['u_pinch', 'u.pinch', 1], ['u_dpMax', 'u.dpMax', 1]]],
     ['pg.techcmp', [['t_latN', 'tp.latN', 1], ['t_latL', 'tp.latL', 100], ['t_capexLat', 'tp.capexLat', 1], ['t_egsFlow', 'tp.egsFlow', 5], ['t_egsV', 'tp.egsV', 0.05], ['t_egsRf', 'tp.egsRf', 5],
-      ['t_egsImp', 'tp.egsImp', 0.01], ['t_capexStim', 'tp.capexStim', 5], ['t_capexWellM', 'tp.capexWellM', 0.01], ['t_co2Loss', 'tp.co2Loss', 1], ['t_capexCPG', 'tp.capexCPG', 5], ['t_heatDemOff', 'tp.heatDemOff', 100], ['t_heatDemOn', 'tp.heatDemOn', 100], ['t_elecDem', 'tp.elecDem', 100]]],
+      ['t_egsImp', 'tp.egsImp', 0.01], ['t_capexStim', 'tp.capexStim', 5], ['t_capexWellM', 'tp.capexWellM', 0.01], ['t_co2Loss', 'tp.co2Loss', 1], ['t_capexCPG', 'tp.capexCPG', 5], ['t_co2E', 'tp.co2E', 1], ['t_heatDemOff', 'tp.heatDemOff', 100], ['t_heatDemOn', 'tp.heatDemOn', 100], ['t_elecDem', 'tp.elecDem', 100]]],
   ];
   const WELL_FIELDS = [
     ['pg.general', [['id', 'f.id', 'text'], ['name', 'f.name', 'text'], ['field', 'f.field', 'text'], ['location', 'f.location', 'location'], ['depth_m', 'f.depth', 1], ['md_m', 'f.md', 1]]],
     ['pg.thermal', [['gradient_c100m', 'f.g', 0.01], ['bht_c', 'f.bht', 0.1], ['bht1_c', 'f.bht1', 0.1], ['dt1_h', 'f.dt1', 0.5], ['bht2_c', 'f.bht2', 0.1], ['dt2_h', 'f.dt2', 0.5], ['tc_h', 'f.tc', 0.5]]],
-    ['pg.status', [['integrity', 'f.integrity', 'integrity'], ['host', 'f.host', 'yesno'], ['distance_km', 'f.dist', 0.5]]],
+    ['pg.status', [['integrity', 'f.integrity', 'integrity'], ['host', 'f.host', 'yesno'], ['distance_km', 'f.dist', 0.5], ['pa_cost', 'f.paCost', 1]]],
     ['pg.res', [['res_A', 'r2.A', 0.1], ['res_h', 'r2.h', 1], ['res_phi', 'r2.phi', 1], ['res_z', 'r2.z', 10], ['res_T', 'r2.T', 1], ['res_flow', 'r2.flow', 0.5], ['res_PI', 'r2.PI', 1], ['res_spacing', 'r2.spacing', 50], ['res_co2', 'r2.co2', 1], ['res_cA', 'r2.cA', 'conf'], ['res_cQ', 'r2.cQ', 'conf']]],
     ['pg.coprod', [['cp_flow', 'cp.flow', 0.5], ['cp_T', 'cp.T', 1]]],
   ];
@@ -681,6 +684,7 @@
     if (id === 'optall') return [ICON.optAll, t('doc.optall')];
     if (id === 'tech') return [ICON.tech, t('doc.tech')];
     if (id === 'eng') return [ICON.eng, t('doc.eng')];
+    if (id === 'decide') return [ICON.decide, t('doc.decide')];
     if (id === 'guide') return [ICON.guide, t('b.guide')];
     if (id === 'volve') return [ICON.volveData, t('doc.volve')];
     if (id === 'ml') return [ICON.ml, t('doc.ml')];
@@ -742,6 +746,7 @@
     if (id === 'optall') return renderOptAll(a);
     if (id === 'tech') return renderTech(a);
     if (id === 'eng') return renderEng(a);
+    if (id === 'decide') return renderDecide(a);
     if (id === 'ml') return renderML(a);
     if (id.startsWith('log:')) return renderLog(a, id.slice(4));
   }
@@ -782,7 +787,8 @@
     a.innerHTML = `<div class="doc">
       <h2>${t('doc.rank')}</h2><div class="hint">${t('rank.hint')}</div>
       <div class="rep-head no-print" style="justify-content:flex-start;gap:8px;flex-wrap:wrap;margin:10px 0">
-        <button class="btn" data-act="ml">${ICON.ml}<span>${t('b.mlRun')}</span></button>
+        <button class="btn" data-act="decide">${ICON.decide}<span>${t('b.decide')}</span></button>
+        <button class="btn ghost" data-act="ml">${t('b.mlRun')}</button>
         <button class="btn ghost" data-act="eng">${t('b.eng')}</button>
         <button class="btn ghost" data-act="tech">${t('b.tech')}</button>
         <button class="btn ghost" data-act="exportAll">${t('b.exportAll')}</button></div>
@@ -966,6 +972,10 @@
     const phi = +well.res_phi > 0 ? +well.res_phi / 100 : 0.1;
     return { A, h, phi, flow, z, Tres, Treinj: Math.max(U.Treinj, U.Tret), Rf: U.Rf, PI: +well.res_PI || 0, spacing: +well.res_spacing || 0, co2: +well.res_co2 || 0 };
   }
+  /** P&A cost of a well today (bn VND): the well's own value when entered, else the project value. */
+  const paCostOf = (well, P) => (well && +well.pa_cost > 0 ? +well.pa_cost : P.eco.paCost || 0);
+  /** Value of moving the P&A spend to the end of the project while its cost escalates. */
+  const paDeferral = (well, P) => paCostOf(well, P) * (1 - Math.pow((1 + P.eco.paEsc / 100) / (1 + P.eco.rate / 100), P.eco.life));
   function evalWell(w) {
     const P = modelParams(), U = utilParams(), well = wellBy(w.uid);
     const resIn = reservoirInput(well, w, P, U);
@@ -973,7 +983,7 @@
     const T = techParams();
     U.heatDem = w.location === 'offshore' ? T.heatDemOff : T.heatDemOn; U.elecDem = T.elecDem; // same demand caps on every page
     if (+well.cp_flow > 0 && +well.cp_T > 0) U.coprod = { flow: +well.cp_flow, T: +well.cp_T };
-    const eco = Object.assign({}, P.eco, { pumpKW: w.pumpKW, deferral: (P.eco.paCost || 0) * (1 - Math.pow(1 + P.eco.rate / 100, -(P.eco.paYears || 0))) });
+    const eco = Object.assign({}, P.eco, { pumpKW: w.pumpKW, deferral: paDeferral(well, P) });
     if (P.eco.pumpAuto) eco.pumpAt = (m) => M.pumpPower(m, w.md, P.geom).kW;
     const hostCapex = (well.host === 0 || well.host === '0') ? P.capexHost : 0; // no platform/host at the well → tie-back cost
     if (resIn && hostCapex) U.capexOpen += hostCapex;
@@ -1084,11 +1094,11 @@
     const p = Object.assign({}, DEFAULTS, S.project ? S.project.params : {});
     const n = (k) => (isFinite(+p[k]) ? +p[k] : DEFAULTS[k]);
     return { latN: Math.max(1, Math.round(n('t_latN'))), latL: Math.max(100, n('t_latL')), capexLat: n('t_capexLat'), egsFlow: Math.max(1, n('t_egsFlow')), egsV: Math.max(0.001, n('t_egsV')), egsRf: n('t_egsRf') / 100,
-      egsImp: n('t_egsImp'), capexStim: n('t_capexStim'), capexWellM: n('t_capexWellM'), co2Loss: n('t_co2Loss'), capexCPG: n('t_capexCPG'), heatDemOff: n('t_heatDemOff'), heatDemOn: n('t_heatDemOn'), elecDem: n('t_elecDem') };
+      egsImp: n('t_egsImp'), capexStim: n('t_capexStim'), capexWellM: n('t_capexWellM'), co2Loss: n('t_co2Loss'), capexCPG: n('t_capexCPG'), co2E: Math.max(0.1, n('t_co2E')) / 100, heatDemOff: n('t_heatDemOff'), heatDemOn: n('t_heatDemOn'), elecDem: n('t_elecDem') };
   }
   function techWell(w) {
     const { ev, resIn, U, P, hostCapex, conf } = evalWell(w);
-    const eco = Object.assign({}, P.eco, { deferral: (P.eco.paCost || 0) * (1 - Math.pow(1 + P.eco.rate / 100, -(P.eco.paYears || 0))) });
+    const eco = Object.assign({}, P.eco, { deferral: paDeferral(wellBy(w.uid), P) });
     const r = window.AWTech.evaluate(w, ev, { P, U, eco, resIn, T: techParams(), wellCapex: w.eco.capex, hostCapex, conf });
     r.ev = ev; r.resIn = resIn; r.conf = conf; r.hostCapex = hostCapex;
     return r;
@@ -1142,6 +1152,71 @@
   $('#docArea').addEventListener('dblclick', (e) => { const r = e.target.closest('#techTbl tbody tr'); if (r) openDoc('opt:' + r.dataset.u); });
   /* read-only hook used to export results into the private results workbook */
   window.AWApp = { techTable: () => techRows(techAll()), exportSheets: () => exportSheets(), project: () => S.project && { name: S.project.name, wells: S.project.wells.length } };
+
+  /* ---------- well decision: plug now / defer / geothermal / CO2 storage ---------- */
+  const DEC = ['now', 'defer', 'geo', 'co2'];
+  function decideRows() {
+    const P = modelParams(), T = techParams(), U = utilParams(), r = P.eco.rate / 100, L = P.eco.life;
+    return techAll().map(({ w, r: tr }) => {
+      const well = wellBy(w.uid) || {}, C = paCostOf(well, P);
+      const geoBest = tr.best, geo = geoBest ? geoBest.npv - paDeferral(well, P) : null; // energy value only; P&A is handled by the decision itself
+      const cs = window.AWTech.co2Storage(tr.resIn, { E: T.co2E, life: L, hours: P.eco.hours, dpMax: U.dpMax, fee: P.eco.co2Price || 0, capex: w.eco.capex + (tr.hostCapex || 0) + T.capexCPG, opexPct: P.eco.opexPct, rate: r, integrity: w.integrity });
+      const d = window.AWTech.decide({ C, g: P.eco.paEsc / 100, r, n: Math.max(1, P.eco.paYears || 10), hold: P.eco.paHold, L, geo, co2: cs.status === 'ok' ? cs.npv : null });
+      return { w, well, tr, cs, d, C, geoBest };
+    });
+  }
+  function renderDecide(a) {
+    const P0 = modelParams();
+    const inp = (k, lab, step) => `<label class="qin"><span>${t(lab)}</span><input type="number" step="${step}" data-dp="${k}" value="${S.project.params[k] === undefined ? DEFAULTS[k] : S.project.params[k]}"></label>`;
+    a.innerHTML = `<div class="doc"><div class="rep-head"><h2 style="margin:0">${t('doc.decide')}</h2><div class="no-print" style="display:flex;gap:8px"><button class="btn ghost" data-act="run">${t('b.run')}</button><button class="btn ghost" data-act="exportAll">${t('b.exportAll')}</button></div></div>
+      <div class="qbar">${inp('paCost', 'dec.in.pa', 1)}${inp('paEsc', 'dec.in.esc', 0.5)}${inp('paYears', 'dec.in.n', 1)}${inp('co2Price', 'dec.in.fee', 50000)}</div>
+      <div id="decBody"><p class="muted" data-keep="1">${t('dec.calc')}</p></div></div>`;
+    $$('[data-dp]', a).forEach((el) => el.addEventListener('change', () => { const v = parseFloat(el.value); if (!isFinite(v) || v < 0) return; snapshot(); S.project.params[el.dataset.dp] = v; touch(); }));
+    setTimeout(() => {
+      if (S.active !== 'decide' || !S.project) return;
+      const rows = decideRows(), body = $('#decBody'); if (!body) return;
+      if (!rows.length) { body.innerHTML = `<p class="muted">${t('proj.empty')}</p>`; return; }
+      const n = P0.eco.paYears || 10, cnt = {}; DEC.forEach((k) => { cnt[k] = 0; });
+      rows.forEach((x) => { cnt[x.d.best.id]++; });
+      const gain = rows.reduce((s0, x) => s0 + x.d.best.gain, 0), liab = rows.reduce((s0, x) => s0 + x.C, 0);
+      const cellOf = (x, id) => { const o = x.d.options.find((q) => q.id === id); if (!o) return `<td class="n dim" title="${esc(id === 'co2' ? t(x.cs.status === 'nodata' ? 'tw.noRes' : 'tw.' + (x.cs.why || 'noFeasible')) : '')}">–</td>`; return `<td class="n${x.d.best.id === id ? ' pick' : ''}">${fmt(o.npv, 0)}</td>`; };
+      if (!S.decSel || !rows.some((x) => x.w.uid === S.decSel)) S.decSel = rows[0].w.uid;
+      body.innerHTML = `${liab > 0 ? '' : `<div class="warnbox">${t('dec.noPa')}</div>`}
+        <div class="kpis">${DEC.map((k) => `<div class="kpi dk-${k}"><span>${t('dec.' + k)}</span><b>${cnt[k]}</b></div>`).join('')}
+          <div class="kpi"><span>${t('dec.k.gain')}</span><b class="${gain > 0 ? 'npv-pos' : ''}">${fmt(gain, 0)}</b></div></div>
+        <div class="tscroll"><table class="tbl dec" id="decTbl"><thead><tr><th>${t('r.well')}</th><th class="n">${t('dec.now')}</th><th class="n">${t('dec.deferN', { n })}</th><th class="n">${t('dec.geo')}</th><th class="n">${t('dec.co2')}</th><th>${t('dec.pick')}</th><th class="n">${t('dec.gain')}</th></tr></thead><tbody>
+          ${rows.map((x) => `<tr data-u="${x.w.uid}" class="${x.w.uid === S.decSel ? 'sel' : ''}"><td><b>${esc(x.w.name || x.w.id)}</b>${x.geoBest ? ` <span class="chip ${x.geoBest.id}">${t('techs.' + x.geoBest.id)}</span>` : ''}</td>${DEC.map((id) => cellOf(x, id)).join('')}
+            <td><span class="chip dk-${x.d.best.id}">${t('dec.' + x.d.best.id)}</span></td><td class="n ${x.d.best.gain > 0 ? 'npv-pos' : ''}"><b>${x.d.best.gain > 0 ? '+' : ''}${fmt(x.d.best.gain, 0)}</b></td></tr>`).join('')}
+        </tbody></table></div>
+        <p class="hint" data-keep="1">${t('dec.unit')}</p>
+        <div id="decCalc"></div>
+        <p class="hint">${t('dec.foot')}</p>`;
+      const calc = () => {
+        const x = rows.find((q) => q.w.uid === S.decSel), box = $('#decCalc'); if (!x || !box) return;
+        const P = modelParams(), r = P.eco.rate / 100, L = P.eco.life, g = P.eco.paEsc / 100;
+        const annL = r > 0 ? (1 - Math.pow(1 + r, -L)) / r : L, annN = r > 0 ? (1 - Math.pow(1 + r, -n)) / r : n;
+        const line = (lab, v, cls = '') => `<tr class="${cls}"><td>${lab}</td><td class="n">${v}</td></tr>`;
+        const money = (v, d = 1) => (v > 0 ? '+' : v < 0 ? '−' : '') + fmt(Math.abs(v), d);
+        const paLater = (y) => line(t('dec.l.paLater', { y, c: fmt(x.C * Math.pow(1 + g, y), 0) }), money(-x.C * Math.pow((1 + g) / (1 + r), y)));
+        const card = (id, inner) => { const o = x.d.options.find((q) => q.id === id); return `<div class="dcard${x.d.best.id === id ? ' pick' : ''}"><h4><span class="chip dk-${id}">${t('dec.' + id)}</span>${x.d.best.id === id ? ` <small>${t('dec.best')}</small>` : ''}</h4>${o ? `<table class="sum">${inner}${line(t('dec.l.total'), money(o.npv), 'tot')}</table>` : `<p class="muted" data-keep="1">${inner}</p>`}</div>`; };
+        const gb = x.geoBest, cs = x.cs;
+        box.innerHTML = `<h3 style="margin:18px 0 8px">${t('dec.calcT', { w: esc(x.w.name || x.w.id) })}</h3><div class="dgrid">
+          ${card('now', line(t('dec.l.paNow'), money(-x.C)))}
+          ${card('defer', line(t('dec.l.hold', { n, h: fmt(P.eco.paHold, 1) }), money(-P.eco.paHold * annN)) + paLater(n))}
+          ${card('geo', gb ? line(t('dec.l.rev') + ` <small>(${esc(t('techs.' + gb.id) + ' · ' + t('tuse.' + gb.use))})</small>`, money(gb.value) + '/' + t('det.yr')) + line(t('dec.l.opex'), money(-(gb.opex + (gb.pumpCost || 0))) + '/' + t('det.yr')) + line(t('dec.l.pv', { y: L, f: fmt(annL, 2) }), money(gb.yearly * annL)) + line(t('dec.l.capex'), money(-gb.capex)) + paLater(L) : t('tw.noFeasible'))}
+          ${card('co2', cs.status === 'ok' ? line(t('dec.l.fee', { t: fmt(cs.rateT / 1000, 1) }), money(cs.revenue, 2) + '/' + t('det.yr')) + line(t('dec.l.opex'), money(-cs.opex, 2) + '/' + t('det.yr')) + line(t('dec.l.pv', { y: L, f: fmt(annL, 2) }), money(cs.yearly * annL)) + line(t('dec.l.capex'), money(-cs.capex)) + paLater(L) + line(t('dec.l.cap', { c: fmt(cs.capT / 1000, 0) }), cs.breakEvenFee ? fmt(cs.breakEvenFee / 1000, 0) + ' ' + t('dec.l.feeUnit') : '–', 'note') : t(cs.status === 'nodata' ? 'tw.noRes' : 'tw.' + (cs.why || 'noFeasible')))}
+        </div>`;
+      };
+      calc();
+      $('#decTbl').addEventListener('click', (e) => { const tr = e.target.closest('tbody tr'); if (!tr) return; S.decSel = tr.dataset.u; $$('#decTbl tbody tr').forEach((q) => q.classList.toggle('sel', q === tr)); S.sel = { t: 'well', uid: tr.dataset.u }; renderTree(); renderProps(); renderRibbon(); calc(); });
+    }, 30);
+  }
+  function decideSheet() {
+    const n = modelParams().eco.paYears || 10;
+    return [[t('r.well'), t('dec.in.pa'), t('dec.now'), t('dec.deferN', { n }), t('dec.geo'), t('tech.best'), t('dec.co2'), t('dec.l.capShort'), t('dec.l.be'), t('dec.pick'), t('dec.gain')]]
+      .concat(decideRows().map((x) => { const o = (id) => { const q = x.d.options.find((z) => z.id === id); return q ? +q.npv.toFixed(1) : ''; };
+        return [x.w.name || x.w.id, x.C, o('now'), o('defer'), o('geo'), x.geoBest ? t('tech.' + x.geoBest.id) + ' · ' + t('tuse.' + x.geoBest.use) : '', o('co2'), x.cs.capT ? +(x.cs.capT / 1000).toFixed(0) : '', x.cs.breakEvenFee ? Math.round(x.cs.breakEvenFee) : '', t('dec.' + x.d.best.id), +x.d.best.gain.toFixed(1)]; }));
+  }
 
   /* ---------- derived engineering parameters ---------- */
   /** One flat record per well with everything the models derive (also used by the exports). */
@@ -1205,7 +1280,7 @@
     const resS = [[t('r.well'), t('r2.A'), t('r2.h'), t('r2.phi'), t('r2.z'), t('r2.T'), t('r2.flow'), t('r2.co2'), t('r2.cA'), t('r2.cQ'), t('f.host'), t('f.note')]]
       .concat(S.project.wells.map((w) => [wellLabel(w), w.res_A, w.res_h, w.res_phi, w.res_z, w.res_T, w.res_flow, w.res_co2, t('conf.' + (w.res_cA === 'e' ? 'e' : 'm')), t('conf.' + (w.res_cQ === 'e' ? 'e' : 'm')), t('opt.' + ((w.host === 0 || w.host === '0') ? 'no' : 'yes')), w.res_note || ''].map((v) => (v === undefined || v === null ? '' : v))));
     void P;
-    return [{ name: t('exp.rank'), rows: rank }, { name: t('exp.matrix'), rows: matrix }, { name: t('exp.detail'), rows: detail }, { name: t('exp.eng'), rows: engS }, { name: t('exp.res'), rows: resS }, { name: t('exp.params'), rows: params }];
+    return [{ name: t('exp.decide'), rows: decideSheet() }, { name: t('exp.rank'), rows: rank }, { name: t('exp.matrix'), rows: matrix }, { name: t('exp.detail'), rows: detail }, { name: t('exp.eng'), rows: engS }, { name: t('exp.res'), rows: resS }, { name: t('exp.params'), rows: params }];
   }
   /** Minimal SpreadsheetML (Excel 2003 XML): several worksheets in one text file that Excel opens directly. */
   function toSpreadsheetML(sheets) {
@@ -1668,6 +1743,7 @@
     optAll() { openDoc('optall'); },
     tech() { openDoc('tech'); },
     eng() { openDoc('eng'); },
+    decide() { openDoc('decide'); },
     exportAll() { download(safeName(S.project.name) + '_ket_qua.xls', toSpreadsheetML(exportSheets()), 'application/vnd.ms-excel'); },
     ml() { if (S.active === 'ml') renderDoc(); else openDoc('ml'); log(t('ml.started')); },
     importSurvey() { $('#fileSurvey').click(); },

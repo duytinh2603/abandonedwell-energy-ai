@@ -183,7 +183,7 @@
     const opex = capex * eco.opexPct / 100; // bn VND / yr
     const r = eco.rate / 100;
     // value of deferring plugging & abandonment: the P&A spend moves paYears later
-    const deferral = (eco.paCost || 0) * (1 - Math.pow(1 + r, -(eco.paYears || 0)));
+    const deferral = (eco.paCost || 0) * (1 - Math.pow((1 + (eco.paEsc || 0) / 100) / (1 + r), life)); // P&A moves to the end of the project and escalates meanwhile
     let npv = -capex + deferral, discCost = capex, discEnergy = 0, cum = -capex + deferral, annuity = 0;
     const years = [], Qy = [], cumCash = [];
     for (let y = 1; y <= life; y++) {

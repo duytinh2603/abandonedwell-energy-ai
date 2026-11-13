@@ -1,5 +1,5 @@
 /* Offline support: cache the app shell; data never leaves the browser (projects live in IndexedDB). */
-const CACHE = 'abandonedwell-v11';
+const CACHE = 'abandonedwell-v12';
 const SHELL = [
   './', 'index.html', 'css/style.css',
   'js/vendor/chart.umd.min.js', 'js/i18n.js', 'js/model.js', 'js/las.js', 'js/utilization.js', 'js/tech.js', 'js/ml.js', 'js/guide.js', 'js/sync.js', 'js/app.js', 'data/volve.json',

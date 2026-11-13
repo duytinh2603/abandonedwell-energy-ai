@@ -21,6 +21,12 @@
   - BHT trong `~Parameter` → hiệu chỉnh Harrison (1983).
 - **CSV danh sách giếng**: `id,name,location,depth_m,gradient_c100m,bht_c,bht1_c,dt1_h,bht2_c,dt2_h,tc_h,integrity,distance_km`
 
+## Quyết định cho giếng cuối đời (v0.8)
+
+- Trang mở đầu **Quyết định cho từng giếng**: hủy ngay · hoãn hủy · địa nhiệt · lưu trữ CO₂, so bằng giá trị hiện tại; bấm một giếng để xem phép cộng trừ.
+- Chi phí hủy giếng có trượt giá; chi phí giữ giếng; chi phí hủy riêng cho từng giếng.
+- Lưu trữ CO₂: sức chứa thể tích G = A·h·φ·ρ·E (US DOE/NETL), tốc độ bơm ép theo tỷ số linh động CO₂/nước, phí hòa vốn.
+
 ## Cơ sở khoa học và giao diện kỹ sư (v0.7)
 
 - Giá nhiệt thống nhất mọi trang: nhiệt công nghiệp = nhiệt lò hơi khí được thay thế (≈ 950 đ/kWh), không còn tính bằng giá điện; nhu cầu nhiệt/điện tại chỗ giới hạn phần bán được ở mọi trang.
@@ -54,7 +60,7 @@
 - **Nhập DST (CSV)**: `well,tvd_m,temp_c,label` (hoặc `md_m`), gradient tính lại theo số đo.
 - **Kinh tế:** công suất bơm theo thủy lực, giá trị hoãn hủy giếng (P&A), tín chỉ CO₂, NPV P10–P90 và xác suất NPV > 0, giá trị điện trên giàn.
 - **Phương án sử dụng:** nguồn nước khai thác kèm (không tốn vốn giếng), pinch ORC, chỉ số khai thác PI, khoảng cách giếng và thời gian nước lạnh tới, vùng nước lạnh quét qua, cảnh báo CO₂, tổng hợp theo mỏ.
-- **Hoàn tác** (Ctrl+Z), **dùng ngoại tuyến** (service worker, Chart.js lưu trong repo), **kiểm thử tự động** tại `tests.html` (29 kiểm tra).
+- **Hoàn tác** (Ctrl+Z), **dùng ngoại tuyến** (service worker, Chart.js lưu trong repo), **kiểm thử tự động** tại `tests.html` (31 kiểm tra).
 
 ## Mô hình
 

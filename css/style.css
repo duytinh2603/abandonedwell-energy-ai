@@ -279,3 +279,19 @@ table.eng tbody tr:hover { background: #f5f9ff; }
 .kpis .kpi { border-radius: 12px; box-shadow: 0 1px 3px rgba(16, 42, 67, .08); }
 .kpis .kpi b { font-size: 22px; }
 .doc h2 { letter-spacing: -.01em; }
+
+/* v0.8: well decision page */
+.qbar { display: flex; flex-wrap: wrap; gap: 10px; margin: 12px 0; }
+.qin { display: flex; flex-direction: column; gap: 3px; font-size: 12px; color: var(--ink2); background: var(--bg2); border-radius: 10px; padding: 8px 12px; }
+.qin input { width: 130px; border: 1px solid var(--line); border-radius: 6px; padding: 5px 8px; font: inherit; font-size: 14px; font-weight: 600; color: var(--ink); background: #fff; }
+table.dec td.pick { background: #e7f4ea; font-weight: 700; color: #1b5e20; } table.dec td.dim { color: var(--muted); }
+table.dec tbody tr { cursor: pointer; } table.dec tbody tr.sel { outline: 2px solid #90caf9; outline-offset: -2px; }
+.chip.dk-now { background: #ffebee; color: #c62828; } .chip.dk-defer { background: #fff8e1; color: #b26a00; } .chip.dk-geo { background: #e7f4ea; color: #2e7d32; } .chip.dk-co2 { background: #f3e5f5; color: #8e24aa; }
+.kpi.dk-now b { color: #c62828; } .kpi.dk-defer b { color: #b26a00; } .kpi.dk-geo b { color: #2e7d32; } .kpi.dk-co2 b { color: #8e24aa; }
+.dgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 12px; }
+.dcard { border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; background: #fff; }
+.dcard.pick { border-color: #66bb6a; box-shadow: 0 0 0 2px #e7f4ea; }
+.dcard h4 { margin: 0 0 8px; font-size: 14px; } .dcard h4 small { color: #2e7d32; font-weight: 700; }
+table.sum { width: 100%; border-collapse: collapse; font-size: 13px; } table.sum td { padding: 3px 0; vertical-align: top; } table.sum td.n { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; padding-left: 10px; }
+table.sum tr.tot td { border-top: 2px solid var(--ink); font-weight: 700; padding-top: 5px; } table.sum tr.note td { color: var(--ink2); font-size: 12px; padding-top: 6px; }
+table.sum small { color: var(--ink2); }
