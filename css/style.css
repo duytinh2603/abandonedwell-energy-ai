@@ -297,3 +297,6 @@ table.sum tr.tot td { border-top: 2px solid var(--ink); font-weight: 700; paddin
 table.sum small { color: var(--ink2); }
 
 table.dec td small { color: var(--ink2); font-weight: 400; } table.dec td.est { color: #e65100; font-weight: 700; }
+
+table.dec td.psi { font-weight: 700; } table.dec td.psi.hi { color: #1b5e20; } table.dec td.psi.mid { color: #b26a00; } table.dec td.psi.lo { color: #c62828; }
+#psiInfo p { margin: 4px 0; }

@@ -328,5 +328,41 @@
     return Math.max(0, withInfo - Math.max(mean, alt));
   }
 
-  global.AWTech = { DEF, evaluate, bestUse, co2, co2TofH, rhoW, muW, hydroCase, co2Storage, decide, portfolio, evpi };
+  /**
+   * Well repurposing index Ψ (psi): one number that says whether re-using a well beats plugging it now.
+   *
+   *        a·V + C·(1 − ρ^L)            a = (1 − (1+r)^−L) / r      present-value factor of L yearly payments
+   *   Ψ = ───────────────────           ρ = (1+g) / (1+r)           escalation of the P&A cost against discounting
+   *          I + a·O                    V = yearly revenue, O = yearly running cost, I = capital, C = P&A cost today
+   *
+   * Numerator: everything gained (energy sold + P&A pushed to the end of the project).  Denominator: everything spent.
+   * Ψ > 1  ⇔  NPV(re-use) > NPV(plug now).  Against plain deferral for n years with holding cost H the credit becomes
+   * C·(ρ^n − ρ^L) + H·a_n  (psiDefer).  o: {V, O, I, C, g, r, L, n, H}
+   */
+  function psi(o) {
+    const a = o.r > 0 ? (1 - Math.pow(1 + o.r, -o.L)) / o.r : o.L, rho = (1 + o.g) / (1 + o.r);
+    const an = o.r > 0 ? (1 - Math.pow(1 + o.r, -(o.n || 0))) / o.r : (o.n || 0);
+    const den = o.I + a * o.O;
+    const credit = o.C * (1 - Math.pow(rho, o.L)), creditD = o.C * (Math.pow(rho, o.n || 0) - Math.pow(rho, o.L)) + (o.H || 0) * an;
+    return { psi: (a * o.V + credit) / den, psiDefer: (a * o.V + creditD) / den, a, rho, credit, energyShare: a * o.V / Math.max(1e-12, a * o.V + credit),
+      // smallest P&A cost / yearly revenue that makes Ψ = 1 (no such P&A cost when escalation ≥ discount rate)
+      Cmin: 1 - Math.pow(rho, o.L) > 1e-9 ? (den - a * o.V) / (1 - Math.pow(rho, o.L)) : null, Vmin: (den - credit) / a };
+  }
+  /**
+   * Closed form of Ψ for a hydrothermal (open-loop) well selling heat, straight from field data:
+   *   T_res = T_sb + G·(z − z_w)/100 − δ                       reservoir temperature at the wellhead
+   *   Q = min( ṁ·c_w·ΔT ,  R_f·A·h·(ρc)·ΔT / t_L ,  D )         kW: well rate, reservoir heat in place, local demand
+   *   V = Q·τ·p_h ,   I = I_0 + i_x·Q ,   O = f·I + W_p·τ·p_e
+   * f: {Tsb, G, z, zw, loss, Tinj, mdot, A km², h m, phi, Rf, D kW, hours, pHeat VND/kWh, I0 bn, ix bn/MW, opexPct, pumpKW, pElec, C, g, r, L, n, H}
+   */
+  function psiHydro(f) {
+    const Tres = f.Tres !== undefined ? f.Tres : f.Tsb + f.G * (f.z - (f.zw || 0)) / 100, Twh = Tres - (f.loss || 0), dT = Math.max(0, Twh - f.Tinj);
+    const rc = (1 - f.phi) * 2650 * 1000 + f.phi * 1000 * CPW;
+    const Qwell = f.mdot * CPW * dT / 1000, Qres = f.Rf * f.A * 1e6 * f.h * rc * Math.max(0, Tres - f.Tinj) / (f.L * SEC_YEAR) / 1000;
+    const Q = Math.min(Qwell, Qres, f.D > 0 ? f.D : Infinity);
+    const I = f.I0 + f.ix * Q / 1000, V = Q * f.hours * f.pHeat / 1e9, O = I * f.opexPct / 100 + (f.pumpKW || 0) * f.hours * f.pElec / 1e9;
+    return Object.assign(psi({ V, O, I, C: f.C, g: f.g, r: f.r, L: f.L, n: f.n, H: f.H }), { Q, Qwell, Qres, Tres, V, O, I, limit: Q === Qres ? 'reservoir' : Q === Qwell ? 'well' : 'demand' });
+  }
+
+  global.AWTech = { DEF, evaluate, bestUse, co2, co2TofH, rhoW, muW, hydroCase, co2Storage, decide, portfolio, evpi, psi, psiHydro };
 })(window);

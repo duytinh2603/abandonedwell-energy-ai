@@ -21,6 +21,11 @@
   - BHT trong `~Parameter` → hiệu chỉnh Harrison (1983).
 - **CSV danh sách giếng**: `id,name,location,depth_m,gradient_c100m,bht_c,bht1_c,dt1_h,bht2_c,dt2_h,tc_h,integrity,distance_km`
 
+## Chỉ số tái sử dụng giếng Ψ (v0.10)
+
+- **Ψ = [a·V + C·(1 − ρ^L)] ÷ [I + a·O]**, a = (1 − (1+r)^−L)/r, ρ = (1+g)/(1+r). Ψ > 1 ⇔ tái sử dụng giếng lợi hơn hủy ngay; có dạng so với hoãn hủy và dạng khép kín cho giếng vòng hở tính thẳng từ số liệu mỏ (gradient, chiều sâu, diện tích, chiều dày, lưu lượng).
+- Hiển thị trên trang Quyết định, kèm tỷ trọng năng lượng trong tổng lợi ích; kiểm thử tự động chứng minh Ψ trùng với so sánh NPV.
+
 ## Kế hoạch cả mỏ và giá trị đo thêm (v0.9)
 
 - **Thuật toán danh mục giếng cuối đời**: các giếng cùng mỏ dùng chung nhu cầu nhiệt/điện của giàn và một lần vốn kết nối; quy hoạch động chọn giếng nào chuyển đổi, chia bao nhiêu nhu cầu, giếng còn lại hoãn/hủy/lưu trữ CO₂ – tối đa tổng giá trị cả mỏ.
@@ -65,7 +70,7 @@
 - **Nhập DST (CSV)**: `well,tvd_m,temp_c,label` (hoặc `md_m`), gradient tính lại theo số đo.
 - **Kinh tế:** công suất bơm theo thủy lực, giá trị hoãn hủy giếng (P&A), tín chỉ CO₂, NPV P10–P90 và xác suất NPV > 0, giá trị điện trên giàn.
 - **Phương án sử dụng:** nguồn nước khai thác kèm (không tốn vốn giếng), pinch ORC, chỉ số khai thác PI, khoảng cách giếng và thời gian nước lạnh tới, vùng nước lạnh quét qua, cảnh báo CO₂, tổng hợp theo mỏ.
-- **Hoàn tác** (Ctrl+Z), **dùng ngoại tuyến** (service worker, Chart.js lưu trong repo), **kiểm thử tự động** tại `tests.html` (33 kiểm tra).
+- **Hoàn tác** (Ctrl+Z), **dùng ngoại tuyến** (service worker, Chart.js lưu trong repo), **kiểm thử tự động** tại `tests.html` (35 kiểm tra).
 
 ## Mô hình
 

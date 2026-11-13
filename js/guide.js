@@ -2,7 +2,7 @@
 window.GUIDE = {
   vi: `
 <h2>Hướng dẫn sử dụng AbandonedWell Energy AI</h2>
-<p class="muted">Phiên bản web v0.9 · Công cụ sàng lọc giếng dầu khí ngừng khai thác để cải tạo thành giếng địa nhiệt.</p>
+<p class="muted">Phiên bản web v0.10 · Công cụ sàng lọc giếng dầu khí ngừng khai thác để cải tạo thành giếng địa nhiệt.</p>
 <nav class="toc"><b>Mục lục</b><ol>
 <li><a href="#g1">Giao diện</a></li><li><a href="#g2">Tạo và quản lý dự án</a></li><li><a href="#g3">Nhập dữ liệu (LAS, CSV, nhập tay)</a></li>
 <li><a href="#g4">Thuộc tính giếng và nguồn gradient</a></li><li><a href="#g4b">Học máy – mô hình nhiệt độ</a></li><li><a href="#g5">Biểu đồ log</a></li><li><a href="#g6">Sàng lọc và xếp hạng</a></li>
@@ -131,7 +131,7 @@ window.GUIDE = {
 <tr><td>Giếng bị “bỏ qua”</td><td>Thiếu chiều sâu hoặc gradient/BHT hợp lệ.</td></tr>
 <tr><td>Không thấy dự án cũ</td><td>Đang dùng trình duyệt/máy khác → Mở tệp dự án.</td></tr>
 <tr><td>Web không cập nhật bản mới</td><td>Nhấn Ctrl+F5 (có thể hai lần vì bản ngoại tuyến).</td></tr>
-<tr><td>Muốn kiểm tra phép tính</td><td>Mở <a href="tests.html" target="_blank">tests.html</a>: 33 kiểm thử tự động so với mô hình Python v0.1 và công thức chuẩn.</td></tr></table>
+<tr><td>Muốn kiểm tra phép tính</td><td>Mở <a href="tests.html" target="_blank">tests.html</a>: 35 kiểm thử tự động so với mô hình Python v0.1 và công thức chuẩn.</td></tr></table>
 
 <h3 id="g13">13. Giới hạn của mô hình</h3>
 <p>Gradient tuyến tính, đá đồng nhất, tổn thất ống đi lên cố định; ORC tính theo hệ số exergy; vỉa tính theo phương pháp thể tích. Kết quả dùng để <b>sàng lọc</b>, chưa thay cho thiết kế chi tiết, mô phỏng thủy động hay đánh giá toàn vẹn giếng thực tế. Mô hình học máy chỉ tốt như số điểm đo nhiệt độ có trong dự án. Chưa đọc DLIS/LIS, chưa có bản đồ tọa độ, toàn vẹn giếng vẫn chọn tay, và mô hình chưa được so với số đo sản lượng địa nhiệt thực tế.</p>
@@ -192,12 +192,13 @@ window.GUIDE = {
 <li>Bấm một giếng để xem phép cộng trừ của cả bốn lựa chọn.</li>
 <li>Giếng có chi phí hủy riêng (ví dụ giếng khai thác rẻ hơn giếng thăm dò): nhập ở Thuộc tính giếng → “Chi phí hủy giếng riêng”.</li>
 </ol>
+<p><b>Chỉ số tái sử dụng giếng Ψ.</b> Ψ = [a·V + C·(1 − ρ<sup>L</sup>)] ÷ [I + a·O], với a = (1 − (1+r)<sup>−L</sup>)/r và ρ = (1+g)/(1+r). Tử số là giá trị năng lượng bán được cộng lợi do lùi hủy giếng; mẫu số là vốn cộng chi phí vận hành. Ψ &gt; 1 ⇔ tái sử dụng lợi hơn hủy ngay. Cột Ψ trên bảng dùng số của công nghệ tốt nhất; với giếng vòng hở, V suy thẳng từ gradient, chiều sâu, diện tích, chiều dày và lưu lượng vỉa (xem ghi chú “Công thức chỉ số Ψ” trên trang).</p>
 <p><b>Kế hoạch cả mỏ.</b> Các giếng cùng tên mỏ dùng chung nhu cầu nhiệt/điện của một giàn và một lần vốn kết nối. Thuật toán quy hoạch động chia nhu cầu thành 4 phần bằng nhau, thử mọi cách chia cho các giếng và chọn tổng giá trị cao nhất; giếng không được chia sẽ nhận lựa chọn tốt nhất còn lại (hoãn, hủy ngay hoặc lưu trữ CO₂). Cột <b>Đáng đo thêm</b> là giá trị kỳ vọng của thông tin hoàn hảo (EVPI): mức tối đa nên chi để thử vỉa hoặc khảo sát diện tích trước khi quyết định.</p>
 <p class="warnbox">Lưu trữ CO₂ mới ở mức sức chứa thể tích và tốc độ bơm ép; chưa đánh giá độ kín của giếng và tầng chắn. Chi phí giữ giếng, trượt giá và hệ số E là giả định cần thay bằng số của đơn vị.</p>
 `,
   en: `
 <h2>AbandonedWell Energy AI – User Guide</h2>
-<p class="muted">Web version v0.9 · Screening tool for repurposing shut-in oil &amp; gas wells as geothermal wells.</p>
+<p class="muted">Web version v0.10 · Screening tool for repurposing shut-in oil &amp; gas wells as geothermal wells.</p>
 <nav class="toc"><b>Contents</b><ol>
 <li><a href="#g1">Interface</a></li><li><a href="#g2">Creating and managing projects</a></li><li><a href="#g3">Importing data (LAS, CSV, manual)</a></li>
 <li><a href="#g4">Well properties and gradient source</a></li><li><a href="#g4b">Machine learning – temperature model</a></li><li><a href="#g5">Log plot</a></li><li><a href="#g6">Screening and ranking</a></li>
@@ -326,7 +327,7 @@ window.GUIDE = {
 <tr><td>Well “skipped”</td><td>Missing depth or a valid gradient/BHT.</td></tr>
 <tr><td>Old project missing</td><td>Different browser/computer → Open Project File.</td></tr>
 <tr><td>Site not updating</td><td>Press Ctrl+F5 (possibly twice because of the offline copy).</td></tr>
-<tr><td>Check the calculations</td><td>Open <a href="tests.html" target="_blank">tests.html</a>: 33 automated checks against the Python v0.1 model and standard formulas.</td></tr></table>
+<tr><td>Check the calculations</td><td>Open <a href="tests.html" target="_blank">tests.html</a>: 35 automated checks against the Python v0.1 model and standard formulas.</td></tr></table>
 
 <h3 id="g13">13. Model limitations</h3>
 <p>Linear gradient, homogeneous rock, fixed up-flow loss; ORC by exergy factor; reservoir by the volumetric method. Results are for <b>screening</b> and do not replace detailed design, reservoir simulation or real well-integrity assessment. The ML model is only as good as the measured temperatures in the project. DLIS/LIS files, a coordinate map and log-based integrity are not supported yet, and the model has not been compared with measured geothermal production.</p>
@@ -387,6 +388,7 @@ window.GUIDE = {
 <li>Click a well to see the plus-and-minus arithmetic of all four options.</li>
 <li>A well-specific P&amp;A cost (e.g. production wells are cheaper than exploration wells) goes in Well properties → “Well-specific P&amp;A cost”.</li>
 </ol>
+<p><b>Well repurposing index Ψ.</b> Ψ = [a·V + C·(1 − ρ<sup>L</sup>)] ÷ [I + a·O], with a = (1 − (1+r)<sup>−L</sup>)/r and ρ = (1+g)/(1+r). The numerator is the energy sold plus the gain from pushing P&amp;A back; the denominator is capital plus running costs. Ψ &gt; 1 ⇔ re-use beats plugging now. The Ψ column uses the best technology; for an open-loop well V follows directly from gradient, depth, reservoir area, thickness and flow (see the “Formula of Ψ” note on the page).</p>
 <p><b>Field plan.</b> Wells with the same field name share one host’s heat/power demand and a single tie-back. A dynamic programme splits the demand into four equal parts, tries every allocation between the wells and keeps the highest total; wells left without a share take their best remaining option (defer, plug now or CO₂ storage). <b>Worth measuring</b> is the expected value of perfect information (EVPI): the most worth spending on a well test or area survey before deciding.</p>
 <p class="warnbox">CO₂ storage covers volumetric capacity and injection rate only; well and caprock containment are not assessed. The cost of keeping a well, escalation and E are assumptions to replace with your own figures.</p>
 `,

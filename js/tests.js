@@ -192,6 +192,32 @@
     return { ok: sure === 0 && near(flip, 10, 1e-9) && none === 0, detail: `chắc chắn: ${sure}; có thể đổi quyết định: ${flip}` };
   });
 
+  /* 11. Well repurposing index Ψ */
+  test('Chỉ số Ψ: Ψ > 1 ⇔ tái sử dụng lợi hơn hủy ngay; Ψ(hoãn) > 1 ⇔ lợi hơn hoãn; C tối thiểu cho Ψ = 1', () => {
+    const X = window.AWTech; let ok = true, n = 0;
+    for (let k = 0; k < 200; k++) {
+      const o = { V: 12 * ((k * 37) % 11) / 10, O: 0.3 + ((k * 13) % 7) / 5, I: 20 + (k * 29) % 300, C: (k * 17) % 200, g: ((k * 7) % 9) / 100, r: 0.05 + ((k * 3) % 8) / 100, L: 10 + (k % 21), n: 5 + (k % 11), H: (k % 5) / 2 };
+      const p = X.psi(o), a = p.a, geo = a * (o.V - o.O) - o.I;
+      const d = X.decide({ C: o.C, g: o.g, r: o.r, n: o.n, hold: o.H, L: o.L, geo, co2: null }), v = (id) => d.options.find((q) => q.id === id).npv;
+      if ((p.psi > 1) !== (v('geo') > v('now')) && Math.abs(v('geo') - v('now')) > 1e-9) ok = false;
+      if ((p.psiDefer > 1) !== (v('geo') > v('defer')) && Math.abs(v('geo') - v('defer')) > 1e-9) ok = false;
+      if (p.Cmin !== null && Math.abs(X.psi(Object.assign({}, o, { C: p.Cmin })).psi - 1) > 1e-9) ok = false;
+      if (o.r - o.g < 1e-9 && p.Cmin !== null) ok = false;
+      if (Math.abs(X.psi(Object.assign({}, o, { V: p.Vmin })).psi - 1) > 1e-9) ok = false;
+      n++;
+    }
+    return { ok, detail: `${n} bộ số ngẫu nhiên: dấu của Ψ − 1 trùng với so sánh NPV; Ψ(C tối thiểu) = 1` };
+  });
+  test('Ψ dạng khép kín cho vòng hở: Q = min(giếng, vỉa, nhu cầu) và khớp mô hình đầy đủ', () => {
+    const X = window.AWTech;
+    const f = { Tsb: 20, G: 3.8, z: 2800, zw: 120, loss: 5, Tinj: 40, mdot: 5, A: 2, h: 20, phi: 0.15, Rf: 0.1, D: 1000, hours: 8000, pHeat: 840, I0: 30, ix: 2, opexPct: 3, pumpKW: 10, pElec: 2204, C: 169, g: 0.03, r: 0.10, L: 25, n: 10, H: 2 };
+    const p = X.psiHydro(f), h = X.hydroCase({ A: 2, h: 20, phi: 0.15, flow: 5, Tres: p.Tres, Treinj: 40, Rf: 0.1, PI: 0 }, { whLoss: 5, dpMax: 20 }, 25, 8000);
+    const Qmodel = Math.min(1000, h.m * 4180 * (h.Twh - 40) / 1000);
+    const big = X.psiHydro(Object.assign({}, f, { A: 50 })), noDem = X.psiHydro(Object.assign({}, f, { A: 50, D: 0 }));
+    const ok = near(p.Tres, 20 + 3.8 * 26.8, 1e-9) && Math.abs(p.Q / Qmodel - 1) < 0.03 && big.limit === 'demand' && noDem.limit === 'well' && near(noDem.Q, 5 * 4180 * (p.Tres - 45) / 1000, 1e-6) && p.psi > 0;
+    return { ok, detail: `T vỉa ${p.Tres.toFixed(1)} °C; Q ${p.Q.toFixed(0)} kW (mô hình ${Qmodel.toFixed(0)}), giới hạn bởi ${p.limit}; Ψ = ${p.psi.toFixed(2)}, Ψ hoãn = ${p.psiDefer.toFixed(2)}` };
+  });
+
   const tb = document.getElementById('rows'); let pass = 0;
   results.forEach((r, i) => {
     if (r.ok) pass++;
