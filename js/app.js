@@ -23,7 +23,7 @@
     // well decision: P&A cost escalation (%/yr), yearly cost of a suspended well (bn VND), CO2 storage efficiency (%)
     paEsc: 3, paHold: 2, t_co2E: 5,
   };
-  const APP_VERSION = 'v0.8.0'; const APP_DATE = '13/11/2026';
+  const APP_VERSION = 'v0.9.0'; const APP_DATE = '14/11/2026';
   const PARAM_VER = 2; // 2: industrial heat valued at the displaced gas-boiler heat, not at the electricity price
   const ELEC_PRICE = 2204;
   const PURPOSE_PRICE = { res: 2204, hp: Math.round(2204 / 3) };
@@ -1100,7 +1100,7 @@
     const { ev, resIn, U, P, hostCapex, conf } = evalWell(w);
     const eco = Object.assign({}, P.eco, { deferral: paDeferral(wellBy(w.uid), P) });
     const r = window.AWTech.evaluate(w, ev, { P, U, eco, resIn, T: techParams(), wellCapex: w.eco.capex, hostCapex, conf });
-    r.ev = ev; r.resIn = resIn; r.conf = conf; r.hostCapex = hostCapex;
+    r.ev = ev; r.resIn = resIn; r.conf = conf; r.hostCapex = hostCapex; r.U = U;
     return r;
   }
   /** Technology results for every screened well; cached until the project changes. */
@@ -1165,6 +1165,46 @@
       return { w, well, tr, cs, d, C, geoBest };
     });
   }
+  /**
+   * Field plan: wells of the same field share the host's heat/power demand and one tie-back.
+   * Adds to every row: plan {units, share, value, gain, best (technology at that share)} and evpi (bn VND).
+   */
+  const PLAN_K = 4;
+  function decidePlan() {
+    const rows = decideRows(), P = modelParams(), T = techParams(), r = P.eco.rate / 100, L = P.eco.life;
+    const groups = new Map();
+    rows.forEach((x) => { const k = (x.well.field || '').trim() || '§' + x.w.uid; if (!groups.has(k)) groups.set(k, []); groups.get(k).push(x); });
+    let total = 0;
+    groups.forEach((list) => {
+      const items = list.map((x) => {
+        const pvPA = x.C * Math.pow((1 + P.eco.paEsc / 100) / (1 + r), L);
+        const alts = x.d.options.filter((o) => o.id !== 'geo').sort((a, b) => b.npv - a.npv);
+        x.alt = alts[0]; x.geoAt = [null];
+        const geo = [-Infinity];
+        for (let k = 1; k <= PLAN_K; k++) {
+          const f = k / PLAN_K, T2 = Object.assign({}, T, { heatDemOff: T.heatDemOff * f, heatDemOn: T.heatDemOn * f, elecDem: T.elecDem * f, mcN: 1 });
+          const r2 = window.AWTech.evaluate(x.w, x.tr.ev, { P, U: x.tr.U, eco: Object.assign({}, P.eco, { deferral: 0 }), resIn: x.tr.resIn, T: T2, wellCapex: x.w.eco.capex, hostCapex: 0, conf: x.tr.conf });
+          x.geoAt.push(r2.best || null);
+          geo.push(r2.best ? r2.best.npv - pvPA : -Infinity);
+        }
+        // value of measuring first: only the reservoir option carries a simulated distribution
+        const hy = x.tr.options.find((o) => o.id === 'hydro');
+        x.evpi = x.geoBest && x.geoBest.id === 'hydro' && hy && hy.sims ? window.AWTech.evpi(hy.sims.map((v) => v - paDeferral(x.well, P) - pvPA), x.alt.npv) : 0;
+        return { id: x.w.uid, alt: x.alt.npv, geo, needsHost: !!x.tr.hostCapex };
+      });
+      const sol = window.AWTech.portfolio(items, PLAN_K, P.capexHost);
+      const nHostUsers = sol.plan.filter((p, i) => p.units > 0 && items[i].needsHost).length;
+      sol.plan.forEach((p, i) => {
+        const x = list[i], tie = p.units > 0 && items[i].needsHost ? P.capexHost / nHostUsers : 0; // the shared tie-back is split between its users
+        x.plan = { units: p.units, share: p.units / PLAN_K, id: p.units ? 'geo' : x.alt.id, value: p.value - tie, best: p.units ? x.geoAt[p.units] : null };
+        x.plan.gain = x.plan.value + x.C;
+        const pb = x.plan.best; // heat actually sold (cogeneration: the heat after the ORC) and power sold
+        x.plan.q = pb ? (pb.use === 'cogen' ? pb.Q2 || 0 : pb.use === 'power' ? 0 : pb.Q || 0) : 0; x.plan.pe = pb ? pb.Pe || 0 : 0;
+      });
+      total += sol.total + list.reduce((a, x) => a + x.C, 0);
+    });
+    return { rows, total, indiv: rows.reduce((a, x) => a + x.d.best.gain, 0), shared: Array.from(groups.values()).some((l) => l.length > 1) };
+  }
   function renderDecide(a) {
     const P0 = modelParams();
     const inp = (k, lab, step) => `<label class="qin"><span>${t(lab)}</span><input type="number" step="${step}" data-dp="${k}" value="${S.project.params[k] === undefined ? DEFAULTS[k] : S.project.params[k]}"></label>`;
@@ -1174,21 +1214,22 @@
     $$('[data-dp]', a).forEach((el) => el.addEventListener('change', () => { const v = parseFloat(el.value); if (!isFinite(v) || v < 0) return; snapshot(); S.project.params[el.dataset.dp] = v; touch(); }));
     setTimeout(() => {
       if (S.active !== 'decide' || !S.project) return;
-      const rows = decideRows(), body = $('#decBody'); if (!body) return;
+      const PL = decidePlan(), rows = PL.rows, body = $('#decBody'); if (!body) return;
       if (!rows.length) { body.innerHTML = `<p class="muted">${t('proj.empty')}</p>`; return; }
       const n = P0.eco.paYears || 10, cnt = {}; DEC.forEach((k) => { cnt[k] = 0; });
-      rows.forEach((x) => { cnt[x.d.best.id]++; });
-      const gain = rows.reduce((s0, x) => s0 + x.d.best.gain, 0), liab = rows.reduce((s0, x) => s0 + x.C, 0);
+      rows.forEach((x) => { cnt[x.plan.id]++; });
+      const gain = PL.total, liab = rows.reduce((s0, x) => s0 + x.C, 0), evTot = rows.reduce((s0, x) => s0 + x.evpi, 0);
       const cellOf = (x, id) => { const o = x.d.options.find((q) => q.id === id); if (!o) return `<td class="n dim" title="${esc(id === 'co2' ? t(x.cs.status === 'nodata' ? 'tw.noRes' : 'tw.' + (x.cs.why || 'noFeasible')) : '')}">–</td>`; return `<td class="n${x.d.best.id === id ? ' pick' : ''}">${fmt(o.npv, 0)}</td>`; };
       if (!S.decSel || !rows.some((x) => x.w.uid === S.decSel)) S.decSel = rows[0].w.uid;
       body.innerHTML = `${liab > 0 ? '' : `<div class="warnbox">${t('dec.noPa')}</div>`}
         <div class="kpis">${DEC.map((k) => `<div class="kpi dk-${k}"><span>${t('dec.' + k)}</span><b>${cnt[k]}</b></div>`).join('')}
           <div class="kpi"><span>${t('dec.k.gain')}</span><b class="${gain > 0 ? 'npv-pos' : ''}">${fmt(gain, 0)}</b></div></div>
-        <div class="tscroll"><table class="tbl dec" id="decTbl"><thead><tr><th>${t('r.well')}</th><th class="n">${t('dec.now')}</th><th class="n">${t('dec.deferN', { n })}</th><th class="n">${t('dec.geo')}</th><th class="n">${t('dec.co2')}</th><th>${t('dec.pick')}</th><th class="n">${t('dec.gain')}</th></tr></thead><tbody>
+        <div class="tscroll"><table class="tbl dec" id="decTbl"><thead><tr><th>${t('r.well')}</th><th class="n">${t('dec.now')}</th><th class="n">${t('dec.deferN', { n })}</th><th class="n">${t('dec.geo')}</th><th class="n">${t('dec.co2')}</th><th>${t('dec.plan')}</th><th class="n">${t('dec.gain')}</th><th class="n">${t('dec.evpi')}</th></tr></thead><tbody>
           ${rows.map((x) => `<tr data-u="${x.w.uid}" class="${x.w.uid === S.decSel ? 'sel' : ''}"><td><b>${esc(x.w.name || x.w.id)}</b>${x.geoBest ? ` <span class="chip ${x.geoBest.id}">${t('techs.' + x.geoBest.id)}</span>` : ''}</td>${DEC.map((id) => cellOf(x, id)).join('')}
-            <td><span class="chip dk-${x.d.best.id}">${t('dec.' + x.d.best.id)}</span></td><td class="n ${x.d.best.gain > 0 ? 'npv-pos' : ''}"><b>${x.d.best.gain > 0 ? '+' : ''}${fmt(x.d.best.gain, 0)}</b></td></tr>`).join('')}
+            <td><span class="chip dk-${x.plan.id}">${t('dec.' + x.plan.id)}</span>${x.plan.units ? ` <small>${esc(t('techs.' + x.plan.best.id))} · ${fmt(x.plan.q)} kWth${x.plan.pe >= 1 ? ' + ' + fmt(x.plan.pe) + ' kWe' : ''}</small>` : ''}</td><td class="n ${x.plan.gain > 0 ? 'npv-pos' : ''}"><b>${x.plan.gain > 0 ? '+' : ''}${fmt(x.plan.gain, 0)}</b></td>
+            <td class="n${x.evpi >= 1 ? ' est' : ' dim'}" title="${esc(t('dec.evpiTip'))}">${x.evpi >= 0.5 ? fmt(x.evpi, 0) : '–'}</td></tr>`).join('')}
         </tbody></table></div>
-        <p class="hint" data-keep="1">${t('dec.unit')}</p>
+        <p class="hint" data-keep="1">${t('dec.unit')}${PL.shared ? ' ' + t('dec.sharedNote', { a: fmt(PL.indiv, 0), b: fmt(PL.total, 0) }) : ''}${evTot >= 1 ? ' ' + t('dec.evpiNote', { v: fmt(evTot, 0) }) : ''}</p>
         <div id="decCalc"></div>
         <p class="hint">${t('dec.foot')}</p>`;
       const calc = () => {
@@ -1213,9 +1254,9 @@
   }
   function decideSheet() {
     const n = modelParams().eco.paYears || 10;
-    return [[t('r.well'), t('dec.in.pa'), t('dec.now'), t('dec.deferN', { n }), t('dec.geo'), t('tech.best'), t('dec.co2'), t('dec.l.capShort'), t('dec.l.be'), t('dec.pick'), t('dec.gain')]]
-      .concat(decideRows().map((x) => { const o = (id) => { const q = x.d.options.find((z) => z.id === id); return q ? +q.npv.toFixed(1) : ''; };
-        return [x.w.name || x.w.id, x.C, o('now'), o('defer'), o('geo'), x.geoBest ? t('tech.' + x.geoBest.id) + ' · ' + t('tuse.' + x.geoBest.use) : '', o('co2'), x.cs.capT ? +(x.cs.capT / 1000).toFixed(0) : '', x.cs.breakEvenFee ? Math.round(x.cs.breakEvenFee) : '', t('dec.' + x.d.best.id), +x.d.best.gain.toFixed(1)]; }));
+    return [[t('r.well'), t('dec.in.pa'), t('dec.now'), t('dec.deferN', { n }), t('dec.geo'), t('tech.best'), t('dec.co2'), t('dec.l.capShort'), t('dec.l.be'), t('dec.pick'), t('dec.gain'), t('dec.plan'), t('dec.planQ'), t('dec.planGain'), t('dec.evpi')]]
+      .concat(decidePlan().rows.map((x) => { const o = (id) => { const q = x.d.options.find((z) => z.id === id); return q ? +q.npv.toFixed(1) : ''; };
+        return [x.w.name || x.w.id, x.C, o('now'), o('defer'), o('geo'), x.geoBest ? t('tech.' + x.geoBest.id) + ' · ' + t('tuse.' + x.geoBest.use) : '', o('co2'), x.cs.capT ? +(x.cs.capT / 1000).toFixed(0) : '', x.cs.breakEvenFee ? Math.round(x.cs.breakEvenFee) : '', t('dec.' + x.d.best.id), +x.d.best.gain.toFixed(1), t('dec.' + x.plan.id) + (x.plan.units ? ' · ' + t('techs.' + x.plan.best.id) : ''), Math.round(x.plan.q), +x.plan.gain.toFixed(1), +x.evpi.toFixed(1)]; }));
   }
 
   /* ---------- derived engineering parameters ---------- */

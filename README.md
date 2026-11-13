@@ -21,6 +21,11 @@
   - BHT trong `~Parameter` → hiệu chỉnh Harrison (1983).
 - **CSV danh sách giếng**: `id,name,location,depth_m,gradient_c100m,bht_c,bht1_c,dt1_h,bht2_c,dt2_h,tc_h,integrity,distance_km`
 
+## Kế hoạch cả mỏ và giá trị đo thêm (v0.9)
+
+- **Thuật toán danh mục giếng cuối đời**: các giếng cùng mỏ dùng chung nhu cầu nhiệt/điện của giàn và một lần vốn kết nối; quy hoạch động chọn giếng nào chuyển đổi, chia bao nhiêu nhu cầu, giếng còn lại hoãn/hủy/lưu trữ CO₂ – tối đa tổng giá trị cả mỏ.
+- **Đáng đo thêm (EVPI)**: mức tối đa nên chi cho thử vỉa/khảo sát trước khi quyết định, tính từ phân bố Monte Carlo của vỉa.
+
 ## Quyết định cho giếng cuối đời (v0.8)
 
 - Trang mở đầu **Quyết định cho từng giếng**: hủy ngay · hoãn hủy · địa nhiệt · lưu trữ CO₂, so bằng giá trị hiện tại; bấm một giếng để xem phép cộng trừ.
@@ -60,7 +65,7 @@
 - **Nhập DST (CSV)**: `well,tvd_m,temp_c,label` (hoặc `md_m`), gradient tính lại theo số đo.
 - **Kinh tế:** công suất bơm theo thủy lực, giá trị hoãn hủy giếng (P&A), tín chỉ CO₂, NPV P10–P90 và xác suất NPV > 0, giá trị điện trên giàn.
 - **Phương án sử dụng:** nguồn nước khai thác kèm (không tốn vốn giếng), pinch ORC, chỉ số khai thác PI, khoảng cách giếng và thời gian nước lạnh tới, vùng nước lạnh quét qua, cảnh báo CO₂, tổng hợp theo mỏ.
-- **Hoàn tác** (Ctrl+Z), **dùng ngoại tuyến** (service worker, Chart.js lưu trong repo), **kiểm thử tự động** tại `tests.html` (31 kiểm tra).
+- **Hoàn tác** (Ctrl+Z), **dùng ngoại tuyến** (service worker, Chart.js lưu trong repo), **kiểm thử tự động** tại `tests.html` (33 kiểm tra).
 
 ## Mô hình
 

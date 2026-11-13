@@ -172,6 +172,26 @@
     return { ok, detail: `ρ ${s0.rho.toFixed(0)} kg/m³, sức chứa ${(s0.capT / 1000).toFixed(0)} nghìn tấn, ${(s0.rateT / 1000).toFixed(1)} nghìn tấn/năm, phí hòa vốn ${(s0.breakEvenFee / 1000).toFixed(0)} nghìn đ/tấn` };
   });
 
+  /* 10. Field portfolio and value of information */
+  test('Danh mục mỏ: chia nhu cầu chung cho giếng lợi nhất, vốn kết nối chỉ trả một lần, không tệ hơn "không làm gì"', () => {
+    const P = window.AWTech.portfolio;
+    // two wells, 4 demand units: A earns more per unit than B; both prefer geothermal when alone
+    const A = { id: 'A', alt: -100, geo: [0, -80, -60, -45, -35], needsHost: false }, B = { id: 'B', alt: -100, geo: [0, -90, -82, -76, -72], needsHost: false };
+    const r = P([A, B], 4, 0), u = (id) => r.plan.find((x) => x.id === id).units;
+    // brute force
+    let best = -Infinity; for (let a = 0; a <= 4; a++) for (let b = 0; a + b <= 4; b++) best = Math.max(best, (a ? A.geo[a] : A.alt) + (b ? B.geo[b] : B.alt));
+    // tie-back: two no-host wells share one 50 bn tie-back
+    const C1 = { id: 'C1', alt: -100, geo: [0, -70, -60, -55, -50], needsHost: true }, C2 = { id: 'C2', alt: -100, geo: [0, -75, -65, -60, -58], needsHost: true };
+    const r2 = P([C1, C2], 4, 50), r3 = P([C1, C2], 4, 500);
+    const ok = near(r.total, best, 1e-9) && u('A') + u('B') <= 4 && u('A') >= u('B') && r2.tieback && near(r2.total, (-60) + (-65) - 50, 1e-9) && !r3.tieback && near(r3.total, -200, 1e-9);
+    return { ok, detail: `A ${u('A')}/4, B ${u('B')}/4 đơn vị, tổng ${r.total.toFixed(0)} (vét cạn ${best.toFixed(0)}); kết nối chung: ${r2.total.toFixed(0)}; kết nối quá đắt → giữ nguyên ${r3.total.toFixed(0)}` };
+  });
+  test('Giá trị đo thêm (EVPI): bằng 0 khi quyết định không đổi, dương khi kết quả đo có thể đổi quyết định', () => {
+    const E = window.AWTech.evpi;
+    const sure = E([10, 12, 14, 16], 0), flip = E([-30, -10, 10, 30], 0), none = E([], 5);
+    return { ok: sure === 0 && near(flip, 10, 1e-9) && none === 0, detail: `chắc chắn: ${sure}; có thể đổi quyết định: ${flip}` };
+  });
+
   const tb = document.getElementById('rows'); let pass = 0;
   results.forEach((r, i) => {
     if (r.ok) pass++;

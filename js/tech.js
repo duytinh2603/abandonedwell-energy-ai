@@ -180,7 +180,7 @@
         sims.sort((x, y) => x - y);
         const q = (p) => sims[Math.min(sims.length - 1, Math.floor(p * sims.length))];
         out.push(Object.assign({ id: 'hydro', trl: '9', status: o ? (R.co2High || conf.A === 'e' || conf.Q === 'e' ? 'cond' : 'ok') : 'no', m: b.h.m, Ts: b.h.Twh, co2t: 0,
-          p10: q(0.1), p50: q(0.5), p90: q(0.9), pPos: sims.filter((x) => x > 0).length / sims.length, est: conf.A === 'e' || conf.Q === 'e',
+          sims, p10: q(0.1), p50: q(0.5), p90: q(0.9), pPos: sims.filter((x) => x > 0).length / sims.length, est: conf.A === 'e' || conf.Q === 'e',
           reasons: reasons([!o && 'noFeasible', R.piLimited && 'piLimited', R.limited && 'resLimited', R.co2High && 'co2', conf.A === 'e' && 'estA', conf.Q === 'e' && 'estQ', host > 0 && 'noHost']) }, o || { Q: 0, Pe: 0, npv: null }));
       }
     }
@@ -286,5 +286,47 @@
     return { options: opts, best };
   }
 
-  global.AWTech = { DEF, evaluate, bestUse, co2, co2TofH, rhoW, muW, hydroCase, co2Storage, decide };
+  /**
+   * End-of-life portfolio for one field (the wells share one host): which wells to convert and how much of the
+   * host's limited demand each gets, so that the field total is highest.
+   *   wells: [{id, alt: value of the best non-geothermal option, geo: [_, v1..vK] value of geothermal when the well is
+   *           allotted k of K equal demand units (−Infinity when infeasible), needsHost: no host facility at this well}]
+   *   tieback: one-off cost paid once if any well without a host is converted (shared infrastructure)
+   * Exact dynamic programme over (well, demand units); solved with and without the tie-back and the better one kept.
+   * Returns {plan: [{id, units, value}], total, tieback: bool}.  units = 0 means "take the non-geothermal option".
+   */
+  function portfolio(wells, K, tieback) {
+    const solve = (allowNoHost) => {
+      let dp = new Array(K + 1).fill(-Infinity); dp[0] = 0; const picks = [];
+      wells.forEach((w) => {
+        const nd = new Array(K + 1).fill(-Infinity), pk = new Array(K + 1).fill(0);
+        for (let u = 0; u <= K; u++) {
+          if (dp[u] === -Infinity) continue;
+          if (dp[u] + w.alt > nd[u]) { nd[u] = dp[u] + w.alt; pk[u] = 0; }
+          if (w.needsHost && !allowNoHost) continue;
+          for (let k = 1; u + k <= K; k++) { const v = w.geo[k]; if (Number.isFinite(v) && dp[u] + v > nd[u + k]) { nd[u + k] = dp[u] + v; pk[u + k] = k; } }
+        }
+        dp = nd; picks.push(pk);
+      });
+      let bu = 0; for (let u = 1; u <= K; u++) if (dp[u] > dp[bu]) bu = u;
+      const plan = []; let u = bu;
+      for (let i = wells.length - 1; i >= 0; i--) { const k = picks[i][u]; plan.unshift({ id: wells[i].id, units: k, value: k ? wells[i].geo[k] : wells[i].alt }); u -= k; }
+      const used = plan.some((p, i) => p.units > 0 && wells[i].needsHost);
+      return { plan, total: dp[bu] - (used ? tieback : 0), tieback: used };
+    };
+    const a = solve(false), b = wells.some((w) => w.needsHost) ? solve(true) : a;
+    return b.total > a.total ? b : a;
+  }
+  /**
+   * Expected value of perfect information: how much better the decision becomes, on average, if the uncertain
+   * option's value were known before choosing (sims: its simulated values; alt: value of the best certain option).
+   */
+  function evpi(sims, alt) {
+    if (!sims || !sims.length) return 0;
+    const mean = sims.reduce((a, b) => a + b, 0) / sims.length;
+    const withInfo = sims.reduce((a, b) => a + Math.max(b, alt), 0) / sims.length;
+    return Math.max(0, withInfo - Math.max(mean, alt));
+  }
+
+  global.AWTech = { DEF, evaluate, bestUse, co2, co2TofH, rhoW, muW, hydroCase, co2Storage, decide, portfolio, evpi };
 })(window);

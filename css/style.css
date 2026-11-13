@@ -295,3 +295,5 @@ table.dec tbody tr { cursor: pointer; } table.dec tbody tr.sel { outline: 2px so
 table.sum { width: 100%; border-collapse: collapse; font-size: 13px; } table.sum td { padding: 3px 0; vertical-align: top; } table.sum td.n { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; padding-left: 10px; }
 table.sum tr.tot td { border-top: 2px solid var(--ink); font-weight: 700; padding-top: 5px; } table.sum tr.note td { color: var(--ink2); font-size: 12px; padding-top: 6px; }
 table.sum small { color: var(--ink2); }
+
+table.dec td small { color: var(--ink2); font-weight: 400; } table.dec td.est { color: #e65100; font-weight: 700; }
