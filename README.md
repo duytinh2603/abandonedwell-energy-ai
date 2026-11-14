@@ -21,6 +21,13 @@
   - BHT trong `~Parameter` → hiệu chỉnh Harrison (1983).
 - **CSV danh sách giếng**: `id,name,location,depth_m,gradient_c100m,bht_c,bht1_c,dt1_h,bht2_c,dt2_h,tc_h,integrity,distance_km`
 
+## Toàn vẹn giếng, khả thi kỹ thuật, xác suất và tuổi thọ (v0.12)
+
+- **Toàn vẹn giếng**: phân loại Tốt / Trung bình / Kém / Chưa rõ từ bằng chứng (CBL, độ dày thành ống, SCP, rào chắn, tuổi giếng, ống chống ăn mòn) theo NORSOK D-010 và ISO 16530-1; không có bằng chứng thì Chưa rõ.
+- **Khả thi kỹ thuật tách khỏi xếp hạng kinh tế**: ma trận công nghệ × toàn vẹn; phương án không khả thi bị loại trước khi so tiền; giếng cần khảo sát được tính giá trị kỳ vọng.
+- **P thành công** = P toàn vẹn × P kinh tế; **tuổi thọ sử dụng** = min(đời dự án, tuổi thọ nhiệt, tuổi thọ ống chống).
+- **Kiểm chứng**: sai số mô hình nhiệt độ trên mọi điểm đo (bỏ từng giếng), bảng nhập số đo giếng kín thật, số liệu công bố để so bậc độ lớn.
+
 ## Ψ* theo từng năm (v0.11)
 
 - **Ψ\* = [Σ V_t/(1+r)^t + C0 − C0·(1+gC)^L/(1+r)^L] ÷ [I0 + Σ O_t/(1+r)^t]** là cơ sở của trang Quyết định: thu và chi tính riêng từng năm, có suy giảm nhiệt của giếng vòng kín (Ramey).
@@ -74,7 +81,7 @@
 - **Nhập DST (CSV)**: `well,tvd_m,temp_c,label` (hoặc `md_m`), gradient tính lại theo số đo.
 - **Kinh tế:** công suất bơm theo thủy lực, giá trị hoãn hủy giếng (P&A), tín chỉ CO₂, NPV P10–P90 và xác suất NPV > 0, giá trị điện trên giàn.
 - **Phương án sử dụng:** nguồn nước khai thác kèm (không tốn vốn giếng), pinch ORC, chỉ số khai thác PI, khoảng cách giếng và thời gian nước lạnh tới, vùng nước lạnh quét qua, cảnh báo CO₂, tổng hợp theo mỏ.
-- **Hoàn tác** (Ctrl+Z), **dùng ngoại tuyến** (service worker, Chart.js lưu trong repo), **kiểm thử tự động** tại `tests.html` (36 kiểm tra).
+- **Hoàn tác** (Ctrl+Z), **dùng ngoại tuyến** (service worker, Chart.js lưu trong repo), **kiểm thử tự động** tại `tests.html` (40 kiểm tra).
 
 ## Mô hình
 

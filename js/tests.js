@@ -238,6 +238,37 @@
     return { ok, detail: `Ψ = Ψ* = ${b.psi.toFixed(3)} khi thu chi đều; thu giảm 3 %/năm: Ψ* ${flat.psi.toFixed(2)} → ${dec.psi.toFixed(2)}; 120 dòng tiền thay đổi theo năm khớp so sánh NPV` };
   });
 
+  /* 13. Well integrity, feasibility, service life, expected value */
+  test('Toàn vẹn: không có bằng chứng → Chưa rõ (không mặc định Trung bình); SCP → Kém; đủ bằng chứng tốt → Tốt', () => {
+    const A = window.AWInt;
+    const none = A.assess({}), manual = A.assess({ integrity: 'fair' }), scp = A.assess({ int_scp: 'yes', int_cbl: 'good' });
+    const good = A.assess({ int_cbl: 'good', int_wall: 95, int_scp: 'no', int_bar: 2, int_year: 2015 }, null, 2026);
+    const part = A.assess({ int_cbl: 'good', int_wall: 95 }), fair = A.assess({ int_cbl: 'partial', int_wall: 95, int_scp: 'no', int_bar: 2 });
+    const corr = A.assess({ int_cbl: 'good', int_wall: 95, int_scp: 'no', int_bar: 2, res_co2: 60 });
+    const ok = none.cls === 'unknown' && none.missing.length === 4 && manual.cls === 'fair' && scp.cls === 'poor' && good.cls === 'good' && part.cls === 'unknown' && fair.cls === 'fair' && corr.cls === 'fair' && corr.corrosive;
+    return { ok, detail: `trống: ${none.cls}; nhập tay: ${manual.cls}; SCP: ${scp.cls}; đủ: ${good.cls}; thiếu: ${part.cls}; xi măng một phần: ${fair.cls}; CO₂ 60 %: ${corr.cls}` };
+  });
+  test('Khả thi kỹ thuật tách khỏi kinh tế: Kém → không công nghệ nào; Chưa rõ → khảo sát trước; EGS cần Tốt; SCP cấm hoãn', () => {
+    const A = window.AWInt, f = (cls, tech, ext) => A.feasible(Object.assign({ cls, corrosive: false, scp: '' }, ext || {}), tech);
+    const ok = ['clgs', 'ags', 'hydro', 'egs', 'cpg'].every((k) => f('poor', k) === 'fail') && ['clgs', 'ags', 'hydro', 'egs', 'cpg'].every((k) => f('unknown', k) === 'cond')
+      && f('fair', 'egs') === 'fail' && f('fair', 'clgs') === 'ok' && f('good', 'hydro', { corrosive: true }) === 'cond' && f('poor', 'defer', { scp: 'yes' }) === 'fail' && f('unknown', 'defer') === 'ok';
+    return { ok, detail: 'ma trận công nghệ × toàn vẹn đúng quy tắc' };
+  });
+  test('Tuổi thọ ống chống và giá trị kỳ vọng: (thành − tối thiểu)·độ dày/tốc độ; kỳ vọng = −khảo sát + P·giá trị + (1−P)·hủy ngay', () => {
+    const A = window.AWInt, a = A.assess({ int_cbl: 'good', int_wall: 90, int_scp: 'no', int_bar: 2 });
+    const lc = A.casingLife(a, 'clgs', { corrClosed: 0.05 }), lh = A.casingLife(a, 'hydro', { corrOpen: 0.2 });
+    const u = A.assess({}), e = A.expected(100, -169, u, 'cond', { inspCost: 5 }), g = A.expected(100, -169, a, 'ok', {}), f = A.expected(100, -169, u, 'fail', {});
+    const ok = near(lc, 0.2 * 12 / 0.05, 1e-9) && near(lh, 0.2 * 12 / 0.2, 1e-9) && near(e.ev, -5 + 0.8 * 100 + 0.2 * -169, 1e-9) && near(g.ev, 0.95 * 100 + 0.05 * -169, 1e-9) && f === null && A.casingLife(u, 'clgs') === null;
+    return { ok, detail: `vòng kín ${lc.toFixed(0)} năm, vòng hở ${lh.toFixed(0)} năm; kỳ vọng (chưa rõ) ${e.ev.toFixed(1)} tỷ đ` };
+  });
+  test('Quyết định theo tuổi thọ: hủy ở cuối tuổi thọ; giếng có SCP không được hoãn; Ψ* tính P&A ở năm La', () => {
+    const X = window.AWTech;
+    const d1 = X.decide({ C: 100, g: 0, r: 0.1, n: 10, hold: 0, L: 25, geo: 20, Lgeo: 12, co2: null }), d2 = X.decide({ C: 100, g: 0, r: 0.1, n: 10, hold: 0, L: 25, geo: null, co2: null, noDefer: true });
+    const p = X.psiStar({ V: 5, O: 1, I0: 30, C0: 100, gC: 0, r: 0.1, L: 25, La: 12 });
+    const ok = near(d1.options.find((o) => o.id === 'geo').npv, 20 - 100 / Math.pow(1.1, 12), 1e-9) && !d2.options.some((o) => o.id === 'defer') && near(p.paL, 100 / Math.pow(1.1, 12), 1e-9);
+    return { ok, detail: `địa nhiệt hủy năm 12: ${d1.options.find((o) => o.id === 'geo').npv.toFixed(1)}; giếng SCP: ${d2.options.map((o) => o.id).join(', ')}` };
+  });
+
   const tb = document.getElementById('rows'); let pass = 0;
   results.forEach((r, i) => {
     if (r.ok) pass++;

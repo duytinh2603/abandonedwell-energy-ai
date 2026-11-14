@@ -1,8 +1,8 @@
 /* Offline support: cache the app shell; data never leaves the browser (projects live in IndexedDB). */
-const CACHE = 'abandonedwell-v15';
+const CACHE = 'abandonedwell-v16';
 const SHELL = [
   './', 'index.html', 'css/style.css',
-  'js/vendor/chart.umd.min.js', 'js/i18n.js', 'js/model.js', 'js/las.js', 'js/utilization.js', 'js/tech.js', 'js/ml.js', 'js/guide.js', 'js/sync.js', 'js/app.js', 'data/volve.json',
+  'js/vendor/chart.umd.min.js', 'js/i18n.js', 'js/model.js', 'js/las.js', 'js/utilization.js', 'js/tech.js', 'js/integrity.js', 'js/ml.js', 'js/guide.js', 'js/sync.js', 'js/app.js', 'data/volve.json',
 ];
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));

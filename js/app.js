@@ -9,7 +9,7 @@
   const DEFAULTS = {
     m: 5, Tin: 30, years: 10, T0: 27, k: 2.5, Rw: 0.10, upLoss: 10, sigmaG: 0.3,
     purpose: 'hp', heatPrice: 735, capexOn: 6, capexOff: 25, pipe: 1.5, opex: 3, pump: 15, hours: 8000, rate: 10, life: 25,
-    w_thermal: 0.5, w_integrity: 0.25, w_distance: 0.15, w_econ: 0.10, threshold: 60,
+    w_thermal: 0.5, w_integrity: 0, w_distance: 0.15, w_econ: 0.10, threshold: 60, // integrity is a feasibility gate, not part of the economic score
     // utilisation optimiser
     u_Tamb: 30, u_approach: 10, u_Tdry: 60, u_elec: 2204, u_heatHigh: 950, u_heatLow: 735,
     u_capexORC: 100, u_capexHX: 2, u_capexOpen: 30, u_whLoss: 5, u_Rf: 10, u_Treinj: 40,
@@ -22,9 +22,11 @@
     wd: 0, capexHost: 250,
     // well decision: P&A cost escalation (%/yr), yearly cost of a suspended well (bn VND), CO2 storage efficiency (%)
     paEsc: 3, paHold: 2, t_co2E: 5,
+    // well integrity
+    i_wallMin: 70, i_wallFair: 85, i_tWall: 12, i_corrOpen: 0.2, i_corrClosed: 0.05, i_pGood: 95, i_pFair: 70, i_pUnknown: 80, i_insp: 5,
   };
-  const APP_VERSION = 'v0.11.0'; const APP_DATE = '14/11/2026';
-  const PARAM_VER = 2; // 2: industrial heat valued at the displaced gas-boiler heat, not at the electricity price
+  const APP_VERSION = 'v0.12.0'; const APP_DATE = '15/11/2026';
+  const PARAM_VER = 3; // 2: industrial heat valued at the displaced gas-boiler heat; 3: integrity is a gate, not a score weight
   const ELEC_PRICE = 2204;
   const PURPOSE_PRICE = { res: 2204, hp: Math.round(2204 / 3) };
   const WELL_COLS = ['id', 'name', 'location', 'depth_m', 'md_m', 'gradient_c100m', 'bht_c', 'bht1_c', 'dt1_h', 'bht2_c', 'dt2_h', 'tc_h', 'integrity', 'distance_km'];
@@ -88,6 +90,8 @@
   ICON.eng = svg(`<rect x="5" y="6" width="30" height="28" rx="2" fill="#fff" stroke="${B}" stroke-width="2"/><path d="M5 13h30M15 6v28M25 6v28" stroke="${G}" stroke-width="1.4"/><path d="M8 19h4M8 24h4M8 29h4" stroke="${B}" stroke-width="2"/><path d="M18 19h4M18 24h4M28 19h4M28 29h4" stroke="${R}" stroke-width="2"/>`);
   ICON.exportAll = svg(`<rect x="6" y="5" width="22" height="28" rx="2" fill="#e8f5e9" stroke="#2e7d32" stroke-width="2"/><path d="M11 13l8 12M19 13l-8 12" stroke="#2e7d32" stroke-width="2.4"/><circle cx="29" cy="29" r="7" fill="${B}"/><path d="M29 25v7m-3-3 3 3 3-3" stroke="#fff" stroke-width="1.8"/>`);
   ICON.decide = svg(`<path d="M20 34V20" stroke="${B}" stroke-width="3"/><path d="M20 20 8 9M20 20l12-11" stroke="${B}" stroke-width="3" stroke-linecap="round"/><circle cx="8" cy="8" r="4.5" fill="${R}"/><circle cx="32" cy="8" r="4.5" fill="#2e7d32"/><circle cx="20" cy="5.5" r="4" fill="#ef6c00"/><path d="M20 20V10" stroke="${B}" stroke-width="3"/><rect x="14" y="33" width="12" height="4" rx="1" fill="${B}"/>`);
+  ICON.integ = svg(`<path d="M14 4h12v4h-2v26h-8V8h-2z" fill="#e3f0fc" stroke="${B}" stroke-width="2" stroke-linejoin="round"/><path d="M16 14h8M16 20h8M16 26h8" stroke="${G}" stroke-width="1.6"/><circle cx="30" cy="29" r="7" fill="#2e7d32"/><path d="M27 29l2 2 4-4.5" stroke="#fff" stroke-width="2" fill="none"/>`);
+  ICON.valid = svg(`<rect x="5" y="5" width="30" height="30" rx="2" fill="#fff" stroke="${B}" stroke-width="2"/><path d="M9 31 31 9" stroke="${G}" stroke-width="1.4" stroke-dasharray="3 2"/><circle cx="13" cy="26" r="2.2" fill="${R}"/><circle cx="18" cy="23" r="2.2" fill="${R}"/><circle cx="22" cy="16" r="2.2" fill="${R}"/><circle cx="27" cy="13" r="2.2" fill="${R}"/><circle cx="16" cy="20" r="2.2" fill="${B}"/>`);
   ICON.optAll = svg(`<rect x="5" y="6" width="30" height="28" fill="#fff" stroke="${B}" stroke-width="2"/><path d="M5 13h30M5 20h30M5 27h30" stroke="${G}" stroke-width="1.4"/><path d="M14 6v28" stroke="${G}" stroke-width="1.4"/><circle cx="25" cy="16.5" r="2.6" fill="#2e7d32"/><circle cx="21" cy="23.5" r="2.6" fill="${R}"/><circle cx="29" cy="30.5" r="2.6" fill="#ef6c00"/>`);
 
   /* ================= state ================= */
@@ -157,7 +161,7 @@
   let docTimer = null;
   function scheduleDocRefresh() {
     clearTimeout(docTimer);
-    docTimer = setTimeout(() => { const a = S.active; if (a === 'rank' || a === 'sens' || a === 'optall' || a === 'tech' || a === 'eng' || a === 'decide' || a.startsWith('rep:') || a.startsWith('opt:')) renderDoc(); }, 300);
+    docTimer = setTimeout(() => { const a = S.active; if (a === 'rank' || a === 'sens' || a === 'optall' || a === 'tech' || a === 'eng' || a === 'decide' || a === 'integ' || a === 'valid' || a.startsWith('rep:') || a.startsWith('opt:')) renderDoc(); }, 300);
   }
 
   /* ================= project ops ================= */
@@ -170,6 +174,7 @@
     p.params = Object.assign({}, DEFAULTS, p.params || {});
     if (!(p.paramVer >= PARAM_VER)) {
       if (+p.params.u_heatHigh === 2204) { p.params.u_heatHigh = DEFAULTS.u_heatHigh; setTimeout(() => log(t('msg.paramMig', { v: DEFAULTS.u_heatHigh }), 'warn'), 0); }
+      if (+p.params.w_integrity === 0.25) { p.params.w_integrity = 0; setTimeout(() => log(t('msg.intMig'), 'warn'), 0); }
       p.paramVer = PARAM_VER;
     }
     S.docs = p.wells.length ? ['decide'] : ['start'];
@@ -191,7 +196,7 @@
     renderAll();
   }
   function newWellObj(o) {
-    return Object.assign({ uid: uid(), id: '', name: '', field: '', location: 'onshore', integrity: 'fair', distance_km: 5, curves: [] }, o);
+    return Object.assign({ uid: uid(), id: '', name: '', field: '', location: 'onshore', integrity: 'unknown', distance_km: 5, curves: [] }, o);
   }
 
   /* ================= LAS import ================= */
@@ -297,8 +302,8 @@
         else if (v !== '') o[h] = parseFloat(v.replace(',', '.'));
       });
       o.location = /off|ngoài/i.test(o.location || '') ? 'offshore' : 'onshore';
-      const ig = (o.integrity || 'fair').toLowerCase();
-      o.integrity = /good|tốt/.test(ig) ? 'good' : /poor|kém/.test(ig) ? 'poor' : 'fair';
+      const ig = (o.integrity || '').toLowerCase();
+      o.integrity = /good|tốt/.test(ig) ? 'good' : /poor|kém/.test(ig) ? 'poor' : /fair|trung/.test(ig) ? 'fair' : 'unknown';
       return o;
     });
   }
@@ -452,7 +457,7 @@
     D.wells.filter(volveUsable).forEach((vw) => {
       const kb = vw.kb || 54.9;
       const w = newWellObj({
-        id: vw.name, name: vw.name, field: 'Volve', location: 'offshore', integrity: 'fair', distance_km: 0,
+        id: vw.name, name: vw.name, field: 'Volve', location: 'offshore', integrity: 'unknown', distance_km: 0,
         depth_m: Math.round(vw.tdTVD - kb), md_m: Math.round(vw.tdMD), lat: vw.lat, lon: vw.lon, kb,
         note: t('volve.wellNote', { src: vw.logSrc || '–' }),
       });
@@ -498,7 +503,7 @@
   function screen() {
     if (!S.project) return null;
     if (!S.result) {
-      const raw = S.project.wells.map((w) => { const o = {}; ['uid'].concat(WELL_COLS).forEach((k) => { o[k] = w[k]; }); return o; });
+      const raw = S.project.wells.map((w) => { const o = {}; ['uid'].concat(WELL_COLS).forEach((k) => { o[k] = w[k]; }); o.integrity = intOf(w).cls; return o; });
       S.result = M.screen(raw, modelParams());
     }
     return S.result;
@@ -506,9 +511,9 @@
 
   /* ================= ribbon ================= */
   const RIBBON = {
-    home: [['g.project', ['newProject', 'openProject', 'closeProject', 'saveFile', 'openFile', 'syncFile', 'undo']], ['g.well', ['newWell', 'importLas', 'importCsv']], ['g.eval', ['decide', 'run']], ['g.ai', ['ml']], ['g.view', ['browser', 'props', 'output']]],
+    home: [['g.project', ['newProject', 'openProject', 'closeProject', 'saveFile', 'openFile', 'syncFile', 'undo']], ['g.well', ['newWell', 'importLas', 'importCsv']], ['g.eval', ['decide', 'integ', 'run']], ['g.ai', ['ml']], ['g.view', ['browser', 'props', 'output']]],
     data: [['g.import', ['importLas', 'importCsv', 'importSurvey', 'importDst']], ['g.export', ['exportLas', 'exportCsv']], ['g.tools', ['nullValue', 'delete']]],
-    geo: [['g.eval', ['decide', 'run', 'eng', 'report', 'params']], ['g.ai', ['ml']], ['g.util', ['optimize', 'optAll', 'tech']], ['g.export', ['exportRank', 'exportAll']]],
+    geo: [['g.eval', ['decide', 'run', 'eng', 'report', 'params']], ['g.check', ['integ', 'valid']], ['g.ai', ['ml']], ['g.util', ['optimize', 'optAll', 'tech']], ['g.export', ['exportRank', 'exportAll']]],
     plot: [['g.plots', ['logPlot', 'report', 'sens']]],
     help: [['g.help', ['guide', 'about', 'lasHelp', 'sample', 'demo']], ['g.volve', ['volve', 'volveData']]],
   };
@@ -597,6 +602,7 @@
     ['pg.util', [['u_Tamb', 'u.Tamb', 1], ['u_approach', 'u.approach', 1], ['u_Tdry', 'u.Tdry', 5], ['u_elec', 'u.elec', 50], ['u_heatHigh', 'u.heatHigh', 50], ['u_heatLow', 'u.heatLow', 50],
       ['u_capexORC', 'u.capexORC', 5], ['u_capexHX', 'u.capexHX', 0.5], ['u_capexOpen', 'u.capexOpen', 1], ['u_whLoss', 'u.whLoss', 1], ['u_Treinj', 'u.Treinj', 1], ['u_Rf', 'u.Rf', 1],
       ['u_RfSwept', 'u.RfSwept', 'yesno'], ['u_elecOff', 'u.elecOff', 50], ['u_pinch', 'u.pinch', 1], ['u_dpMax', 'u.dpMax', 1]]],
+    ['pg.integP', [['i_wallMin', 'ip.wallMin', 1], ['i_wallFair', 'ip.wallFair', 1], ['i_tWall', 'ip.tWall', 0.5], ['i_corrOpen', 'ip.corrOpen', 0.01], ['i_corrClosed', 'ip.corrClosed', 0.01], ['i_pGood', 'ip.pGood', 1], ['i_pFair', 'ip.pFair', 1], ['i_pUnknown', 'ip.pUnknown', 1], ['i_insp', 'ip.insp', 0.5]]],
     ['pg.techcmp', [['t_latN', 'tp.latN', 1], ['t_latL', 'tp.latL', 100], ['t_capexLat', 'tp.capexLat', 1], ['t_egsFlow', 'tp.egsFlow', 5], ['t_egsV', 'tp.egsV', 0.05], ['t_egsRf', 'tp.egsRf', 5],
       ['t_egsImp', 'tp.egsImp', 0.01], ['t_capexStim', 'tp.capexStim', 5], ['t_capexWellM', 'tp.capexWellM', 0.01], ['t_co2Loss', 'tp.co2Loss', 1], ['t_capexCPG', 'tp.capexCPG', 5], ['t_co2E', 'tp.co2E', 1], ['t_heatDemOff', 'tp.heatDemOff', 100], ['t_heatDemOn', 'tp.heatDemOn', 100], ['t_elecDem', 'tp.elecDem', 100]]],
   ];
@@ -604,6 +610,7 @@
     ['pg.general', [['id', 'f.id', 'text'], ['name', 'f.name', 'text'], ['field', 'f.field', 'text'], ['location', 'f.location', 'location'], ['depth_m', 'f.depth', 1], ['md_m', 'f.md', 1]]],
     ['pg.thermal', [['gradient_c100m', 'f.g', 0.01], ['bht_c', 'f.bht', 0.1], ['bht1_c', 'f.bht1', 0.1], ['dt1_h', 'f.dt1', 0.5], ['bht2_c', 'f.bht2', 0.1], ['dt2_h', 'f.dt2', 0.5], ['tc_h', 'f.tc', 0.5]]],
     ['pg.status', [['integrity', 'f.integrity', 'integrity'], ['host', 'f.host', 'yesno'], ['distance_km', 'f.dist', 0.5], ['pa_cost', 'f.paCost', 1]]],
+    ['pg.integ', [['int_cbl', 'i.cbl', 'cbl'], ['int_wall', 'i.wall', 1], ['int_scp', 'i.scp', 'yn3'], ['int_bar', 'i.bar', 1], ['int_year', 'i.year', 1], ['int_cra', 'i.cra', 'yn3']]],
     ['pg.res', [['res_A', 'r2.A', 0.1], ['res_h', 'r2.h', 1], ['res_phi', 'r2.phi', 1], ['res_z', 'r2.z', 10], ['res_T', 'r2.T', 1], ['res_flow', 'r2.flow', 0.5], ['res_PI', 'r2.PI', 1], ['res_spacing', 'r2.spacing', 50], ['res_co2', 'r2.co2', 1], ['res_cA', 'r2.cA', 'conf'], ['res_cQ', 'r2.cQ', 'conf']]],
     ['pg.coprod', [['cp_flow', 'cp.flow', 0.5], ['cp_T', 'cp.T', 1]]],
   ];
@@ -613,7 +620,9 @@
     const v = obj[key];
     if (kind === 'text') return `<input data-k="${key}" value="${esc(v)}">`;
     if (kind === 'location') return `<select data-k="${key}">${['onshore', 'offshore'].map((o) => `<option value="${o}"${v === o ? ' selected' : ''}>${t('loc.' + o)}</option>`).join('')}</select>`;
-    if (kind === 'integrity') return `<select data-k="${key}">${['good', 'fair', 'poor'].map((o) => `<option value="${o}"${v === o ? ' selected' : ''}>${t('int.' + o)}</option>`).join('')}</select>`;
+    if (kind === 'cbl') return `<select data-k="${key}">${['', 'good', 'partial', 'poor'].map((o) => `<option value="${o}"${(v || '') === o ? ' selected' : ''}>${t('cbl.' + (o || 'na'))}</option>`).join('')}</select>`;
+    if (kind === 'yn3') return `<select data-k="${key}">${['', 'yes', 'no'].map((o) => `<option value="${o}"${(v || '') === o ? ' selected' : ''}>${t('yn.' + (o || 'na'))}</option>`).join('')}</select>`;
+    if (kind === 'integrity') return `<select data-k="${key}">${['unknown', 'good', 'fair', 'poor'].map((o) => `<option value="${o}"${v === o ? ' selected' : ''}>${t('int.' + o)}</option>`).join('')}</select>`;
     if (kind === 'purpose') return `<select data-k="${key}">${[['hp', 'p.purpHP'], ['res', 'p.purpRes'], ['custom', 'p.purpCustom']].map(([o, l]) => `<option value="${o}"${v === o ? ' selected' : ''}>${t(l)}</option>`).join('')}</select>`;
     if (kind === 'yesno') return `<select data-k="${key}" data-num="1">${[[1, 'yes'], [0, 'no']].map(([o, l]) => `<option value="${o}"${(v === undefined || v === null || v === '' ? 1 : +v) === o ? ' selected' : ''}>${t('opt.' + l)}</option>`).join('')}</select>`;
     if (kind === 'conf') return `<select data-k="${key}">${[['m', 'conf.m'], ['e', 'conf.e']].map(([o, l]) => `<option value="${o}"${(v || 'm') === o ? ' selected' : ''}>${t(l)}</option>`).join('')}</select>`;
@@ -635,6 +644,7 @@
       if (S.sel.t === 'well') {
         h = fieldRows(w, WELL_FIELDS);
         if (w.gSource) h += roRow('det.gsrc', t('src.' + w.gSource));
+        { const ia = intOf(w); h += roRow('f.intCls', t('int.' + ia.cls) + (ia.issues.length ? ' – ' + ia.issues.map((k) => t('ii.' + k)).join(', ') : '')); }
         if (isFinite(w.lat) && w.lat !== null) h += roRow('f.coord', `${fmt(w.lat, 5)}°N, ${fmt(w.lon, 5)}°E${w.kb ? ` · KB ${fmt(w.kb, 1)} m` : ''}`);
         if (w.note) h += roRow('f.note', w.note);
         if (w.gNote) h += roRow('f.gNote', w.gNote);
@@ -685,6 +695,8 @@
     if (id === 'tech') return [ICON.tech, t('doc.tech')];
     if (id === 'eng') return [ICON.eng, t('doc.eng')];
     if (id === 'decide') return [ICON.decide, t('doc.decide')];
+    if (id === 'integ') return [ICON.integ, t('doc.integ')];
+    if (id === 'valid') return [ICON.valid, t('doc.valid')];
     if (id === 'guide') return [ICON.guide, t('b.guide')];
     if (id === 'volve') return [ICON.volveData, t('doc.volve')];
     if (id === 'ml') return [ICON.ml, t('doc.ml')];
@@ -747,6 +759,8 @@
     if (id === 'tech') return renderTech(a);
     if (id === 'eng') return renderEng(a);
     if (id === 'decide') return renderDecide(a);
+    if (id === 'integ') return renderInteg(a);
+    if (id === 'valid') return renderValid(a);
     if (id === 'ml') return renderML(a);
     if (id.startsWith('log:')) return renderLog(a, id.slice(4));
   }
@@ -778,6 +792,7 @@
   });
 
   /* ---------- ranking ---------- */
+  const intTip = (a) => [t('int.' + a.cls)].concat(a.issues.map((k) => t('ii.' + k))).concat(a.missing.length ? [t('ii.missing') + ': ' + a.missing.map((k) => t('im.' + k)).join(', ')] : []).join(' · ');
   function renderRank(a) {
     const res = screen(); const P = modelParams();
     if (!res || !S.project.wells.length) { a.innerHTML = `<div class="doc"><h2>${t('doc.rank')}</h2><p class="muted">${t('proj.empty')}</p></div>`; return; }
@@ -802,14 +817,18 @@
       ${(() => { const bad = res.ranked.concat(res.invalid).filter((w) => w.warnings.includes('bhtIgnored') || w.warnings.includes('hornerIgnored')); return bad.length ? `<div class="warnbox">${esc(t('rank.bhtIgnored', { list: bad.map((w) => w.name || w.id || '?').join(', '), t0: fmt(modelParams().T0) }))}</div>` : ''; })()}
       <div class="tscroll"><table class="tbl" id="rankTbl"><thead><tr>
         <th>${t('r.rank')}</th><th>${t('r.well')}</th><th class="n">${t('r.depth')}</th><th class="n">${t('r.g')}</th><th>${t('r.src')}</th><th class="n">${t('r.tb')}</th><th class="n">${t('r.tout')}</th><th class="n">${t('r.q')}</th><th class="n">${t('r.p1090')}</th><th>${t('r.integ')}</th><th>${t('r.best')}</th><th class="n">${t('r.bestNpv')}</th><th>${t('r.score')}</th>
-      </tr></thead><tbody>${res.ranked.map((w, i) => {
-        const ok = w.score >= P.threshold;
-        return `<tr class="${ok ? 'pass' : ''}${w.uid === selU ? ' sel' : ''}" data-u="${w.uid}"><td>${i + 1}</td><td><b>${esc(w.name || w.id)}</b> <span class="hint">${t('loc.' + w.location)}</span></td>
+      </tr></thead><tbody>${(() => {
+        // technical feasibility first (integrity gate), economic score only inside each group
+        const G = { ok: [], cond: [], fail: [] }; res.ranked.forEach((w) => { const ia = intOf(wellBy(w.uid)); w._int = ia; G[feasOf(ia)].push(w); });
+        let k = 0;
+        return ['ok', 'cond', 'fail'].filter((g) => G[g].length).map((g) => `<tr class="grp-row ${g}"><td colspan="13">${t('feasG.' + g)} <small>(${G[g].length})</small></td></tr>` + G[g].map((w) => {
+        const ok = w.score >= P.threshold && g !== 'fail', i = g === 'fail' ? null : k++;
+        return `<tr class="${ok ? 'pass' : ''}${g === 'fail' ? ' infeas-row' : ''}${w.uid === selU ? ' sel' : ''}" data-u="${w.uid}"><td>${i === null ? '–' : i + 1}</td><td><b>${esc(w.name || w.id)}</b> <span class="hint">${t('loc.' + w.location)}</span></td>
           <td class="n">${fmt(w.depth)}</td><td class="n">${fmt(w.G, 2)}</td><td><span class="src ${srcOf(w)}">${t('src.' + srcOf(w))}</span></td><td class="n">${fmt(w.Tbottom)}</td><td class="n">${fmt(w.Tout, 1)}</td>
-          <td class="n"><b>${fmt(w.Q)}</b></td><td class="n">${fmt(w.mc.p10)}–${fmt(w.mc.p90)}</td><td><span class="badge ${w.integrity}">${t('int.' + w.integrity)}</span></td>
+          <td class="n"><b>${fmt(w.Q)}</b></td><td class="n">${fmt(w.mc.p10)}–${fmt(w.mc.p90)}</td><td><span class="chip int-${w._int.cls}" title="${esc(intTip(w._int))}">${t('int.' + w._int.cls)}</span></td>
           <td data-bt="${w.uid}" class="use">…</td><td data-bn="${w.uid}" class="n">…</td>
           <td><div class="bar ${ok ? 'pass' : ''}"><i><b style="width:${w.score}%"></b></i><span>${w.score}</span></div></td></tr>`;
-      }).join('')}</tbody></table></div></div>`;
+      }).join('')).join(''); })()}</tbody></table></div></div>`;
     // best technology per well: computed after the table is on screen so the page stays responsive
     setTimeout(() => {
       if (S.active !== 'rank' || !S.project) return;
@@ -1096,13 +1115,28 @@
     return { latN: Math.max(1, Math.round(n('t_latN'))), latL: Math.max(100, n('t_latL')), capexLat: n('t_capexLat'), egsFlow: Math.max(1, n('t_egsFlow')), egsV: Math.max(0.001, n('t_egsV')), egsRf: n('t_egsRf') / 100,
       egsImp: n('t_egsImp'), capexStim: n('t_capexStim'), capexWellM: n('t_capexWellM'), co2Loss: n('t_co2Loss'), capexCPG: n('t_capexCPG'), co2E: Math.max(0.1, n('t_co2E')) / 100, heatDemOff: n('t_heatDemOff'), heatDemOn: n('t_heatDemOn'), elecDem: n('t_elecDem') };
   }
+  /* ---------- well integrity ---------- */
+  function intParams() {
+    const p = Object.assign({}, DEFAULTS, S.project ? S.project.params : {});
+    const n = (k) => (isFinite(+p[k]) ? +p[k] : DEFAULTS[k]);
+    return { wallMin: n('i_wallMin'), wallFair: n('i_wallFair'), tWall: Math.max(1, n('i_tWall')), corrOpen: Math.max(1e-3, n('i_corrOpen')), corrClosed: Math.max(1e-3, n('i_corrClosed')),
+      pGood: n('i_pGood') / 100, pFair: n('i_pFair') / 100, pUnknown: n('i_pUnknown') / 100, inspCost: Math.max(0, n('i_insp')) };
+  }
+  const intOf = (well) => window.AWInt.assess(well || {}, intParams());
+  /** Technical feasibility of a well for re-use at all: ok if any technology is allowed outright, cond if only after an inspection. */
+  const feasOf = (a) => { const f = TECHS.map((k) => window.AWInt.feasible(a, k)); return f.includes('ok') ? 'ok' : f.includes('cond') ? 'cond' : 'fail'; };
   function techWell(w) {
     const { ev, resIn, U, P, hostCapex, conf } = evalWell(w);
     const eco = Object.assign({}, P.eco, { deferral: paDeferral(wellBy(w.uid), P) });
     const r = window.AWTech.evaluate(w, ev, { P, U, eco, resIn, T: techParams(), wellCapex: w.eco.capex, hostCapex, conf });
     r.ev = ev; r.resIn = resIn; r.conf = conf; r.hostCapex = hostCapex; r.U = U;
+    // technical feasibility is decided before economics: an option that is not allowed never becomes the 'best'
+    r.integ = intOf(wellBy(w.uid));
+    r.options.forEach((o) => { o.feas = window.AWInt.feasible(r.integ, o.id); });
+    r.best = bestFeasible(r) || null;
     return r;
   }
+  function bestFeasible(r) { return r.options.filter((o) => o.feas !== 'fail' && Number.isFinite(o.npv)).sort((x, y) => y.npv - x.npv)[0]; }
   /** Technology results for every screened well; cached until the project changes. */
   function techAll() {
     const res = screen(); if (!res) return [];
@@ -1116,7 +1150,7 @@
     if (!rows.length) { a.innerHTML = `<div class="doc"><h2>${t('doc.tech')}</h2><p class="muted">${t('proj.empty')}</p></div>`; return; }
     const tot = {}; TECHS.forEach((k) => { tot[k] = { n: 0, pos: 0, npv: 0, pe: 0, q: 0, co2: 0 }; });
     rows.forEach(({ r }) => r.options.forEach((o) => { const x = tot[o.id]; if (isFinite(o.npv) && o.npv !== null) { x.n++; x.q += o.Q || 0; x.pe += o.Pe || 0; x.co2 += o.co2t || 0; if (o.npv > 0) { x.pos++; x.npv += o.npv; } } }));
-    const cell = (o) => (o && isFinite(o.npv) && o.npv !== null ? `<td class="n ${o.npv < 0 ? 'npv-neg' : 'npv-pos'}" title="${esc(useLabel(o) + (techWhy(o) ? ' · ' + techWhy(o) : ''))}">${fmt(o.npv, 1)}${o.p10 !== undefined ? `<br><small class="${o.est ? 'est' : 'muted'}">P10–P90 ${fmt(o.p10, 0)}…${fmt(o.p90, 0)}</small>` : ''}</td>` : `<td class="n" style="color:var(--muted)" title="${esc(o ? techWhy(o) : '')}">${o && o.status === 'nodata' ? t('tech.nodata') : '–'}</td>`);
+    const cell = (o) => (o && o.feas === 'fail' ? `<td class="n infeas" title="${esc(t('feas.fail'))}">✗ <small>${fmt(o.npv, 0)}</small></td>` : o && isFinite(o.npv) && o.npv !== null ? `<td class="n ${o.npv < 0 ? 'npv-neg' : 'npv-pos'}" title="${esc(useLabel(o) + (techWhy(o) ? ' · ' + techWhy(o) : ''))}">${fmt(o.npv, 1)}${o.p10 !== undefined ? `<br><small class="${o.est ? 'est' : 'muted'}">P10–P90 ${fmt(o.p10, 0)}…${fmt(o.p90, 0)}</small>` : ''}</td>` : `<td class="n" style="color:var(--muted)" title="${esc(o ? techWhy(o) : '')}">${o && o.status === 'nodata' ? t('tech.nodata') : '–'}</td>`);
     a.innerHTML = `<div class="doc"><h2>${t('doc.tech')}</h2><p class="muted">${t('tech.intro')}</p>
       <div class="card"><h3>${t('tech.matrix')}</h3><div class="tscroll"><table class="tbl" id="techTbl"><thead><tr><th>${t('r.well')}</th><th class="n">${t('r.tb')}</th>
         ${TECHS.map((k) => `<th class="n">${t('tech.' + k)}<br><small>NPV (${bnU()})</small></th>`).join('')}<th>${t('tech.best')}</th><th class="n">${t('tech.dnpv')}</th></tr></thead><tbody>
@@ -1157,13 +1191,18 @@
   const DEC = ['now', 'defer', 'geo', 'co2'];
   function decideRows() {
     const P = modelParams(), T = techParams(), U = utilParams(), r = P.eco.rate / 100, L = P.eco.life;
+    const IP = intParams(), rho = (1 + P.eco.paEsc / 100) / (1 + r);
     return techAll().map(({ w, r: tr }) => {
-      const well = wellBy(w.uid) || {}, C = paCostOf(well, P);
-      const geoBest = tr.best, ps = geoBest ? psiOf(w, geoBest, P, tr.U, C) : null;
-      const geo = ps ? ps.npvOps : null; // Σ(V_t − O_t)/(1+r)^t − I0: energy value year by year; P&A is handled by the decision itself
-      const cs = window.AWTech.co2Storage(tr.resIn, { E: T.co2E, life: L, hours: P.eco.hours, dpMax: U.dpMax, fee: P.eco.co2Price || 0, capex: w.eco.capex + (tr.hostCapex || 0) + T.capexCPG, opexPct: P.eco.opexPct, rate: r, integrity: w.integrity });
-      const d = window.AWTech.decide({ C, g: P.eco.paEsc / 100, r, n: Math.max(1, P.eco.paYears || 10), hold: P.eco.paHold, L, geo, co2: cs.status === 'ok' ? cs.npv : null });
-      return { w, well, tr, cs, d, C, geoBest, ps };
+      const well = wellBy(w.uid) || {}, C = paCostOf(well, P), a = tr.integ || intOf(well);
+      const x = { w, well, tr, C, a };
+      const geoBest = tr.best, gv = geoBest ? geoValue(x, geoBest) : null, ps = gv ? gv.ps : null;
+      const cs = window.AWTech.co2Storage(tr.resIn, { E: T.co2E, life: L, hours: P.eco.hours, dpMax: U.dpMax, fee: P.eco.co2Price || 0, capex: w.eco.capex + (tr.hostCapex || 0) + T.capexCPG, opexPct: P.eco.opexPct, rate: r, integrity: a.cls });
+      const feasC = window.AWInt.feasible(a, 'co2');
+      const exC = cs.status === 'ok' && feasC !== 'fail' ? window.AWInt.expected(cs.npv - C * Math.pow(rho, L), -C, a, feasC, IP) : null;
+      // decide() subtracts the P&A at the end of service life; pass the expected values so that its total is the expectation
+      const d = window.AWTech.decide({ C, g: P.eco.paEsc / 100, r, n: Math.max(1, P.eco.paYears || 10), hold: P.eco.paHold, L,
+        geo: gv ? gv.ev + C * Math.pow(rho, gv.life) : null, Lgeo: gv ? gv.life : L, co2: exC ? exC.ev + C * Math.pow(rho, L) : null, noDefer: window.AWInt.feasible(a, 'defer') === 'fail' });
+      return Object.assign(x, { cs, d, geoBest, gv, ps, feasC, exC });
     });
   }
   /**
@@ -1187,6 +1226,43 @@
     }
     return { V, O, D };
   }
+  /**
+   * Value of a geothermal option for one well, everything included:
+   *   service life  = min(project life, thermal life, casing life)
+   *     thermal life: closed loop – years while the yearly revenue still covers the running cost (Ramey decline);
+   *                   reservoir – recoverable heat in place ÷ heat produced per year
+   *     casing life : (remaining wall − minimum wall) × nominal thickness ÷ corrosion rate
+   *   Ψ*            with revenue and costs stopping and P&A paid at the end of service life
+   *   expected value = − inspection (when integrity must be proven first) + P_i·value + (1 − P_i)·(plug now)
+   *   P(success)    = P_i (integrity adequate) × P_e (value beats plugging now, from the resource Monte Carlo)
+   */
+  function geoValue(x, b) {
+    const P = modelParams(), IP = intParams(), L = P.eco.life, r = P.eco.rate / 100, g = P.eco.paEsc / 100, rho = (1 + g) / (1 + r);
+    const feas = window.AWInt.feasible(x.a, b.id); if (feas === 'fail') return null;
+    const ys = yearlySeries(x.w, b, P, x.tr.U);
+    // thermal decline of a closed loop: stop when the revenue that once covered the running cost no longer does
+    let lifeT = L;
+    if ((b.id === 'clgs' || b.id === 'ags') && ys.V[0] >= ys.O[0]) for (let y = 1; y < L; y++) if (ys.V[y] < ys.O[y]) { lifeT = y; break; }
+    const R = x.tr.ev && x.tr.ev.reservoir;
+    if (b.id === 'hydro' && R && R.HrecGWh > 0) { const qp = b.Qall || b.Q || 0; if (qp > 0) lifeT = Math.min(lifeT, Math.floor(R.HrecGWh * 1e6 / (qp * P.eco.hours))); }
+    const lifeC = window.AWInt.casingLife(x.a, b.id, IP);
+    const life = Math.max(1, Math.min(L, lifeT, lifeC === null ? L : Math.floor(lifeC)));
+    const lim = life >= L ? 'L' : lifeC !== null && Math.floor(lifeC) <= lifeT ? 'casing' : 'thermal';
+    const V = ys.V.map((v, i) => (i < life ? v : 0)), O = ys.O.map((v, i) => (i < life ? v : 0));
+    const ps = Object.assign(window.AWTech.psiStar({ V, O, I0: b.capex, C0: x.C, gC: g, r, L, La: life, n: Math.max(1, P.eco.paYears || 10), H: P.eco.paHold }), { ys });
+    const full = ps.npvOps - x.C * Math.pow(rho, life);
+    const ex = window.AWInt.expected(full, -x.C, x.a, feas, IP);
+    // P_e: spread of the resource outcome around the base case
+    let deltas;
+    const hy = x.tr.options.find((o) => o.id === 'hydro');
+    if (b.id === 'hydro' && hy && hy.sims && hy.sims.length) { const sv = hy.sims.slice().sort((p, q) => p - q), med = sv[Math.floor(sv.length / 2)]; deltas = sv.map((v) => v - med); }
+    else {
+      const mc = x.w.mc, sd = mc && mc.p50 > 0 ? (mc.p90 - mc.p10) / (2 * 1.2816 * mc.p50) : 0.15, head = b.capped && b.Q > 0 && b.Qall > 0 ? b.Qall / b.Q : 1;
+      deltas = []; for (let k = 1; k <= 99; k++) { const ratio = Math.max(0, head * (1 + sd * window.AWInt.zq((k - 0.5) / 99))); deltas.push(ps.pvV * ((b.capped ? Math.min(1, ratio) : ratio / head) - 1)); }
+    }
+    const Pe = deltas.filter((dl) => full + dl > -x.C).length / deltas.length;
+    return { b, feas, life, lifeT, lifeC, lim, ps, full, ev: ex.ev, insp: ex.insp, Pi: x.a.Pi, Pe, Ps: x.a.Pi * Pe };
+  }
   /** Ψ* and the operating NPV of a geothermal option from its yearly series. */
   function psiOf(w, b, P, U, C) {
     const ys = yearlySeries(w, b, P, U);
@@ -1207,8 +1283,10 @@
         for (let k = 1; k <= PLAN_K; k++) {
           const f = k / PLAN_K, T2 = Object.assign({}, T, { heatDemOff: T.heatDemOff * f, heatDemOn: T.heatDemOn * f, elecDem: T.elecDem * f, mcN: 1 });
           const r2 = window.AWTech.evaluate(x.w, x.tr.ev, { P, U: x.tr.U, eco: Object.assign({}, P.eco, { deferral: 0 }), resIn: x.tr.resIn, T: T2, wellCapex: x.w.eco.capex, hostCapex: 0, conf: x.tr.conf });
-          x.geoAt.push(r2.best || null);
-          geo.push(r2.best ? psiOf(x.w, r2.best, P, x.tr.U, x.C).npvOps - pvPA : -Infinity);
+          r2.options.forEach((o) => { o.feas = window.AWInt.feasible(x.a, o.id); });
+          const b2 = bestFeasible(r2), gv2 = b2 ? geoValue(x, b2) : null;
+          x.geoAt.push(gv2 ? b2 : null); x.gvAt = x.gvAt || [null]; x.gvAt.push(gv2);
+          geo.push(gv2 ? gv2.ev : -Infinity);
         }
         // value of measuring first: only the reservoir option carries a simulated distribution
         const hy = x.tr.options.find((o) => o.id === 'hydro');
@@ -1219,7 +1297,7 @@
       const nHostUsers = sol.plan.filter((p, i) => p.units > 0 && items[i].needsHost).length;
       sol.plan.forEach((p, i) => {
         const x = list[i], tie = p.units > 0 && items[i].needsHost ? P.capexHost / nHostUsers : 0; // the shared tie-back is split between its users
-        x.plan = { units: p.units, share: p.units / PLAN_K, id: p.units ? 'geo' : x.alt.id, value: p.value - tie, best: p.units ? x.geoAt[p.units] : null };
+        x.plan = { units: p.units, share: p.units / PLAN_K, id: p.units ? 'geo' : x.alt.id, value: p.value - tie, best: p.units ? x.geoAt[p.units] : null, gv: p.units ? x.gvAt[p.units] : null };
         x.plan.gain = x.plan.value + x.C;
         const pb = x.plan.best; // heat actually sold (cogeneration: the heat after the ORC) and power sold
         x.plan.q = pb ? (pb.use === 'cogen' ? pb.Q2 || 0 : pb.use === 'power' ? 0 : pb.Q || 0) : 0; x.plan.pe = pb ? pb.Pe || 0 : 0;
@@ -1242,17 +1320,22 @@
       const n = P0.eco.paYears || 10, cnt = {}; DEC.forEach((k) => { cnt[k] = 0; });
       rows.forEach((x) => { cnt[x.plan.id]++; });
       const gain = PL.total, liab = rows.reduce((s0, x) => s0 + x.C, 0), evTot = rows.reduce((s0, x) => s0 + x.evpi, 0);
-      const cellOf = (x, id) => { const o = x.d.options.find((q) => q.id === id); if (!o) return `<td class="n dim" title="${esc(id === 'co2' ? t(x.cs.status === 'nodata' ? 'tw.noRes' : 'tw.' + (x.cs.why || 'noFeasible')) : '')}">–</td>`; return `<td class="n${x.d.best.id === id ? ' pick' : ''}">${fmt(o.npv, 0)}</td>`; };
+      const cellOf = (x, id) => { const o = x.d.options.find((q) => q.id === id);
+        const blocked = (id === 'geo' && x.tr.options.some((q) => q.feas === 'fail') && !x.geoBest) || (id === 'co2' && x.cs.status === 'ok' && x.feasC === 'fail') || (id === 'defer' && !o);
+        if (!o && blocked) return `<td class="n infeas" title="${esc(t('feas.fail') + ' – ' + intTip(x.a))}">✗</td>`;
+        if (!o) return `<td class="n dim" title="${esc(id === 'co2' ? t(x.cs.status === 'nodata' ? 'tw.noRes' : 'tw.' + (x.cs.why || 'noFeasible')) : '')}">–</td>`; return `<td class="n${x.d.best.id === id ? ' pick' : ''}">${fmt(o.npv, 0)}</td>`; };
       if (!S.decSel || !rows.some((x) => x.w.uid === S.decSel)) S.decSel = rows[0].w.uid;
       body.innerHTML = `${liab > 0 ? '' : `<div class="warnbox">${t('dec.noPa')}</div>`}
         <div class="kpis">${DEC.map((k) => `<div class="kpi dk-${k}"><span>${t('dec.' + k)}</span><b>${cnt[k]}</b></div>`).join('')}
           <div class="kpi"><span>${t('dec.k.gain')}</span><b class="${gain > 0 ? 'npv-pos' : ''}">${fmt(gain, 0)}</b></div></div>
-        <div class="tscroll"><table class="tbl dec" id="decTbl"><thead><tr><th>${t('r.well')}</th><th class="n">${t('dec.now')}</th><th class="n">${t('dec.deferN', { n })}</th><th class="n">${t('dec.geo')}</th><th class="n">${t('dec.co2')}</th><th class="n" title="${esc(t('dec.psiTip'))}">Ψ*</th><th>${t('dec.plan')}</th><th class="n">${t('dec.gain')}</th><th class="n">${t('dec.evpi')}</th></tr></thead><tbody>
-          ${rows.map((x) => `<tr data-u="${x.w.uid}" class="${x.w.uid === S.decSel ? 'sel' : ''}"><td><b>${esc(x.w.name || x.w.id)}</b>${x.geoBest ? ` <span class="chip ${x.geoBest.id}">${t('techs.' + x.geoBest.id)}</span>` : ''}</td>${DEC.map((id) => cellOf(x, id)).join('')}
+        <div class="tscroll"><table class="tbl dec" id="decTbl"><thead><tr><th>${t('r.well')}</th><th class="n">${t('dec.now')}</th><th class="n">${t('dec.deferN', { n })}</th><th class="n">${t('dec.geo')}</th><th class="n">${t('dec.co2')}</th><th class="n" title="${esc(t('dec.psiTip'))}">Ψ*</th><th>${t('dec.plan')}</th><th class="n">${t('dec.gain')}</th><th class="n" title="${esc(t('dec.psTip'))}">${t('dec.ps')}</th><th class="n" title="${esc(t('dec.lifeTip'))}">${t('dec.life')}</th></tr></thead><tbody>
+          ${rows.map((x) => `<tr data-u="${x.w.uid}" class="${x.w.uid === S.decSel ? 'sel' : ''}"><td><b>${esc(x.w.name || x.w.id)}</b> <span class="chip int-${x.a.cls}" title="${esc(intTip(x.a))}">${t('int.' + x.a.cls)}</span>${x.geoBest ? ` <span class="chip ${x.geoBest.id}">${t('techs.' + x.geoBest.id)}</span>` : ''}</td>${DEC.map((id) => cellOf(x, id)).join('')}
             <td class="n psi ${x.ps && x.ps.psi > 1 ? (x.ps.psiDefer > 1 ? 'hi' : 'mid') : 'lo'}" title="${esc(x.ps ? t('dec.psiCell', { a: fmt(x.ps.psi, 2), b: fmt(x.ps.psiDefer, 2), e: fmt(x.ps.energyShare * 100, 0) }) : '')}">${x.ps ? fmt(x.ps.psi, 2) : '–'}</td>
             <td><span class="chip dk-${x.plan.id}">${t('dec.' + x.plan.id)}</span>${x.plan.units ? ` <small>${esc(t('techs.' + x.plan.best.id))} · ${fmt(x.plan.q)} kWth${x.plan.pe >= 1 ? ' + ' + fmt(x.plan.pe) + ' kWe' : ''}</small>` : ''}</td><td class="n ${x.plan.gain > 0 ? 'npv-pos' : ''}"><b>${x.plan.gain > 0 ? '+' : ''}${fmt(x.plan.gain, 0)}</b></td>
-            <td class="n${x.evpi >= 1 ? ' est' : ' dim'}" title="${esc(t('dec.evpiTip'))}">${x.evpi >= 0.5 ? fmt(x.evpi, 0) : '–'}</td></tr>`).join('')}
+            <td class="n">${x.plan.gv ? `<b>${fmt(x.plan.gv.Ps * 100, 0)} %</b>` : x.plan.id === 'co2' && x.exC ? fmt(x.a.Pi * 100, 0) + ' %' : '–'}</td>
+            <td class="n" title="${esc(x.plan.gv ? t('lim.' + x.plan.gv.lim) : '')}">${x.plan.gv ? fmt(x.plan.gv.life, 0) + (x.plan.gv.lifeC === null ? '<sup class="est" title="' + esc(t('dec.lifeNoWall')) + '">?</sup>' : '') : '–'}</td></tr>`).join('')}
         </tbody></table></div>
+        ${rows.some((x) => x.a.cls === 'unknown') ? `<div class="warnbox">${t('dec.unknownNote', { n: rows.filter((x) => x.a.cls === 'unknown').length, c: fmt(intParams().inspCost, 1), p: fmt(intParams().pUnknown * 100, 0) })} <a href="#" data-act="integ">${t('doc.integ')} →</a></div>` : ''}
         <p class="hint" data-keep="1">${t('dec.unit')}${PL.shared ? ' ' + t('dec.sharedNote', { a: fmt(PL.indiv, 0), b: fmt(PL.total, 0) }) : ''}${evTot >= 1 ? ' ' + t('dec.evpiNote', { v: fmt(evTot, 0) }) : ''}</p>
         <details class="info" id="psiInfo"><summary>ⓘ ${t('dec.psiTitle')}</summary><div>${t('dec.psiBody')}</div></details>
         <div id="decCalc"></div>
@@ -1269,8 +1352,8 @@
         box.innerHTML = `<h3 style="margin:18px 0 8px">${t('dec.calcT', { w: esc(x.w.name || x.w.id) })}</h3><div class="dgrid">
           ${card('now', line(t('dec.l.paNow'), money(-x.C)))}
           ${card('defer', line(t('dec.l.hold', { n, h: fmt(P.eco.paHold, 1) }), money(-P.eco.paHold * annN)) + paLater(n))}
-          ${card('geo', gb ? line(t('dec.l.rev') + ` <small>(${esc(t('techs.' + gb.id) + ' · ' + t('tuse.' + gb.use))})</small>`, t('dec.l.y1L', { a: fmt(x.ps.ys.V[0], 1), b: fmt(x.ps.ys.V[L - 1], 1), L })) + line(t('dec.l.pvV', { y: L }), money(x.ps.pvV)) + line(t('dec.l.pvO', { y: L }), money(-x.ps.pvO)) + line(t('dec.l.capex'), money(-gb.capex)) + paLater(L) + (x.ps ? line(t('dec.l.psi', { e: fmt(x.ps.energyShare * 100, 0) }), 'Ψ* = ' + fmt(x.ps.psi, 2), 'note') : '') : t('tw.noFeasible'))}
-          ${card('co2', cs.status === 'ok' ? line(t('dec.l.fee', { t: fmt(cs.rateT / 1000, 1) }), money(cs.revenue, 2) + '/' + t('det.yr')) + line(t('dec.l.opex'), money(-cs.opex, 2) + '/' + t('det.yr')) + line(t('dec.l.pv', { y: L, f: fmt(annL, 2) }), money(cs.yearly * annL)) + line(t('dec.l.capex'), money(-cs.capex)) + paLater(L) + line(t('dec.l.cap', { c: fmt(cs.capT / 1000, 0) }), cs.breakEvenFee ? fmt(cs.breakEvenFee / 1000, 0) + ' ' + t('dec.l.feeUnit') : '–', 'note') : t(cs.status === 'nodata' ? 'tw.noRes' : 'tw.' + (cs.why || 'noFeasible')))}
+          ${card('geo', gb && x.gv ? line(t('dec.l.rev') + ` <small>(${esc(t('techs.' + gb.id) + ' · ' + t('tuse.' + gb.use))})</small>`, t('dec.l.y1L', { a: fmt(x.ps.ys.V[0], 1), b: fmt(x.ps.ys.V[x.gv.life - 1], 1), L: x.gv.life })) + line(t('dec.l.pvV', { y: x.gv.life }), money(x.ps.pvV)) + line(t('dec.l.pvO', { y: x.gv.life }), money(-x.ps.pvO)) + line(t('dec.l.capex'), money(-gb.capex)) + paLater(x.gv.life) + line(t('dec.l.ifOk'), money(x.gv.full), 'sub') + (x.gv.insp ? line(t('dec.l.insp'), money(-x.gv.insp)) : '') + line(t('dec.l.ev', { p: fmt(x.gv.Pi * 100, 0) }), fmt(x.gv.Pi, 2) + ' × ' + money(x.gv.full, 0) + ' + ' + fmt(1 - x.gv.Pi, 2) + ' × ' + money(-x.C, 0)) + line(t('dec.l.life', { why: t('lim.' + x.gv.lim) }), fmt(x.gv.life, 0) + ' ' + t('det.yr'), 'note') + line(t('dec.l.ps', { i: fmt(x.gv.Pi * 100, 0), e: fmt(x.gv.Pe * 100, 0) }), fmt(x.gv.Ps * 100, 0) + ' %', 'note') + line(t('dec.l.psi', { e: fmt(x.ps.energyShare * 100, 0) }), 'Ψ* = ' + fmt(x.ps.psi, 2), 'note') : esc(x.tr.options.some((q) => q.feas === 'fail') ? t('feas.fail') + ' – ' + intTip(x.a) : t('tw.noFeasible')))}
+          ${card('co2', cs.status === 'ok' ? line(t('dec.l.fee', { t: fmt(cs.rateT / 1000, 1) }), money(cs.revenue, 2) + '/' + t('det.yr')) + line(t('dec.l.opex'), money(-cs.opex, 2) + '/' + t('det.yr')) + line(t('dec.l.pv', { y: L, f: fmt(annL, 2) }), money(cs.yearly * annL)) + line(t('dec.l.capex'), money(-cs.capex)) + paLater(L) + (x.exC && x.exC.insp ? line(t('dec.l.insp'), money(-x.exC.insp)) + line(t('dec.l.ev', { p: fmt(x.a.Pi * 100, 0) }), fmt(x.a.Pi, 2) + ' × … + ' + fmt(1 - x.a.Pi, 2) + ' × ' + money(-x.C, 0)) : '') + line(t('dec.l.cap', { c: fmt(cs.capT / 1000, 0) }), cs.breakEvenFee ? fmt(cs.breakEvenFee / 1000, 0) + ' ' + t('dec.l.feeUnit') : '–', 'note') : t(cs.status === 'nodata' ? 'tw.noRes' : 'tw.' + (cs.why || 'noFeasible')))}
         </div>`;
       };
       calc();
@@ -1279,9 +1362,106 @@
   }
   function decideSheet() {
     const n = modelParams().eco.paYears || 10;
-    return [[t('r.well'), t('dec.in.pa'), t('dec.now'), t('dec.deferN', { n }), t('dec.geo'), t('tech.best'), t('dec.co2'), t('dec.l.capShort'), t('dec.l.be'), t('dec.pick'), t('dec.gain'), t('dec.plan'), t('dec.planQ'), t('dec.planGain'), t('dec.evpi'), 'Ψ*', t('dec.psiD'), t('dec.psiE')]]
+    return [[t('r.well'), t('dec.in.pa'), t('dec.now'), t('dec.deferN', { n }), t('dec.geo'), t('tech.best'), t('dec.co2'), t('dec.l.capShort'), t('dec.l.be'), t('dec.pick'), t('dec.gain'), t('dec.plan'), t('dec.planQ'), t('dec.planGain'), t('dec.evpi'), 'Ψ*', t('dec.psiD'), t('dec.psiE'), t('r.integ'), t('feas.col'), t('dec.pi'), t('dec.pe'), t('dec.ps'), t('dec.life'), t('dec.lim')]]
       .concat(decidePlan().rows.map((x) => { const o = (id) => { const q = x.d.options.find((z) => z.id === id); return q ? +q.npv.toFixed(1) : ''; };
-        return [x.w.name || x.w.id, x.C, o('now'), o('defer'), o('geo'), x.geoBest ? t('tech.' + x.geoBest.id) + ' · ' + t('tuse.' + x.geoBest.use) : '', o('co2'), x.cs.capT ? +(x.cs.capT / 1000).toFixed(0) : '', x.cs.breakEvenFee ? Math.round(x.cs.breakEvenFee) : '', t('dec.' + x.d.best.id), +x.d.best.gain.toFixed(1), t('dec.' + x.plan.id) + (x.plan.units ? ' · ' + t('techs.' + x.plan.best.id) : ''), Math.round(x.plan.q), +x.plan.gain.toFixed(1), +x.evpi.toFixed(1), x.ps ? +x.ps.psi.toFixed(3) : '', x.ps ? +x.ps.psiDefer.toFixed(3) : '', x.ps ? +(x.ps.energyShare * 100).toFixed(0) : '']; }));
+        return [x.w.name || x.w.id, x.C, o('now'), o('defer'), o('geo'), x.geoBest ? t('tech.' + x.geoBest.id) + ' · ' + t('tuse.' + x.geoBest.use) : '', o('co2'), x.cs.capT ? +(x.cs.capT / 1000).toFixed(0) : '', x.cs.breakEvenFee ? Math.round(x.cs.breakEvenFee) : '', t('dec.' + x.d.best.id), +x.d.best.gain.toFixed(1), t('dec.' + x.plan.id) + (x.plan.units ? ' · ' + t('techs.' + x.plan.best.id) : ''), Math.round(x.plan.q), +x.plan.gain.toFixed(1), +x.evpi.toFixed(1), x.ps ? +x.ps.psi.toFixed(3) : '', x.ps ? +x.ps.psiDefer.toFixed(3) : '', x.ps ? +(x.ps.energyShare * 100).toFixed(0) : '', t('int.' + x.a.cls), t('feas.' + feasOf(x.a)), +(x.a.Pi * 100).toFixed(0), x.gv ? +(x.gv.Pe * 100).toFixed(0) : '', x.gv ? +(x.gv.Ps * 100).toFixed(0) : '', x.gv ? x.gv.life : '', x.gv ? t('lim.' + x.gv.lim) : '']; }));
+  }
+
+  /* ---------- well integrity page ---------- */
+  function renderInteg(a) {
+    const wells = S.project.wells;
+    if (!wells.length) { a.innerHTML = `<div class="doc"><h2>${t('doc.integ')}</h2><p class="muted">${t('proj.empty')}</p></div>`; return; }
+    const sel = (w, k, opts, lab) => `<select data-iw="${w.uid}" data-ik="${k}">${opts.map((o) => `<option value="${o}"${(w[k] || '') === o ? ' selected' : ''}>${t(lab + (o || 'na'))}</option>`).join('')}</select>`;
+    const numIn = (w, k, step, ph) => `<input type="number" step="${step}" data-iw="${w.uid}" data-ik="${k}" value="${w[k] === undefined || w[k] === null ? '' : w[k]}" placeholder="${ph}">`;
+    const icon = { ok: '✓', cond: '?', fail: '✗' };
+    const rows = wells.map((w) => ({ w, a: intOf(w) }));
+    const cnt = { good: 0, fair: 0, poor: 0, unknown: 0 }; rows.forEach((x) => cnt[x.a.cls]++);
+    a.innerHTML = `<div class="doc"><h2>${t('doc.integ')}</h2>
+      <div class="kpis">${['good', 'fair', 'poor', 'unknown'].map((k) => `<div class="kpi"><span>${t('int.' + k)}</span><b class="int-${k}">${cnt[k]}</b></div>`).join('')}</div>
+      <div class="tscroll"><table class="tbl integ"><thead><tr><th>${t('r.well')}</th><th>${t('i.cbl')}</th><th>${t('i.wallS')}</th><th>${t('i.scpS')}</th><th>${t('i.barS')}</th><th>${t('i.yearS')}</th><th>${t('i.craS')}</th>
+        <th>${t('i.result')}</th><th class="n">P</th>${TECHS.map((k) => `<th class="c">${t('techs.' + k)}</th>`).join('')}<th>${t('i.todo')}</th></tr></thead><tbody>
+        ${rows.map(({ w, a: ia }) => `<tr><td><b>${esc(wellLabel(w))}</b></td>
+          <td>${sel(w, 'int_cbl', ['', 'good', 'partial', 'poor'], 'cbl.')}</td><td>${numIn(w, 'int_wall', 1, '%')}</td><td>${sel(w, 'int_scp', ['', 'no', 'yes'], 'yn.')}</td>
+          <td>${numIn(w, 'int_bar', 1, '0–2')}</td><td>${numIn(w, 'int_year', 1, t('i.yearPh'))}</td><td>${sel(w, 'int_cra', ['', 'yes', 'no'], 'yn.')}</td>
+          <td><span class="chip int-${ia.cls}">${t('int.' + ia.cls)}</span>${ia.source === 'manual' ? ` <small class="muted">${t('i.manual')}</small>` : ''}</td><td class="n">${fmt(ia.Pi * 100, 0)} %</td>
+          ${TECHS.map((k) => { const f = window.AWInt.feasible(ia, k); return `<td class="c fz-${f}" title="${esc(t('feas.' + f))}">${icon[f]}</td>`; }).join('')}
+          <td class="use">${esc(ia.issues.map((k) => t('ii.' + k)).concat(ia.missing.length ? [t('i.measure') + ' ' + ia.missing.map((k) => t('im.' + k)).join(', ')] : []).join(' · ') || t('i.none'))}</td></tr>`).join('')}
+      </tbody></table></div>
+      <p class="hint" data-keep="1">${t('i.legend')}</p>
+      <p class="hint">${t('i.foot')}</p></div>`;
+    $$('[data-iw]', a).forEach((el) => el.addEventListener('change', () => {
+      const w = wellBy(el.dataset.iw); if (!w) return; snapshot();
+      const v = el.value.trim(); w[el.dataset.ik] = el.tagName === 'INPUT' ? (v === '' ? undefined : parseFloat(v)) : v;
+      touch(); renderDoc();
+    }));
+  }
+
+  /* ---------- validation page: temperature model and closed-loop model against measurements ---------- */
+  function errStats(pairs) {
+    const ok = pairs.filter((p) => isFinite(p.m) && isFinite(p.p)); const n = ok.length; if (!n) return null;
+    const e = ok.map((p) => p.p - p.m), mean = ok.reduce((s0, p) => s0 + p.m, 0) / n;
+    const sst = ok.reduce((s0, p) => s0 + (p.m - mean) ** 2, 0), sse = e.reduce((s0, x) => s0 + x * x, 0);
+    return { n, bias: e.reduce((s0, x) => s0 + x, 0) / n, mae: e.reduce((s0, x) => s0 + Math.abs(x), 0) / n, rmse: Math.sqrt(sse / n), r2: sst > 0 ? 1 - sse / sst : null };
+  }
+  const BENCH_REF = [
+    { depth: 2000, q: '286 kW', note: 'ref.bit', url: 'https://pure.bit.edu.cn/en/publications/field-test-and-numerical-investigation-on-the-heat-transfer-chara' },
+    { depth: 2500, q: '≈ 300 kW', note: 'ref.xian', url: 'https://faculty.xjtu.edu.cn/tanhz/en/lwcg/257928/content/13696.htm' },
+    { depth: 2500, q: '453–546 kW', note: 'ref.arxiv', url: 'https://arxiv.org/abs/2509.14141' },
+  ];
+  function renderValid(a) {
+    const P = modelParams(), wells = S.project.wells;
+    const wdOf = (w) => (/off|ngoài/i.test(w.location || '') ? P.wd : 0);
+    const pts = []; wells.forEach((w) => (w.tempPoints || []).forEach((p) => { if (isFinite(p.z) && isFinite(p.T) && p.T > P.T0 + 5 && p.z > wdOf(w)) pts.push({ w, z: p.z, T: p.T, wd: wdOf(w) }); }));
+    const byW = new Map(); pts.forEach((p) => { if (!byW.has(p.w.uid)) byW.set(p.w.uid, []); byW.get(p.w.uid).push(p); });
+    const pred = (G, p) => P.T0 + G / 100 * (p.z - p.wd);
+    pts.forEach((p) => {
+      p.own = pred(fitGradient(byW.get(p.w.uid), P.T0, p.wd).G, p);
+      const others = pts.filter((q) => q.w !== p.w); p.lowo = others.length ? pred(fitGradient(others, P.T0, p.wd).G, p) : NaN;
+    });
+    let ml = null; try { ml = trainML(); } catch (e) { ml = null; }
+    if (ml && ml.ok) { const mk2 = new Map(); ml.cv.preds.forEach((q) => mk2.set(q.row.well.uid + '|' + Math.round(q.row.z), q.Tml)); pts.forEach((p) => { p.ml = mk2.get(p.w.uid + '|' + Math.round(p.z)); }); }
+    const meth = [['own', 'v.m.own'], ['lowo', 'v.m.lowo'], ['ml', 'v.m.ml']];
+    const st = meth.map(([k, lab]) => [lab, errStats(pts.map((p) => ({ m: p.T, p: p[k] })))]);
+    const S2 = S.project.bench || (S.project.bench = []);
+    const bModel = (b) => { const m = (+b.flow || 0) * 1000 / 3600, L = +b.depth || 0; if (!(m > 0 && L > 0 && isFinite(+b.Tb) && isFinite(+b.Tin))) return null; const G = (+b.Tb - P.T0) / L * 100; return M.wellOutput({ L, Lv: L, G, T0: P.T0, k: P.k, m, Tin: +b.Tin, years: Math.max(0.01, (+b.days || 30) / 365), Rw: P.Rw, upLoss: P.upLoss, n: 300 }); };
+    a.innerHTML = `<div class="doc"><h2>${t('doc.valid')}</h2>
+      <h3>${t('v.temp', { n: pts.length, w: byW.size })}</h3>
+      ${pts.length < 3 ? `<p class="muted">${t('v.noPts')}</p>` : `<div class="tscroll"><table class="tbl"><thead><tr><th>${t('v.method')}</th><th class="n">n</th><th class="n">${t('v.bias')}</th><th class="n">MAE (°C)</th><th class="n">RMSE (°C)</th><th class="n">R²</th></tr></thead><tbody>
+        ${st.map(([lab, x]) => `<tr><td><b>${t(lab)}</b></td>${x ? `<td class="n">${x.n}</td><td class="n">${x.bias >= 0 ? '+' : ''}${fmt(x.bias, 1)}</td><td class="n">${fmt(x.mae, 1)}</td><td class="n"><b>${fmt(x.rmse, 1)}</b></td><td class="n">${x.r2 === null ? '–' : fmt(x.r2, 2)}</td>` : `<td colspan="5" class="muted">${t('v.na')}</td>`}</tr>`).join('')}
+      </tbody></table></div>
+      <div class="rep-grid"><div class="card"><div class="chart-box" style="height:320px"><canvas id="chValid"></canvas></div></div>
+      <div class="card"><div class="tscroll"><table class="tbl"><thead><tr><th>${t('r.well')}</th><th class="n">n</th><th class="n">${t('v.biasOwn')}</th><th class="n">${t('v.biasLowo')}</th></tr></thead><tbody>
+        ${Array.from(byW.values()).map((list) => { const a1 = errStats(list.map((p) => ({ m: p.T, p: p.own }))), a2 = errStats(list.map((p) => ({ m: p.T, p: p.lowo }))); return `<tr><td><b>${esc(wellLabel(list[0].w))}</b></td><td class="n">${list.length}</td><td class="n">${fmt(a1.rmse, 1)}</td><td class="n">${a2 ? (a2.bias >= 0 ? '+' : '') + fmt(a2.bias, 1) : '–'}</td></tr>`; }).join('')}
+      </tbody></table></div></div></div>`}
+      <h3 style="margin-top:20px">${t('v.loop')}</h3>
+      <div class="tscroll"><table class="tbl" id="benchTbl"><thead><tr><th>${t('v.b.name')}</th><th class="n">${t('v.b.depth')}</th><th class="n">${t('v.b.Tb')}</th><th class="n">${t('v.b.flow')}</th><th class="n">${t('v.b.Tin')}</th><th class="n">${t('v.b.days')}</th><th class="n">${t('v.b.Tout')}</th><th class="n">${t('v.b.Q')}</th><th class="n">${t('v.b.mTout')}</th><th class="n">${t('v.b.mQ')}</th><th class="n">${t('v.b.err')}</th><th></th></tr></thead><tbody>
+        ${S2.map((b, i) => { const r0 = bModel(b); const e = r0 && +b.Q > 0 ? (r0.Q / +b.Q - 1) * 100 : null; const inp = (k, w0) => `<input type="${k === 'name' ? 'text' : 'number'}" data-bi="${i}" data-bk="${k}" value="${esc(b[k] === undefined ? '' : b[k])}" style="width:${w0}px">`;
+          return `<tr><td>${inp('name', 120)}</td><td class="n">${inp('depth', 70)}</td><td class="n">${inp('Tb', 60)}</td><td class="n">${inp('flow', 60)}</td><td class="n">${inp('Tin', 55)}</td><td class="n">${inp('days', 55)}</td><td class="n">${inp('Tout', 60)}</td><td class="n">${inp('Q', 70)}</td>
+            <td class="n">${r0 ? fmt(r0.Tout, 1) : '–'}</td><td class="n">${r0 ? fmt(r0.Q) : '–'}</td><td class="n ${e !== null && Math.abs(e) > 20 ? 'npv-neg' : ''}">${e === null ? '–' : (e >= 0 ? '+' : '') + fmt(e, 0) + ' %'}</td><td><button class="btn ghost" data-bdel="${i}">×</button></td></tr>`; }).join('')}
+      </tbody></table></div>
+      <button class="btn ghost" id="btnBenchAdd" style="margin-top:8px">+ ${t('v.b.add')}</button>
+      <p class="hint" data-keep="1">${t('v.b.hint')}</p>
+      <h3 style="margin-top:18px">${t('v.ref')}</h3>
+      <div class="tscroll"><table class="tbl"><thead><tr><th class="n">${t('v.b.depth')}</th><th>${t('v.refQ')}</th><th class="n">${t('v.refModel')}</th><th>${t('v.refSrc')}</th></tr></thead><tbody>
+        ${BENCH_REF.map((b) => `<tr><td class="n">${fmt(b.depth)}</td><td>${b.q}</td><td class="n">${fmt(M.wellOutput({ L: b.depth, G: 3.0, T0: 15, k: P.k, m: 30 * 1000 / 3600, Tin: 10, years: 0.5, Rw: P.Rw, upLoss: P.upLoss, n: 300 }).Q)} kW</td><td><a href="${b.url}" target="_blank" rel="noopener">${t(b.note)}</a></td></tr>`).join('')}
+      </tbody></table></div>
+      <p class="hint" data-keep="1">${t('v.refHint')}</p></div>`;
+    if (pts.length >= 3) {
+      const lo = Math.min(...pts.map((p) => p.T)) - 5, hi = Math.max(...pts.map((p) => p.T)) + 5;
+      mk('chValid', { type: 'scatter', data: { datasets: [
+        { label: t('v.m.lowo'), data: pts.filter((p) => isFinite(p.lowo)).map((p) => ({ x: p.T, y: p.lowo })), backgroundColor: '#ef6c00', pointRadius: 4 },
+        { label: t('v.m.ml'), data: pts.filter((p) => isFinite(p.ml)).map((p) => ({ x: p.T, y: p.ml })), backgroundColor: '#1565c0', pointRadius: 3, pointStyle: 'triangle' },
+        { label: '1:1', data: [{ x: lo, y: lo }, { x: hi, y: hi }], showLine: true, pointRadius: 0, borderColor: '#9aa5b1', borderDash: [5, 4] },
+      ] }, options: { maintainAspectRatio: false, scales: { x: { min: lo, max: hi, title: { display: true, text: t('v.ax.meas') } }, y: { min: lo, max: hi, title: { display: true, text: t('v.ax.pred') } } } } });
+    }
+    $$('[data-bi]', a).forEach((el) => el.addEventListener('change', () => { snapshot(); const b = S.project.bench[+el.dataset.bi]; b[el.dataset.bk] = el.dataset.bk === 'name' ? el.value : (el.value === '' ? undefined : parseFloat(el.value)); touch({ data: false }); renderDoc(); }));
+    $$('[data-bdel]', a).forEach((el) => el.addEventListener('click', () => { snapshot(); S.project.bench.splice(+el.dataset.bdel, 1); touch({ data: false }); renderDoc(); }));
+    $('#btnBenchAdd').onclick = () => { snapshot(); S.project.bench.push({ name: t('v.b.new'), days: 30 }); touch({ data: false }); renderDoc(); };
+  }
+  function integSheet() {
+    return [[t('r.well'), t('i.cbl'), t('i.wall'), t('i.scp'), t('i.bar'), t('i.year'), t('i.cra'), t('i.result'), 'P (%)'].concat(TECHS.map((k) => t('techs.' + k))).concat([t('i.todo')])]
+      .concat(S.project.wells.map((w) => { const ia = intOf(w); return [wellLabel(w), w.int_cbl ? t('cbl.' + w.int_cbl) : '', w.int_wall === undefined ? '' : w.int_wall, w.int_scp ? t('yn.' + w.int_scp) : '', w.int_bar === undefined ? '' : w.int_bar, w.int_year === undefined ? '' : w.int_year, w.int_cra ? t('yn.' + w.int_cra) : '', t('int.' + ia.cls), Math.round(ia.Pi * 100)]
+        .concat(TECHS.map((k) => t('feas.' + window.AWInt.feasible(ia, k)))).concat([ia.issues.map((k) => t('ii.' + k)).concat(ia.missing.length ? [t('i.measure') + ' ' + ia.missing.map((k) => t('im.' + k)).join(', ')] : []).join(' · ')]); }));
   }
 
   /* ---------- derived engineering parameters ---------- */
@@ -1346,7 +1526,7 @@
     const resS = [[t('r.well'), t('r2.A'), t('r2.h'), t('r2.phi'), t('r2.z'), t('r2.T'), t('r2.flow'), t('r2.co2'), t('r2.cA'), t('r2.cQ'), t('f.host'), t('f.note')]]
       .concat(S.project.wells.map((w) => [wellLabel(w), w.res_A, w.res_h, w.res_phi, w.res_z, w.res_T, w.res_flow, w.res_co2, t('conf.' + (w.res_cA === 'e' ? 'e' : 'm')), t('conf.' + (w.res_cQ === 'e' ? 'e' : 'm')), t('opt.' + ((w.host === 0 || w.host === '0') ? 'no' : 'yes')), w.res_note || ''].map((v) => (v === undefined || v === null ? '' : v))));
     void P;
-    return [{ name: t('exp.decide'), rows: decideSheet() }, { name: t('exp.rank'), rows: rank }, { name: t('exp.matrix'), rows: matrix }, { name: t('exp.detail'), rows: detail }, { name: t('exp.eng'), rows: engS }, { name: t('exp.res'), rows: resS }, { name: t('exp.params'), rows: params }];
+    return [{ name: t('exp.decide'), rows: decideSheet() }, { name: t('exp.integ'), rows: integSheet() }, { name: t('exp.rank'), rows: rank }, { name: t('exp.matrix'), rows: matrix }, { name: t('exp.detail'), rows: detail }, { name: t('exp.eng'), rows: engS }, { name: t('exp.res'), rows: resS }, { name: t('exp.params'), rows: params }];
   }
   /** Minimal SpreadsheetML (Excel 2003 XML): several worksheets in one text file that Excel opens directly. */
   function toSpreadsheetML(sheets) {
@@ -1809,6 +1989,8 @@
     optAll() { openDoc('optall'); },
     tech() { openDoc('tech'); },
     eng() { openDoc('eng'); },
+    integ() { openDoc('integ'); },
+    valid() { openDoc('valid'); },
     decide() { openDoc('decide'); },
     exportAll() { download(safeName(S.project.name) + '_ket_qua.xls', toSpreadsheetML(exportSheets()), 'application/vnd.ms-excel'); },
     ml() { if (S.active === 'ml') renderDoc(); else openDoc('ml'); log(t('ml.started')); },

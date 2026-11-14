@@ -91,11 +91,11 @@
       bht: num(raw.bht_c),
       bht1: num(raw.bht1_c), dt1: num(raw.dt1_h),
       bht2: num(raw.bht2_c), dt2: num(raw.dt2_h), tc: num(raw.tc_h),
-      integrity: (String(raw.integrity || 'fair').toLowerCase().match(/good|fair|poor|tốt|trung|kém/) || ['fair'])[0],
+      integrity: (String(raw.integrity || 'unknown').toLowerCase().match(/good|fair|poor|unknown|tốt|trung|kém|chưa/) || ['unknown'])[0],
       distance: num(raw.distance_km),
       warnings: [],
     };
-    const map = { 'tốt': 'good', 'trung': 'fair', 'kém': 'poor' };
+    const map = { 'tốt': 'good', 'trung': 'fair', 'kém': 'poor', 'chưa': 'unknown' };
     w.integrity = map[w.integrity] || w.integrity;
     if (!isFinite(w.distance)) w.distance = 5;
     if (!isFinite(w.depth) || w.depth <= 0) { w.warnings.push('depth'); }
@@ -232,7 +232,7 @@
     return 'useHP';
   }
 
-  const INTEGRITY_SCORE = { good: 1.0, fair: 0.6, poor: 0.2 };
+  const INTEGRITY_SCORE = { good: 1.0, fair: 0.6, poor: 0.2, unknown: 0.5 };
 
   /** Full screening of a list of raw well records. */
   function screen(rawWells, params) {

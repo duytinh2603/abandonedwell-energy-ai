@@ -277,10 +277,11 @@
     const annN = d.r > 0 ? (1 - Math.pow(1 + d.r, -d.n)) / d.r : d.n;
     const opts = [
       { id: 'now', npv: -d.C, pa: -d.C },
-      { id: 'defer', npv: -d.hold * annN - pv(d.n), pa: -pv(d.n), hold: -d.hold * annN },
     ];
-    if (Number.isFinite(d.geo)) opts.push({ id: 'geo', npv: d.geo - pv(d.L), pa: -pv(d.L), ops: d.geo });
-    if (Number.isFinite(d.co2)) opts.push({ id: 'co2', npv: d.co2 - pv(d.L), pa: -pv(d.L), ops: d.co2 });
+    if (!d.noDefer) opts.push({ id: 'defer', npv: -d.hold * annN - pv(d.n), pa: -pv(d.n), hold: -d.hold * annN }); // not allowed for an unsafe well
+    const Lg = d.Lgeo || d.L, Lc = d.Lco2 || d.L; // the well is plugged when its service life ends
+    if (Number.isFinite(d.geo)) opts.push({ id: 'geo', npv: d.geo - pv(Lg), pa: -pv(Lg), ops: d.geo });
+    if (Number.isFinite(d.co2)) opts.push({ id: 'co2', npv: d.co2 - pv(Lc), pa: -pv(Lc), ops: d.co2 });
     opts.forEach((o) => { o.gain = o.npv - (-d.C); });
     const best = opts.slice().sort((a, b) => b.npv - a.npv)[0];
     return { options: opts, best };
@@ -380,7 +381,7 @@
     const L = o.L, at = (x, i) => (Array.isArray(x) ? (x[i] !== undefined ? x[i] : x[x.length - 1] || 0) : x);
     let pvV = 0, pvO = 0, pvH = 0;
     for (let y = 1; y <= L; y++) { const d = Math.pow(1 + o.r, -y); pvV += at(o.V, y - 1) * d; pvO += at(o.O, y - 1) * d; if (y <= (o.n || 0)) pvH += (o.H || 0) * d; }
-    const rho = (1 + o.gC) / (1 + o.r), paL = o.C0 * Math.pow(rho, L), paN = o.C0 * Math.pow(rho, o.n || 0);
+    const rho = (1 + o.gC) / (1 + o.r), paL = o.C0 * Math.pow(rho, o.La || L), paN = o.C0 * Math.pow(rho, o.n || 0); // La: year of P&A (end of service life)
     const credit = o.C0 - paL, creditD = paN - paL + pvH, den = o.I0 + pvO;
     return { psi: (pvV + credit) / den, psiDefer: (pvV + creditD) / den, pvV, pvO, credit, paL, energyShare: pvV / Math.max(1e-12, pvV + credit), npvOps: pvV - pvO - o.I0 };
   }

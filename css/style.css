@@ -302,3 +302,16 @@ table.dec td.psi { font-weight: 700; } table.dec td.psi.hi { color: #1b5e20; } t
 #psiInfo p { margin: 4px 0; }
 
 .frm { display: flex; align-items: center; gap: 10px; font-size: 15px; margin: 6px 0 10px; flex-wrap: wrap; } .frm .frac { display: inline-flex; flex-direction: column; text-align: center; } .frm .frac > span:first-child { border-bottom: 1.5px solid var(--ink); padding: 2px 8px 4px; } .frm .frac > span:last-child { padding: 4px 8px 2px; }
+
+/* v0.12: integrity, feasibility, validation */
+.chip.int-good { background: #e7f4ea; color: #2e7d32; } .chip.int-fair { background: #fff8e1; color: #b26a00; } .chip.int-poor { background: #ffebee; color: #c62828; } .chip.int-unknown { background: #eceff1; color: #546e7a; border: 1px dashed #90a4ae; }
+b.int-good { color: #2e7d32; } b.int-fair { color: #b26a00; } b.int-poor { color: #c62828; } b.int-unknown { color: #546e7a; }
+.badge.unknown { color: #546e7a; }
+td.infeas { color: #c62828 !important; background: #fff5f5; font-weight: 700; } td.infeas small { color: #c62828; opacity: .6; font-weight: 400; text-decoration: line-through; }
+tr.grp-row td { background: #eef3f8; font-weight: 700; color: #1565c0; padding-top: 8px; } tr.grp-row.cond td { color: #b26a00; background: #fff8e1; } tr.grp-row.fail td { color: #c62828; background: #fff5f5; }
+tr.infeas-row td { color: var(--muted); }
+table.integ select, table.integ input { font: inherit; font-size: 12.5px; padding: 3px 4px; border: 1px solid var(--line); border-radius: 5px; max-width: 120px; }
+table.integ input[type=number] { width: 72px; } table.integ td.c, table.integ th.c { text-align: center; }
+td.fz-ok { color: #2e7d32; font-weight: 700; } td.fz-cond { color: #b26a00; font-weight: 700; } td.fz-fail { color: #c62828; font-weight: 700; }
+table.sum tr.sub td { border-top: 1px dashed var(--line); font-weight: 600; }
+#benchTbl input { font: inherit; font-size: 12.5px; padding: 3px 4px; border: 1px solid var(--line); border-radius: 5px; }

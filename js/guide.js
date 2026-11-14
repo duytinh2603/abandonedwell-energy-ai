@@ -2,12 +2,12 @@
 window.GUIDE = {
   vi: `
 <h2>Hướng dẫn sử dụng AbandonedWell Energy AI</h2>
-<p class="muted">Phiên bản web v0.11 · Công cụ sàng lọc giếng dầu khí ngừng khai thác để cải tạo thành giếng địa nhiệt.</p>
+<p class="muted">Phiên bản web v0.12 · Công cụ sàng lọc giếng dầu khí ngừng khai thác để cải tạo thành giếng địa nhiệt.</p>
 <nav class="toc"><b>Mục lục</b><ol>
 <li><a href="#g1">Giao diện</a></li><li><a href="#g2">Tạo và quản lý dự án</a></li><li><a href="#g3">Nhập dữ liệu (LAS, CSV, nhập tay)</a></li>
 <li><a href="#g4">Thuộc tính giếng và nguồn gradient</a></li><li><a href="#g4b">Học máy – mô hình nhiệt độ</a></li><li><a href="#g5">Biểu đồ log</a></li><li><a href="#g6">Sàng lọc và xếp hạng</a></li>
 <li><a href="#g7">Báo cáo giếng</a></li><li><a href="#g8">Phương án sử dụng (ORC, nhiệt trực tiếp, vỉa chứa)</a></li><li><a href="#g9">Độ nhạy</a></li>
-<li><a href="#g10">Thông số dự án</a></li><li><a href="#g11">Bảo mật dữ liệu</a></li><li><a href="#g12">Xử lý sự cố</a></li><li><a href="#g13">Giới hạn của mô hình</a></li><li><a href="#g14">Dự án mẫu mỏ Volve (dữ liệu thật)</a></li><li><a href="#g15">So sánh công nghệ địa nhiệt</a></li><li><a href="#g16">Cập nhật và đồng bộ tự động</a></li><li><a href="#g17">Cơ sở khoa học và mức tin cậy</a></li><li><a href="#g18">Quyết định cho từng giếng</a></li></ol></nav>
+<li><a href="#g10">Thông số dự án</a></li><li><a href="#g11">Bảo mật dữ liệu</a></li><li><a href="#g12">Xử lý sự cố</a></li><li><a href="#g13">Giới hạn của mô hình</a></li><li><a href="#g14">Dự án mẫu mỏ Volve (dữ liệu thật)</a></li><li><a href="#g15">So sánh công nghệ địa nhiệt</a></li><li><a href="#g16">Cập nhật và đồng bộ tự động</a></li><li><a href="#g17">Cơ sở khoa học và mức tin cậy</a></li><li><a href="#g18">Quyết định cho từng giếng</a></li><li><a href="#g19">Toàn vẹn giếng, xác suất, tuổi thọ, kiểm chứng</a></li></ol></nav>
 
 <h3 id="g1">1. Giao diện</h3>
 <ul>
@@ -131,7 +131,7 @@ window.GUIDE = {
 <tr><td>Giếng bị “bỏ qua”</td><td>Thiếu chiều sâu hoặc gradient/BHT hợp lệ.</td></tr>
 <tr><td>Không thấy dự án cũ</td><td>Đang dùng trình duyệt/máy khác → Mở tệp dự án.</td></tr>
 <tr><td>Web không cập nhật bản mới</td><td>Nhấn Ctrl+F5 (có thể hai lần vì bản ngoại tuyến).</td></tr>
-<tr><td>Muốn kiểm tra phép tính</td><td>Mở <a href="tests.html" target="_blank">tests.html</a>: 36 kiểm thử tự động so với mô hình Python v0.1 và công thức chuẩn.</td></tr></table>
+<tr><td>Muốn kiểm tra phép tính</td><td>Mở <a href="tests.html" target="_blank">tests.html</a>: 40 kiểm thử tự động so với mô hình Python v0.1 và công thức chuẩn.</td></tr></table>
 
 <h3 id="g13">13. Giới hạn của mô hình</h3>
 <p>Gradient tuyến tính, đá đồng nhất, tổn thất ống đi lên cố định; ORC tính theo hệ số exergy; vỉa tính theo phương pháp thể tích. Kết quả dùng để <b>sàng lọc</b>, chưa thay cho thiết kế chi tiết, mô phỏng thủy động hay đánh giá toàn vẹn giếng thực tế. Mô hình học máy chỉ tốt như số điểm đo nhiệt độ có trong dự án. Chưa đọc DLIS/LIS, chưa có bản đồ tọa độ, toàn vẹn giếng vẫn chọn tay, và mô hình chưa được so với số đo sản lượng địa nhiệt thực tế.</p>
@@ -195,15 +195,26 @@ window.GUIDE = {
 <p><b>Chỉ số tái sử dụng giếng Ψ*.</b> Ψ* = [Σ V<sub>t</sub>/(1+r)<sup>t</sup> + C<sub>0</sub> − C<sub>0</sub>(1+g<sub>C</sub>)<sup>L</sup>/(1+r)<sup>L</sup>] ÷ [I<sub>0</sub> + Σ O<sub>t</sub>/(1+r)<sup>t</sup>], tổng lấy theo từng năm t = 1…L. Tử số là năng lượng bán được từng năm quy về hôm nay cộng lợi do lùi hủy giếng; mẫu số là vốn cộng chi phí vận hành quy về hôm nay. Ψ* &gt; 1 ⇔ tái sử dụng lợi hơn hủy ngay. Thu V<sub>t</sub> của giếng vòng kín giảm dần theo mô hình Ramey; khi thu chi đều mỗi năm, Ψ* rút gọn thành Ψ = [a·V + C·(1 − ρ<sup>L</sup>)] ÷ [I + a·O]. Cột Ψ trên bảng dùng số của công nghệ tốt nhất; với giếng vòng hở, V suy thẳng từ gradient, chiều sâu, diện tích, chiều dày và lưu lượng vỉa (xem ghi chú “Công thức chỉ số Ψ” trên trang).</p>
 <p><b>Kế hoạch cả mỏ.</b> Các giếng cùng tên mỏ dùng chung nhu cầu nhiệt/điện của một giàn và một lần vốn kết nối. Thuật toán quy hoạch động chia nhu cầu thành 4 phần bằng nhau, thử mọi cách chia cho các giếng và chọn tổng giá trị cao nhất; giếng không được chia sẽ nhận lựa chọn tốt nhất còn lại (hoãn, hủy ngay hoặc lưu trữ CO₂). Cột <b>Đáng đo thêm</b> là giá trị kỳ vọng của thông tin hoàn hảo (EVPI): mức tối đa nên chi để thử vỉa hoặc khảo sát diện tích trước khi quyết định.</p>
 <p class="warnbox">Lưu trữ CO₂ mới ở mức sức chứa thể tích và tốc độ bơm ép; chưa đánh giá độ kín của giếng và tầng chắn. Chi phí giữ giếng, trượt giá và hệ số E là giả định cần thay bằng số của đơn vị.</p>
+
+<h3 id="g19">19. Toàn vẹn giếng, xác suất thành công, tuổi thọ, kiểm chứng</h3>
+<ul>
+<li><b>Địa nhiệt → Toàn vẹn giếng:</b> nhập bằng chứng cho từng giếng (log xi măng, độ dày thành ống, áp suất vành xuyến, số rào chắn, năm hoàn thiện, ống chống ăn mòn). Web phân loại Tốt / Trung bình / Kém / <b>Chưa rõ</b> theo nguyên tắc hai rào chắn (NORSOK D-010, ISO 16530-1). Giếng không có bằng chứng là Chưa rõ, không bao giờ mặc định Trung bình.</li>
+<li><b>Khả thi kỹ thuật tách khỏi kinh tế:</b> mỗi công nghệ có điều kiện toàn vẹn riêng (EGS cần Tốt; giếng Kém không tái sử dụng; giếng Chưa rõ phải khảo sát trước). Phương án không khả thi bị loại trước khi so tiền; bảng Xếp hạng chia nhóm Đủ điều kiện → Cần khảo sát → Không đạt, xếp kinh tế trong từng nhóm. Toàn vẹn không còn cộng vào điểm kinh tế.</li>
+<li><b>Giá trị kỳ vọng:</b> phương án cần khảo sát = − chi phí khảo sát + P × giá trị nếu thành công + (1 − P) × hủy ngay.</li>
+<li><b>Tuổi thọ sử dụng</b> = nhỏ nhất của đời dự án, tuổi thọ nhiệt (vòng kín: đến khi thu không bù chi; vòng hở: trữ nhiệt vỉa ÷ nhiệt lấy ra mỗi năm) và tuổi thọ ống chống ((thành còn − tối thiểu) × độ dày ÷ tốc độ ăn mòn). Giếng được hủy khi hết tuổi thọ; Ψ* tính đến năm đó.</li>
+<li><b>P thành công</b> = P toàn vẹn đạt × P phương án lợi hơn hủy ngay (từ bất định tài nguyên Monte Carlo).</li>
+<li><b>Địa nhiệt → Kiểm chứng:</b> so nhiệt độ dự đoán với mọi điểm đo (gradient riêng giếng, gradient chung khi bỏ giếng đang xét, học máy khi bỏ giếng) bằng sai lệch, MAE, RMSE, R²; bảng nhập số đo chạy thử giếng kín thật để so với mô hình; số liệu công bố 2.000–2.500 m để so bậc độ lớn.</li>
+</ul>
+<p class="warnbox">Xác suất toàn vẹn, tốc độ ăn mòn, chi phí khảo sát là giả định sàng lọc – sửa trong Thuộc tính dự án → Toàn vẹn giếng – giả định. Mô hình giếng kín chưa được hiệu chuẩn với số đo thật nào của dự án.</p>
 `,
   en: `
 <h2>AbandonedWell Energy AI – User Guide</h2>
-<p class="muted">Web version v0.11 · Screening tool for repurposing shut-in oil &amp; gas wells as geothermal wells.</p>
+<p class="muted">Web version v0.12 · Screening tool for repurposing shut-in oil &amp; gas wells as geothermal wells.</p>
 <nav class="toc"><b>Contents</b><ol>
 <li><a href="#g1">Interface</a></li><li><a href="#g2">Creating and managing projects</a></li><li><a href="#g3">Importing data (LAS, CSV, manual)</a></li>
 <li><a href="#g4">Well properties and gradient source</a></li><li><a href="#g4b">Machine learning – temperature model</a></li><li><a href="#g5">Log plot</a></li><li><a href="#g6">Screening and ranking</a></li>
 <li><a href="#g7">Well report</a></li><li><a href="#g8">Utilisation options (ORC, direct heat, reservoir)</a></li><li><a href="#g9">Sensitivity</a></li>
-<li><a href="#g10">Project parameters</a></li><li><a href="#g11">Data privacy</a></li><li><a href="#g12">Troubleshooting</a></li><li><a href="#g13">Model limitations</a></li><li><a href="#g14">Volve field case study (real data)</a></li><li><a href="#g15">Geothermal technology comparison</a></li><li><a href="#g16">Automatic updates and sync</a></li><li><a href="#g17">Scientific basis and confidence</a></li><li><a href="#g18">Decision for each well</a></li></ol></nav>
+<li><a href="#g10">Project parameters</a></li><li><a href="#g11">Data privacy</a></li><li><a href="#g12">Troubleshooting</a></li><li><a href="#g13">Model limitations</a></li><li><a href="#g14">Volve field case study (real data)</a></li><li><a href="#g15">Geothermal technology comparison</a></li><li><a href="#g16">Automatic updates and sync</a></li><li><a href="#g17">Scientific basis and confidence</a></li><li><a href="#g18">Decision for each well</a></li><li><a href="#g19">Integrity, probability, service life, validation</a></li></ol></nav>
 
 <h3 id="g1">1. Interface</h3>
 <ul>
@@ -327,7 +338,7 @@ window.GUIDE = {
 <tr><td>Well “skipped”</td><td>Missing depth or a valid gradient/BHT.</td></tr>
 <tr><td>Old project missing</td><td>Different browser/computer → Open Project File.</td></tr>
 <tr><td>Site not updating</td><td>Press Ctrl+F5 (possibly twice because of the offline copy).</td></tr>
-<tr><td>Check the calculations</td><td>Open <a href="tests.html" target="_blank">tests.html</a>: 36 automated checks against the Python v0.1 model and standard formulas.</td></tr></table>
+<tr><td>Check the calculations</td><td>Open <a href="tests.html" target="_blank">tests.html</a>: 40 automated checks against the Python v0.1 model and standard formulas.</td></tr></table>
 
 <h3 id="g13">13. Model limitations</h3>
 <p>Linear gradient, homogeneous rock, fixed up-flow loss; ORC by exergy factor; reservoir by the volumetric method. Results are for <b>screening</b> and do not replace detailed design, reservoir simulation or real well-integrity assessment. The ML model is only as good as the measured temperatures in the project. DLIS/LIS files, a coordinate map and log-based integrity are not supported yet, and the model has not been compared with measured geothermal production.</p>
@@ -391,5 +402,16 @@ window.GUIDE = {
 <p><b>Well repurposing index Ψ*.</b> Ψ* = [Σ V<sub>t</sub>/(1+r)<sup>t</sup> + C<sub>0</sub> − C<sub>0</sub>(1+g<sub>C</sub>)<sup>L</sup>/(1+r)<sup>L</sup>] ÷ [I<sub>0</sub> + Σ O<sub>t</sub>/(1+r)<sup>t</sup>], summed over years t = 1…L. The numerator is the energy sold each year in today’s money plus the gain from pushing P&amp;A back; the denominator is capital plus running costs in today’s money. Ψ* &gt; 1 ⇔ re-use beats plugging now. V<sub>t</sub> of a closed loop declines by the Ramey model; with constant yearly values Ψ* reduces to Ψ = [a·V + C·(1 − ρ<sup>L</sup>)] ÷ [I + a·O]. The Ψ column uses the best technology; for an open-loop well V follows directly from gradient, depth, reservoir area, thickness and flow (see the “Formula of Ψ” note on the page).</p>
 <p><b>Field plan.</b> Wells with the same field name share one host’s heat/power demand and a single tie-back. A dynamic programme splits the demand into four equal parts, tries every allocation between the wells and keeps the highest total; wells left without a share take their best remaining option (defer, plug now or CO₂ storage). <b>Worth measuring</b> is the expected value of perfect information (EVPI): the most worth spending on a well test or area survey before deciding.</p>
 <p class="warnbox">CO₂ storage covers volumetric capacity and injection rate only; well and caprock containment are not assessed. The cost of keeping a well, escalation and E are assumptions to replace with your own figures.</p>
+
+<h3 id="g19">19. Integrity, probability of success, service life, validation</h3>
+<ul>
+<li><b>Geothermal → Well Integrity:</b> enter the evidence per well (cement log, casing wall thickness, sustained casing pressure, barrier count, completion year, corrosion-resistant casing). Wells are classed Good / Fair / Poor / <b>Unknown</b> with the two-barrier principle (NORSOK D-010, ISO 16530-1). A well without evidence is Unknown, never assumed Fair.</li>
+<li><b>Technical feasibility separate from economics:</b> each technology has its own integrity requirement (EGS needs Good; Poor wells are not re-used; Unknown wells must be surveyed first). Infeasible options are removed before any money comparison; the ranking is grouped Feasible → Survey first → Fails, with economics inside each group. Integrity is no longer part of the economic score.</li>
+<li><b>Expected value:</b> an option needing a survey = − survey cost + P × value if successful + (1 − P) × plug now.</li>
+<li><b>Service life</b> = smallest of project life, thermal life (closed loop: until revenue no longer covers costs; open loop: heat in place ÷ heat taken per year) and casing life ((remaining − minimum wall) × thickness ÷ corrosion rate). The well is plugged at the end of service life; Ψ* runs to that year.</li>
+<li><b>P success</b> = P integrity adequate × P the option beats plugging now (resource Monte Carlo).</li>
+<li><b>Geothermal → Validation:</b> predicted temperatures against every measured point (own gradient, field gradient leaving the well out, machine learning leaving the well out) with bias, MAE, RMSE, R²; a table for real closed-loop circulation tests against the model; published 2,000–2,500 m results for an order-of-magnitude check.</li>
+</ul>
+<p class="warnbox">Integrity probabilities, corrosion rates and survey cost are screening assumptions – edit under Project properties → Well integrity – assumptions. The closed-loop model is not yet calibrated against any real measurement of this project.</p>
 `,
 };
