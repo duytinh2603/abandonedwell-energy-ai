@@ -218,6 +218,26 @@
     return { ok, detail: `T vỉa ${p.Tres.toFixed(1)} °C; Q ${p.Q.toFixed(0)} kW (mô hình ${Qmodel.toFixed(0)}), giới hạn bởi ${p.limit}; Ψ = ${p.psi.toFixed(2)}, Ψ hoãn = ${p.psiDefer.toFixed(2)}` };
   });
 
+  /* 12. Ψ* – year-by-year form */
+  test('Ψ*: thu chi đều thì trùng Ψ; Ψ* > 1 ⇔ NPV(tái sử dụng) > NPV(hủy ngay) với dòng tiền thay đổi theo năm; thu giảm dần làm Ψ* giảm', () => {
+    const X = window.AWTech; let ok = true;
+    const c = { V: 6.7, O: 1.1, I: 32, C: 169, g: 0.03, r: 0.10, L: 25, n: 10, H: 2 };
+    const a = X.psi(c), b = X.psiStar({ V: c.V, O: c.O, I0: c.I, C0: c.C, gC: c.g, r: c.r, L: c.L, n: c.n, H: c.H });
+    if (!near(a.psi, b.psi, 1e-9) || !near(a.psiDefer, b.psiDefer, 1e-9)) ok = false;
+    for (let k = 0; k < 120; k++) {
+      const L = 8 + (k % 23), r = 0.04 + (k % 9) / 100, gC = (k % 7) / 100, C0 = (k * 19) % 220, I0 = 15 + (k * 31) % 260;
+      const V = Array.from({ length: L }, (_, y) => 9 * ((k % 5) + 1) / 3 * Math.pow(0.97 - (k % 4) / 100, y)), O = Array.from({ length: L }, (_, y) => 0.8 + 0.05 * y * (k % 3));
+      const p = X.psiStar({ V, O, I0, C0, gC, r, L, n: 5 + (k % 9), H: (k % 4) / 2 });
+      let npvOps = -I0; for (let y = 1; y <= L; y++) npvOps += (V[y - 1] - O[y - 1]) / Math.pow(1 + r, y);
+      const reuse = npvOps - C0 * Math.pow((1 + gC) / (1 + r), L), now = -C0;
+      if (Math.abs(reuse - now) > 1e-9 && (p.psi > 1) !== (reuse > now)) ok = false;
+      if (!near(p.npvOps, npvOps, 1e-9)) ok = false;
+    }
+    const flat = X.psiStar({ V: 6.7, O: 1.1, I0: 32, C0: 169, gC: 0.03, r: 0.10, L: 25 }), dec = X.psiStar({ V: Array.from({ length: 25 }, (_, y) => 6.7 * Math.pow(0.97, y)), O: 1.1, I0: 32, C0: 169, gC: 0.03, r: 0.10, L: 25 });
+    if (!(dec.psi < flat.psi)) ok = false;
+    return { ok, detail: `Ψ = Ψ* = ${b.psi.toFixed(3)} khi thu chi đều; thu giảm 3 %/năm: Ψ* ${flat.psi.toFixed(2)} → ${dec.psi.toFixed(2)}; 120 dòng tiền thay đổi theo năm khớp so sánh NPV` };
+  });
+
   const tb = document.getElementById('rows'); let pass = 0;
   results.forEach((r, i) => {
     if (r.ok) pass++;

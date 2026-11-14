@@ -21,6 +21,10 @@
   - BHT trong `~Parameter` → hiệu chỉnh Harrison (1983).
 - **CSV danh sách giếng**: `id,name,location,depth_m,gradient_c100m,bht_c,bht1_c,dt1_h,bht2_c,dt2_h,tc_h,integrity,distance_km`
 
+## Ψ* theo từng năm (v0.11)
+
+- **Ψ\* = [Σ V_t/(1+r)^t + C0 − C0·(1+gC)^L/(1+r)^L] ÷ [I0 + Σ O_t/(1+r)^t]** là cơ sở của trang Quyết định: thu và chi tính riêng từng năm, có suy giảm nhiệt của giếng vòng kín (Ramey).
+
 ## Chỉ số tái sử dụng giếng Ψ (v0.10)
 
 - **Ψ = [a·V + C·(1 − ρ^L)] ÷ [I + a·O]**, a = (1 − (1+r)^−L)/r, ρ = (1+g)/(1+r). Ψ > 1 ⇔ tái sử dụng giếng lợi hơn hủy ngay; có dạng so với hoãn hủy và dạng khép kín cho giếng vòng hở tính thẳng từ số liệu mỏ (gradient, chiều sâu, diện tích, chiều dày, lưu lượng).
@@ -70,7 +74,7 @@
 - **Nhập DST (CSV)**: `well,tvd_m,temp_c,label` (hoặc `md_m`), gradient tính lại theo số đo.
 - **Kinh tế:** công suất bơm theo thủy lực, giá trị hoãn hủy giếng (P&A), tín chỉ CO₂, NPV P10–P90 và xác suất NPV > 0, giá trị điện trên giàn.
 - **Phương án sử dụng:** nguồn nước khai thác kèm (không tốn vốn giếng), pinch ORC, chỉ số khai thác PI, khoảng cách giếng và thời gian nước lạnh tới, vùng nước lạnh quét qua, cảnh báo CO₂, tổng hợp theo mỏ.
-- **Hoàn tác** (Ctrl+Z), **dùng ngoại tuyến** (service worker, Chart.js lưu trong repo), **kiểm thử tự động** tại `tests.html` (35 kiểm tra).
+- **Hoàn tác** (Ctrl+Z), **dùng ngoại tuyến** (service worker, Chart.js lưu trong repo), **kiểm thử tự động** tại `tests.html` (36 kiểm tra).
 
 ## Mô hình
 

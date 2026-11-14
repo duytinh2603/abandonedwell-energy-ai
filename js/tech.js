@@ -364,5 +364,26 @@
     return Object.assign(psi({ V, O, I, C: f.C, g: f.g, r: f.r, L: f.L, n: f.n, H: f.H }), { Q, Qwell, Qres, Tres, V, O, I, limit: Q === Qres ? 'reservoir' : Q === Qwell ? 'well' : 'demand' });
   }
 
-  global.AWTech = { DEF, evaluate, bestUse, co2, co2TofH, rhoW, muW, hydroCase, co2Storage, decide, portfolio, evpi, psi, psiHydro };
+  /**
+   * Ψ* – the well repurposing index in its general, year-by-year form (the basis of the decision page):
+   *
+   *          Σ_{t=1..L} V_t/(1+r)^t  +  C0  −  C0·(1+gC)^L/(1+r)^L
+   *   Ψ* = ───────────────────────────────────────────────────────
+   *                    I0  +  Σ_{t=1..L} O_t/(1+r)^t
+   *
+   * V_t, O_t: revenue and running cost of year t (arrays of length L, or numbers when constant); I0: capital today;
+   * C0: P&A cost today; gC: its yearly escalation; r: discount rate.  Ψ* > 1 ⇔ NPV(re-use, plug at L) > NPV(plug now).
+   * With constant V_t, O_t it reduces to psi().  Against deferral for n years with holding cost H the P&A term is
+   * C0·[(1+gC)^n/(1+r)^n − (1+gC)^L/(1+r)^L] + Σ_{t≤n} H/(1+r)^t.
+   */
+  function psiStar(o) {
+    const L = o.L, at = (x, i) => (Array.isArray(x) ? (x[i] !== undefined ? x[i] : x[x.length - 1] || 0) : x);
+    let pvV = 0, pvO = 0, pvH = 0;
+    for (let y = 1; y <= L; y++) { const d = Math.pow(1 + o.r, -y); pvV += at(o.V, y - 1) * d; pvO += at(o.O, y - 1) * d; if (y <= (o.n || 0)) pvH += (o.H || 0) * d; }
+    const rho = (1 + o.gC) / (1 + o.r), paL = o.C0 * Math.pow(rho, L), paN = o.C0 * Math.pow(rho, o.n || 0);
+    const credit = o.C0 - paL, creditD = paN - paL + pvH, den = o.I0 + pvO;
+    return { psi: (pvV + credit) / den, psiDefer: (pvV + creditD) / den, pvV, pvO, credit, paL, energyShare: pvV / Math.max(1e-12, pvV + credit), npvOps: pvV - pvO - o.I0 };
+  }
+
+  global.AWTech = { DEF, evaluate, bestUse, co2, co2TofH, rhoW, muW, hydroCase, co2Storage, decide, portfolio, evpi, psi, psiHydro, psiStar };
 })(window);

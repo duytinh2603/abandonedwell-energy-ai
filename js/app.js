@@ -23,7 +23,7 @@
     // well decision: P&A cost escalation (%/yr), yearly cost of a suspended well (bn VND), CO2 storage efficiency (%)
     paEsc: 3, paHold: 2, t_co2E: 5,
   };
-  const APP_VERSION = 'v0.10.0'; const APP_DATE = '14/11/2026';
+  const APP_VERSION = 'v0.11.0'; const APP_DATE = '14/11/2026';
   const PARAM_VER = 2; // 2: industrial heat valued at the displaced gas-boiler heat, not at the electricity price
   const ELEC_PRICE = 2204;
   const PURPOSE_PRICE = { res: 2204, hp: Math.round(2204 / 3) };
@@ -1159,10 +1159,10 @@
     const P = modelParams(), T = techParams(), U = utilParams(), r = P.eco.rate / 100, L = P.eco.life;
     return techAll().map(({ w, r: tr }) => {
       const well = wellBy(w.uid) || {}, C = paCostOf(well, P);
-      const geoBest = tr.best, geo = geoBest ? geoBest.npv - paDeferral(well, P) : null; // energy value only; P&A is handled by the decision itself
+      const geoBest = tr.best, ps = geoBest ? psiOf(w, geoBest, P, tr.U, C) : null;
+      const geo = ps ? ps.npvOps : null; // Σ(V_t − O_t)/(1+r)^t − I0: energy value year by year; P&A is handled by the decision itself
       const cs = window.AWTech.co2Storage(tr.resIn, { E: T.co2E, life: L, hours: P.eco.hours, dpMax: U.dpMax, fee: P.eco.co2Price || 0, capex: w.eco.capex + (tr.hostCapex || 0) + T.capexCPG, opexPct: P.eco.opexPct, rate: r, integrity: w.integrity });
       const d = window.AWTech.decide({ C, g: P.eco.paEsc / 100, r, n: Math.max(1, P.eco.paYears || 10), hold: P.eco.paHold, L, geo, co2: cs.status === 'ok' ? cs.npv : null });
-      const ps = geoBest ? window.AWTech.psi({ V: geoBest.value + (geoBest.extra || 0), O: geoBest.opex + (geoBest.pumpCost || 0), I: geoBest.capex, C, g: P.eco.paEsc / 100, r, L, n: Math.max(1, P.eco.paYears || 10), H: P.eco.paHold }) : null;
       return { w, well, tr, cs, d, C, geoBest, ps };
     });
   }
@@ -1170,6 +1170,28 @@
    * Field plan: wells of the same field share the host's heat/power demand and one tie-back.
    * Adds to every row: plan {units, share, value, gain, best (technology at that share)} and evpi (bn VND).
    */
+  /**
+   * Year-by-year revenue V_t and running cost O_t of a geothermal option over the project life.
+   * Closed loops (CLGS, AGS) lose output as the rock around the well cools: every year is recomputed with the Ramey
+   * model and scaled from the reference year. Reservoir options (hydrothermal, EGS, CO2-EGS) already have their flow
+   * throttled so that the heat taken over the project life stays within the recoverable heat in place → flat series.
+   */
+  function yearlySeries(w, b, P, U) {
+    const L = P.eco.life, closed = b.id === 'clgs' || b.id === 'ags', V = [], O = [], D = [];
+    const q = (y) => M.wellOutput(Object.assign({}, w.base, { m: b.m || P.m, Tin: U.Tret, years: y, n: 200 })).Q;
+    const ref = closed ? q(Math.max(1, P.years)) : 0;
+    const V0 = (b.value || 0) + (b.extra || 0), O0 = (b.opex || 0) + (b.pumpCost || 0), head = b.capped && b.Q > 0 && b.Qall > 0 ? b.Qall / b.Q : 1; // spare capacity above what is sold
+    for (let y = 1; y <= L; y++) {
+      const d = closed && ref > 0 ? Math.max(0, q(y) / ref) : 1;
+      D.push(d); V.push(V0 * Math.min(b.capped ? 1 : Infinity, d * head)); O.push(O0);
+    }
+    return { V, O, D };
+  }
+  /** Ψ* and the operating NPV of a geothermal option from its yearly series. */
+  function psiOf(w, b, P, U, C) {
+    const ys = yearlySeries(w, b, P, U);
+    return Object.assign(window.AWTech.psiStar({ V: ys.V, O: ys.O, I0: b.capex, C0: C, gC: P.eco.paEsc / 100, r: P.eco.rate / 100, L: P.eco.life, n: Math.max(1, P.eco.paYears || 10), H: P.eco.paHold }), { ys });
+  }
   const PLAN_K = 4;
   function decidePlan() {
     const rows = decideRows(), P = modelParams(), T = techParams(), r = P.eco.rate / 100, L = P.eco.life;
@@ -1186,7 +1208,7 @@
           const f = k / PLAN_K, T2 = Object.assign({}, T, { heatDemOff: T.heatDemOff * f, heatDemOn: T.heatDemOn * f, elecDem: T.elecDem * f, mcN: 1 });
           const r2 = window.AWTech.evaluate(x.w, x.tr.ev, { P, U: x.tr.U, eco: Object.assign({}, P.eco, { deferral: 0 }), resIn: x.tr.resIn, T: T2, wellCapex: x.w.eco.capex, hostCapex: 0, conf: x.tr.conf });
           x.geoAt.push(r2.best || null);
-          geo.push(r2.best ? r2.best.npv - pvPA : -Infinity);
+          geo.push(r2.best ? psiOf(x.w, r2.best, P, x.tr.U, x.C).npvOps - pvPA : -Infinity);
         }
         // value of measuring first: only the reservoir option carries a simulated distribution
         const hy = x.tr.options.find((o) => o.id === 'hydro');
@@ -1225,7 +1247,7 @@
       body.innerHTML = `${liab > 0 ? '' : `<div class="warnbox">${t('dec.noPa')}</div>`}
         <div class="kpis">${DEC.map((k) => `<div class="kpi dk-${k}"><span>${t('dec.' + k)}</span><b>${cnt[k]}</b></div>`).join('')}
           <div class="kpi"><span>${t('dec.k.gain')}</span><b class="${gain > 0 ? 'npv-pos' : ''}">${fmt(gain, 0)}</b></div></div>
-        <div class="tscroll"><table class="tbl dec" id="decTbl"><thead><tr><th>${t('r.well')}</th><th class="n">${t('dec.now')}</th><th class="n">${t('dec.deferN', { n })}</th><th class="n">${t('dec.geo')}</th><th class="n">${t('dec.co2')}</th><th class="n" title="${esc(t('dec.psiTip'))}">Ψ</th><th>${t('dec.plan')}</th><th class="n">${t('dec.gain')}</th><th class="n">${t('dec.evpi')}</th></tr></thead><tbody>
+        <div class="tscroll"><table class="tbl dec" id="decTbl"><thead><tr><th>${t('r.well')}</th><th class="n">${t('dec.now')}</th><th class="n">${t('dec.deferN', { n })}</th><th class="n">${t('dec.geo')}</th><th class="n">${t('dec.co2')}</th><th class="n" title="${esc(t('dec.psiTip'))}">Ψ*</th><th>${t('dec.plan')}</th><th class="n">${t('dec.gain')}</th><th class="n">${t('dec.evpi')}</th></tr></thead><tbody>
           ${rows.map((x) => `<tr data-u="${x.w.uid}" class="${x.w.uid === S.decSel ? 'sel' : ''}"><td><b>${esc(x.w.name || x.w.id)}</b>${x.geoBest ? ` <span class="chip ${x.geoBest.id}">${t('techs.' + x.geoBest.id)}</span>` : ''}</td>${DEC.map((id) => cellOf(x, id)).join('')}
             <td class="n psi ${x.ps && x.ps.psi > 1 ? (x.ps.psiDefer > 1 ? 'hi' : 'mid') : 'lo'}" title="${esc(x.ps ? t('dec.psiCell', { a: fmt(x.ps.psi, 2), b: fmt(x.ps.psiDefer, 2), e: fmt(x.ps.energyShare * 100, 0) }) : '')}">${x.ps ? fmt(x.ps.psi, 2) : '–'}</td>
             <td><span class="chip dk-${x.plan.id}">${t('dec.' + x.plan.id)}</span>${x.plan.units ? ` <small>${esc(t('techs.' + x.plan.best.id))} · ${fmt(x.plan.q)} kWth${x.plan.pe >= 1 ? ' + ' + fmt(x.plan.pe) + ' kWe' : ''}</small>` : ''}</td><td class="n ${x.plan.gain > 0 ? 'npv-pos' : ''}"><b>${x.plan.gain > 0 ? '+' : ''}${fmt(x.plan.gain, 0)}</b></td>
@@ -1247,7 +1269,7 @@
         box.innerHTML = `<h3 style="margin:18px 0 8px">${t('dec.calcT', { w: esc(x.w.name || x.w.id) })}</h3><div class="dgrid">
           ${card('now', line(t('dec.l.paNow'), money(-x.C)))}
           ${card('defer', line(t('dec.l.hold', { n, h: fmt(P.eco.paHold, 1) }), money(-P.eco.paHold * annN)) + paLater(n))}
-          ${card('geo', gb ? line(t('dec.l.rev') + ` <small>(${esc(t('techs.' + gb.id) + ' · ' + t('tuse.' + gb.use))})</small>`, money(gb.value) + '/' + t('det.yr')) + line(t('dec.l.opex'), money(-(gb.opex + (gb.pumpCost || 0))) + '/' + t('det.yr')) + line(t('dec.l.pv', { y: L, f: fmt(annL, 2) }), money(gb.yearly * annL)) + line(t('dec.l.capex'), money(-gb.capex)) + paLater(L) + (x.ps ? line(t('dec.l.psi', { e: fmt(x.ps.energyShare * 100, 0) }), 'Ψ = ' + fmt(x.ps.psi, 2), 'note') : '') : t('tw.noFeasible'))}
+          ${card('geo', gb ? line(t('dec.l.rev') + ` <small>(${esc(t('techs.' + gb.id) + ' · ' + t('tuse.' + gb.use))})</small>`, t('dec.l.y1L', { a: fmt(x.ps.ys.V[0], 1), b: fmt(x.ps.ys.V[L - 1], 1), L })) + line(t('dec.l.pvV', { y: L }), money(x.ps.pvV)) + line(t('dec.l.pvO', { y: L }), money(-x.ps.pvO)) + line(t('dec.l.capex'), money(-gb.capex)) + paLater(L) + (x.ps ? line(t('dec.l.psi', { e: fmt(x.ps.energyShare * 100, 0) }), 'Ψ* = ' + fmt(x.ps.psi, 2), 'note') : '') : t('tw.noFeasible'))}
           ${card('co2', cs.status === 'ok' ? line(t('dec.l.fee', { t: fmt(cs.rateT / 1000, 1) }), money(cs.revenue, 2) + '/' + t('det.yr')) + line(t('dec.l.opex'), money(-cs.opex, 2) + '/' + t('det.yr')) + line(t('dec.l.pv', { y: L, f: fmt(annL, 2) }), money(cs.yearly * annL)) + line(t('dec.l.capex'), money(-cs.capex)) + paLater(L) + line(t('dec.l.cap', { c: fmt(cs.capT / 1000, 0) }), cs.breakEvenFee ? fmt(cs.breakEvenFee / 1000, 0) + ' ' + t('dec.l.feeUnit') : '–', 'note') : t(cs.status === 'nodata' ? 'tw.noRes' : 'tw.' + (cs.why || 'noFeasible')))}
         </div>`;
       };
@@ -1257,7 +1279,7 @@
   }
   function decideSheet() {
     const n = modelParams().eco.paYears || 10;
-    return [[t('r.well'), t('dec.in.pa'), t('dec.now'), t('dec.deferN', { n }), t('dec.geo'), t('tech.best'), t('dec.co2'), t('dec.l.capShort'), t('dec.l.be'), t('dec.pick'), t('dec.gain'), t('dec.plan'), t('dec.planQ'), t('dec.planGain'), t('dec.evpi'), 'Ψ', t('dec.psiD'), t('dec.psiE')]]
+    return [[t('r.well'), t('dec.in.pa'), t('dec.now'), t('dec.deferN', { n }), t('dec.geo'), t('tech.best'), t('dec.co2'), t('dec.l.capShort'), t('dec.l.be'), t('dec.pick'), t('dec.gain'), t('dec.plan'), t('dec.planQ'), t('dec.planGain'), t('dec.evpi'), 'Ψ*', t('dec.psiD'), t('dec.psiE')]]
       .concat(decidePlan().rows.map((x) => { const o = (id) => { const q = x.d.options.find((z) => z.id === id); return q ? +q.npv.toFixed(1) : ''; };
         return [x.w.name || x.w.id, x.C, o('now'), o('defer'), o('geo'), x.geoBest ? t('tech.' + x.geoBest.id) + ' · ' + t('tuse.' + x.geoBest.use) : '', o('co2'), x.cs.capT ? +(x.cs.capT / 1000).toFixed(0) : '', x.cs.breakEvenFee ? Math.round(x.cs.breakEvenFee) : '', t('dec.' + x.d.best.id), +x.d.best.gain.toFixed(1), t('dec.' + x.plan.id) + (x.plan.units ? ' · ' + t('techs.' + x.plan.best.id) : ''), Math.round(x.plan.q), +x.plan.gain.toFixed(1), +x.evpi.toFixed(1), x.ps ? +x.ps.psi.toFixed(3) : '', x.ps ? +x.ps.psiDefer.toFixed(3) : '', x.ps ? +(x.ps.energyShare * 100).toFixed(0) : '']; }));
   }
