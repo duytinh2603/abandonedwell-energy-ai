@@ -25,7 +25,7 @@
     // well integrity
     i_wallMin: 70, i_wallFair: 85, i_tWall: 12, i_corrOpen: 0.2, i_corrClosed: 0.05, i_pGood: 95, i_pFair: 70, i_pUnknown: 80, i_insp: 5,
   };
-  const APP_VERSION = 'v0.12.1'; const APP_DATE = '15/11/2026';
+  const APP_VERSION = 'v0.12.2'; const APP_DATE = '15/11/2026';
   const PARAM_VER = 3; // 2: industrial heat valued at the displaced gas-boiler heat; 3: integrity is a gate, not a score weight
   const ELEC_PRICE = 2204;
   const PURPOSE_PRICE = { res: 2204, hp: Math.round(2204 / 3) };
@@ -556,7 +556,7 @@
     const isSel = (o) => S.sel && S.sel.t === o.t && S.sel.uid === o.uid && S.sel.ci === o.ci;
     const row = (lvl, o, icon, name, fam, unit, key) => {
       const car = key ? `<span class="car" data-tog="${key}">${S.collapsed[key] ? '▶' : '▼'}</span>` : '<span class="car"></span>';
-      return `<div class="trow${isSel(o) ? ' sel' : ''}" data-t="${o.t}" data-uid="${o.uid || ''}" data-ci="${o.ci === undefined ? '' : o.ci}"><span style="padding-left:${6 + lvl * 16}px">${car}${icon}<span>${esc(name)}</span></span><span class="fam">${esc(fam)}</span><span class="unit">${esc(unit)}</span></div>`;
+      return `<div class="trow${isSel(o) ? ' sel' : ''}" data-t="${o.t}" data-uid="${o.uid || ''}" data-ci="${o.ci === undefined ? '' : o.ci}"><span style="padding-left:${6 + lvl * 16}px">${car}${icon}<span class="tname"${o.t === 'well' || o.t === 'project' ? ` title="${esc(t('tree.renameTip'))}"` : ''}>${esc(name)}</span></span><span class="fam">${esc(fam)}</span><span class="unit">${esc(unit)}</span></div>`;
     };
     let h = row(0, { t: 'project' }, ICON.tProject, P.name, t('tree.project'), '', 'P');
     if (!S.collapsed.P) {
@@ -579,13 +579,46 @@
     const tog = e.target.closest('[data-tog]');
     if (tog) { S.collapsed[tog.dataset.tog] = !S.collapsed[tog.dataset.tog]; renderTree(); return; }
     const r = e.target.closest('.trow'); if (!r) return;
-    if (r.dataset.t === 'folder') return;
+    if (r.dataset.t === 'folder' || e.target.closest('.tedit')) return;
+    // click the name of an already-selected well/project again = rename in place (like Explorer); a double-click cancels it
+    const again = r.classList.contains('sel') && e.target.closest('.tname') && (r.dataset.t === 'well' || r.dataset.t === 'project') && e.detail === 1;
     S.sel = { t: r.dataset.t, uid: r.dataset.uid || undefined, ci: r.dataset.ci === '' ? undefined : +r.dataset.ci };
     $$('#tree .trow').forEach((x) => x.classList.toggle('sel', x === r));
     renderProps(); renderRibbon();
+    clearTimeout(S.renameTimer);
+    if (again) S.renameTimer = setTimeout(() => treeRename(r), 450);
   });
+  /** Edit a well or project name directly in the tree. Enter/blur saves, Esc cancels. */
+  function treeRename(r) {
+    if (!r || !r.isConnected || !S.project) return;
+    const isP = r.dataset.t === 'project', w = isP ? null : wellBy(r.dataset.uid);
+    if (!isP && !w) return;
+    const span = r.querySelector('.tname'); if (!span) return;
+    const old = isP ? S.project.name : wellLabel(w);
+    const inp = document.createElement('input');
+    inp.className = 'tedit'; inp.value = old; inp.spellcheck = false;
+    span.replaceWith(inp); inp.focus(); inp.select();
+    let done = false;
+    const finish = (save) => {
+      if (done) return; done = true;
+      const v = inp.value.trim();
+      if (save && v && v !== old) {
+        snapshot();
+        if (isP) S.project.name = v;
+        else { if (!w.id || old.toLowerCase().includes(String(w.id).toLowerCase())) w.id = v; /* the ID usually repeats the name: keep no trace of the old one */ w.name = v; }
+        touch({ data: false }); S.result = null; scheduleDocRefresh();
+        log(t('msg.renamed', { a: old, b: v }), 'ok');
+      }
+      renderTree(); renderProps(); renderRibbon();
+    };
+    inp.addEventListener('keydown', (e) => { e.stopPropagation(); if (e.key === 'Enter') finish(true); if (e.key === 'Escape') finish(false); });
+    inp.addEventListener('blur', () => finish(true));
+    inp.addEventListener('click', (e) => e.stopPropagation());
+    inp.addEventListener('dblclick', (e) => e.stopPropagation());
+  }
   $('#tree').addEventListener('dblclick', (e) => {
-    const r = e.target.closest('.trow'); if (!r || !r.dataset.uid) return;
+    clearTimeout(S.renameTimer);
+    const r = e.target.closest('.trow'); if (!r || !r.dataset.uid || e.target.closest('.tedit')) return;
     const w = wellBy(r.dataset.uid);
     if (r.dataset.t === 'curve' && +r.dataset.ci > 0) {
       const v = logViewOf(w); const m = w.curves[+r.dataset.ci].mnemonic;
@@ -1883,7 +1916,7 @@
   }
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && !$('#modal').hidden) $('#mX').click();
-    if (e.key === 'F2' && $('#modal').hidden && !/INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName) && S.project && selWell()) { e.preventDefault(); ACT.renameWell(); }
+    if (e.key === 'F2' && $('#modal').hidden && !/INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName) && S.project && S.sel && (S.sel.t === 'well' || S.sel.t === 'project')) { e.preventDefault(); const r = $('#tree .trow.sel'); if (r && r.offsetParent && (r.dataset.t === 'well' || r.dataset.t === 'project')) treeRename(r); else if (selWell()) ACT.renameWell(); }
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && !/INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName) && S.undo.length) { e.preventDefault(); ACT.undo(); }
   });
 

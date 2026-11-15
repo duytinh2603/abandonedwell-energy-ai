@@ -82,6 +82,7 @@ button, input, select { font: inherit; color: inherit; }
 .trow { cursor: default; user-select: none; font-size: 13.5px; }
 .trow > span { padding: 4px 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .trow > span:first-child { display: flex; align-items: center; gap: 5px; }
+.trow .tedit { flex: 1; min-width: 60px; font: inherit; padding: 1px 4px; border: 1px solid var(--accent, #1565c0); border-radius: 3px; outline: none; background: #fff; color: var(--ink); }
 .trow:hover { background: #f1f7fd; }
 .trow.sel { background: #d4e8fb; }
 .trow .car { width: 14px; flex: none; color: var(--ink2); cursor: pointer; text-align: center; font-size: 10px; }
