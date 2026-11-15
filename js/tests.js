@@ -269,6 +269,19 @@
     return { ok, detail: `địa nhiệt hủy năm 12: ${d1.options.find((o) => o.id === 'geo').npv.toFixed(1)}; giếng SCP: ${d2.options.map((o) => o.id).join(', ')}` };
   });
 
+  test('Bản ẩn danh: đổi mã giếng, mỏ, dự án; xóa tọa độ, ghi chú; không còn tên cũ; dự án gốc giữ nguyên', () => {
+    const P = { id: 'p1', name: 'Mo That 2026', params: {}, bench: [{ name: 'Thu XYZ-1P' }], wells: [
+      { uid: 'a', id: 'XYZ-1P', name: 'XYZ-1P', field: 'Mo That', lat: 9.1, lon: 107.2, note: 'giếng XYZ-1P của Mo That', tempPoints: [{ z: 2000, T: 90, src: 'DST XYZ-1P' }], curves: [{ mnemonic: 'GR', desc: 'XYZ-1P gamma', data: [1, 2] }] },
+      { uid: 'b', id: 'XYZ-1', name: 'XYZ-1', field: 'Mo That', gNote: 'gần XYZ-1P', curves: [] }] };
+    const before = JSON.stringify(P);
+    const r = window.AWPriv.anonymize(P, { prefix: 'W-', fieldBase: 'Mỏ', name: 'Dự án A' });
+    const q = r.project, txt = JSON.stringify(q);
+    const ok = JSON.stringify(P) === before && q.wells[0].name === 'W-01' && q.wells[1].id === 'W-02' && q.wells[0].field === 'Mỏ A' && q.name === 'Dự án A'
+      && q.wells[0].lat === undefined && q.wells[0].note === undefined && q.wells[0].tempPoints[0].src === 'DST' && q.wells[0].curves[0].data.length === 2
+      && !/XYZ|Mo That/i.test(txt) && r.leaks.length === 0 && r.map[0].old_name === 'XYZ-1P' && q.bench[0].name === 'B-01';
+    return { ok, detail: `${r.map.map((m) => m.old_name + '→' + m.new_id).join(', ')}; còn sót: ${r.leaks.length}` };
+  });
+
   const tb = document.getElementById('rows'); let pass = 0;
   results.forEach((r, i) => {
     if (r.ok) pass++;

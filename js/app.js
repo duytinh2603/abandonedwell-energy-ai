@@ -25,7 +25,7 @@
     // well integrity
     i_wallMin: 70, i_wallFair: 85, i_tWall: 12, i_corrOpen: 0.2, i_corrClosed: 0.05, i_pGood: 95, i_pFair: 70, i_pUnknown: 80, i_insp: 5,
   };
-  const APP_VERSION = 'v0.12.0'; const APP_DATE = '15/11/2026';
+  const APP_VERSION = 'v0.12.1'; const APP_DATE = '15/11/2026';
   const PARAM_VER = 3; // 2: industrial heat valued at the displaced gas-boiler heat; 3: integrity is a gate, not a score weight
   const ELEC_PRICE = 2204;
   const PURPOSE_PRICE = { res: 2204, hp: Math.round(2204 / 3) };
@@ -75,6 +75,9 @@
     tDepth: svg(`<path d="M12 3v18M8 6h4M8 10h4M8 14h4M8 18h4" stroke="${G}" stroke-width="1.6"/><path d="M16 15l-4 6-4-6" stroke="${B}" stroke-width="1.6"/>`, 24),
     docStart: svg(`<path d="M3 11 12 4l9 7v9H3z" stroke="${B}" stroke-width="1.7"/><path d="M10 20v-6h4v6" stroke="${R}" stroke-width="1.7"/>`, 24),
   };
+  ICON.renameWell = svg(`<path d="M6 30h18" stroke="${G}" stroke-width="2"/><path d="M26 6l6 6-14 14h-6v-6z" fill="#e3f0fc" stroke="${B}" stroke-width="2" stroke-linejoin="round"/><path d="M8 36h10" stroke="${R}" stroke-width="2.4"/>`);
+  ICON.anonymize = svg(`<path d="M4 16c4-6 28-6 32 0-2 8-8 12-16 12S6 24 4 16z" fill="#e3f0fc" stroke="${B}" stroke-width="2" stroke-linejoin="round"/><ellipse cx="13" cy="17" rx="4" ry="2.6" fill="${B}"/><ellipse cx="27" cy="17" rx="4" ry="2.6" fill="${B}"/><path d="M6 34 34 6" stroke="${R}" stroke-width="2.6" stroke-linecap="round"/>`);
+  ICON.rename = svg(`<path d="M3 20h8" stroke="${G}" stroke-width="1.6"/><path d="M15 4l5 5-9 9H6v-5z" stroke="${B}" stroke-width="1.6" stroke-linejoin="round"/>`, 24);
   ICON.docRank = ICON.exportRank; ICON.docSens = ICON.sens; ICON.docLog = ICON.logPlot; ICON.docRep = ICON.report;
   ICON.tempPlot = ICON.report;
   ICON.optimize = svg(`<circle cx="17" cy="20" r="11" fill="#e3f0fc" stroke="${B}" stroke-width="2"/><path d="M17 20 17 10M17 20l8.7 5M17 20l-8.7 5" stroke="${B}" stroke-width="2.4" stroke-linecap="round"/><circle cx="17" cy="20" r="2.6" fill="${R}"/><path d="M29 8l6-3v8z" fill="${R}"/><path d="M30 30h6M33 27v6" stroke="#2e7d32" stroke-width="2.4"/>`);
@@ -511,8 +514,8 @@
 
   /* ================= ribbon ================= */
   const RIBBON = {
-    home: [['g.project', ['newProject', 'openProject', 'closeProject', 'saveFile', 'openFile', 'syncFile', 'undo']], ['g.well', ['newWell', 'importLas', 'importCsv']], ['g.eval', ['decide', 'integ', 'run']], ['g.ai', ['ml']], ['g.view', ['browser', 'props', 'output']]],
-    data: [['g.import', ['importLas', 'importCsv', 'importSurvey', 'importDst']], ['g.export', ['exportLas', 'exportCsv']], ['g.tools', ['nullValue', 'delete']]],
+    home: [['g.project', ['newProject', 'openProject', 'closeProject', 'saveFile', 'openFile', 'syncFile', 'anonymize', 'undo']], ['g.well', ['newWell', 'renameWell', 'importLas', 'importCsv']], ['g.eval', ['decide', 'integ', 'run']], ['g.ai', ['ml']], ['g.view', ['browser', 'props', 'output']]],
+    data: [['g.import', ['importLas', 'importCsv', 'importSurvey', 'importDst']], ['g.export', ['exportLas', 'exportCsv']], ['g.tools', ['renameWell', 'anonymize', 'nullValue', 'delete']]],
     geo: [['g.eval', ['decide', 'run', 'eng', 'report', 'params']], ['g.check', ['integ', 'valid']], ['g.ai', ['ml']], ['g.util', ['optimize', 'optAll', 'tech']], ['g.export', ['exportRank', 'exportAll']]],
     plot: [['g.plots', ['logPlot', 'report', 'sens']]],
     help: [['g.help', ['guide', 'about', 'lasHelp', 'sample', 'demo']], ['g.volve', ['volve', 'volveData']]],
@@ -523,7 +526,8 @@
     if (!S.project) return false;
     if (['report', 'optimize', 'exportLas', 'nullValue', 'logPlot'].includes(a)) return !!selWell() && (a === 'report' || a === 'optimize' || selWell().curves.length > 0);
     if (a === 'optAll' || a === 'ml' || a === 'importDst') return S.project.wells.length > 0;
-    if (a === 'importSurvey') return !!selWell();
+    if (a === 'importSurvey' || a === 'renameWell') return !!selWell();
+    if (a === 'anonymize') return S.project.wells.length > 0;
     if (a === 'undo') return S.undo.length > 0;
     if (a === 'delete') return !!(S.sel && S.sel.t !== 'project');
     if (['run', 'exportRank', 'exportCsv'].includes(a)) return S.project.wells.length > 0;
@@ -1879,6 +1883,7 @@
   }
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && !$('#modal').hidden) $('#mX').click();
+    if (e.key === 'F2' && $('#modal').hidden && !/INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName) && S.project && selWell()) { e.preventDefault(); ACT.renameWell(); }
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && !/INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName) && S.undo.length) { e.preventDefault(); ACT.undo(); }
   });
 
@@ -1950,6 +1955,41 @@
       S.project.wells.push(w); S.sel = { t: 'well', uid: w.uid };
       touch(); renderAll();
       if (S.panes.paneProps) { const f = $('#props input[data-k="depth_m"]'); if (f) f.focus(); }
+    },
+    /** Rename the selected well (ID and display name). Identity is the internal uid, so results stay linked. */
+    async renameWell() {
+      const w = selWell(); if (!w) { log(t('msg.selWell'), 'warn'); return; }
+      const r = await dialog(t('dlg.rename'), `<label>${t('f.id')}<input id="dlgId" value="${esc(w.id)}"></label><label>${t('f.name')}<input id="dlgName" value="${esc(w.name)}"></label><label>${t('f.field')}<input id="dlgField" value="${esc(w.field || '')}"></label><p class="hint">${t('dlg.renameNote')}</p>`,
+        [{ label: t('dlg.cancel') }, { label: t('dlg.ok'), primary: true, value: true, collect: true }], () => ({ id: $('#dlgId').value.trim(), name: $('#dlgName').value.trim(), field: $('#dlgField').value.trim() }));
+      if (!r || !(r.id || r.name)) return;
+      const old = wellLabel(w);
+      snapshot();
+      w.id = r.id || r.name; w.name = r.name || r.id; w.field = r.field;
+      touch({ data: false }); S.result = null; renderAll(); scheduleDocRefresh();
+      log(t('msg.renamed', { a: old, b: wellLabel(w) }), 'ok');
+    },
+    /** Make an anonymised COPY of the project (the original and its linked file are not touched). */
+    async anonymize() {
+      const P = S.project; if (!P || !P.wells.length) return;
+      const vi = S.lang === 'vi';
+      const body = `<p class="hint">${t('anon.intro')}</p>
+        <label>${t('anon.prefix')}<input id="anPre" value="W-"></label>
+        <label>${t('anon.field')}<input id="anField" value="${vi ? 'Mỏ' : 'Field'}"></label>
+        <label>${t('anon.name')}<input id="anName" value="${vi ? 'Dự án ẩn danh' : 'Anonymised project'}"></label>
+        <label class="chk"><input type="checkbox" id="anNotes" checked> ${t('anon.notes')}</label>
+        <label class="chk"><input type="checkbox" id="anCoords" checked> ${t('anon.coords')}</label>
+        <label class="chk"><input type="checkbox" id="anMap" checked> ${t('anon.map')}</label>`;
+      const o = await dialog(t('b.anonymize'), body, [{ label: t('dlg.cancel') }, { label: t('anon.go'), primary: true, value: true, collect: true }],
+        () => ({ prefix: $('#anPre').value.trim() || 'W-', fieldBase: $('#anField').value.trim() || 'Field', name: $('#anName').value.trim() || 'Project', notes: $('#anNotes').checked, coords: $('#anCoords').checked, map: $('#anMap').checked }));
+      if (!o) return;
+      const r = AWPriv.anonymize(P, o);
+      const p = r.project, now = Date.now();
+      p.id = makeProject('x').id; p.created = now; p.updated = now;
+      await Store.put(P); await Store.put(p);
+      if (o.map) download('bang_doi_ten_' + new Date().toISOString().slice(0, 10) + '.csv', toCSV(r.map, ['new_id', 'old_id', 'old_name', 'new_field', 'old_field']), 'text/csv');
+      openProject(p, 'msg.anonOk', { noSync: true });
+      if (r.leaks.length) log(t('anon.leak', { n: r.leaks.length }), 'warn');
+      log(t(o.map ? 'anon.mapKept' : 'anon.done'), o.map ? 'warn' : 'ok');
     },
     importLas() { $('#fileLas').click(); },
     importCsv() { $('#fileCsv').click(); },

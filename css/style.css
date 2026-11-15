@@ -227,6 +227,7 @@ button, input, select { font: inherit; color: inherit; }
 .modal-head .x { color: #fff; }
 .modal-body { padding: 16px; overflow: auto; font-size: 13.5px; }
 .modal-body label { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; color: var(--ink2); }
+.modal-body label.chk { flex-direction: row; align-items: center; gap: 8px; }
 .modal-body input, .modal-body select { border: 1px solid var(--line); border-radius: 5px; padding: 7px 9px; font-size: 14px; color: var(--ink); }
 .modal-body pre { background: var(--bg2); padding: 10px; border-radius: 6px; overflow: auto; font-size: 12px; }
 .modal-body h4 { margin: 10px 0 6px; color: var(--bar); }
