@@ -1251,7 +1251,7 @@
       const feasC = window.AWInt.feasible(a, 'co2');
       const exC = cs.status === 'ok' && feasC !== 'fail' ? window.AWInt.expected(cs.npv - C * Math.pow(rho, L), -C, a, feasC, IP) : null;
       // decide() subtracts the P&A at the end of service life; pass the expected values so that its total is the expectation
-      const reg = regOf(well, a, !!(gv || exC), P, w);
+      const reg = regOf(well, a, !!((gv && gv.ev > -C) || (exC && exC.ev > -C)), P, w); // a reuse that beats plugging now is the reason to suspend (TT 16/2024 Đ25.1c)
       const d = window.AWTech.decide({ C, g: P.eco.paEsc / 100, r, n: deferN(P), hold: P.eco.paHold, pres: C * P.eco.paPres / 100, L,
         geo: gv ? gv.ev + C * Math.pow(rho, gv.life) : null, Lgeo: gv ? gv.life : L, co2: exC ? exC.ev + C * Math.pow(rho, L) : null, noDefer: window.AWInt.feasible(a, 'defer') === 'fail' || reg.def.status === 'fail' });
       return Object.assign(x, { cs, d, geoBest, gv, ps, feasC, exC, reg });
@@ -1438,7 +1438,7 @@
   function regSheet() {
     return [[t('r.well'), t('rg.defer'), t('rg.yearsAllowed'), t('rg.catS'), t('rg.inspS'), t('rg.issues'), t('rg.cement'), t('rg.bpS'), 'HPHT', t('rg.cutS')]]
       .concat(decidePlan().rows.map((x) => { const D = x.reg.def, Sc = x.reg.scope;
-        return [x.w.name || x.w.id, t('rg.st.' + D.status), D.years, D.cat, D.insp, D.issues.map((i) => t('rg.i.' + i.code, { y: window.AWReg.DEF.maxYears, n: D.years }) + ' (' + i.art + ')').join('; '), Sc.cement, Math.round(Sc.bp), Sc.hpht ? t('opt.yes') : t('opt.no'), t('rg.cut.' + Sc.cut)]; }));
+        return [x.w.name || x.w.id, t('rg.st.' + D.status), D.years, D.cat, D.insp, D.issues.map((i) => t('rg.i.' + i.code, { y: window.AWReg.DEF.maxYears, n: D.years }) + ' (' + i.art + ')').join('; '), Math.round(Sc.cement), Math.round(Sc.bp), Sc.hpht ? t('opt.yes') : t('opt.no'), t('rg.cut.' + Sc.cut)]; }));
   }
   function decideSheet() {
     const n = deferN(modelParams());
