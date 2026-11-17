@@ -15,18 +15,20 @@
     u_capexORC: 100, u_capexHX: 2, u_capexOpen: 30, u_whLoss: 5, u_Rf: 10, u_Treinj: 40,
     u_elecOff: 2204, u_pinch: 5, u_dpMax: 20, u_RfSwept: 0,
     // hydraulics & extra economics
-    pumpAuto: 1, csgID: 157, tubOD: 89, tubID: 76, paCost: 0, paYears: 10, co2Factor: 0.2, co2Price: 0,
+    pumpAuto: 1, csgID: 157, tubOD: 89, tubID: 76, paCost: 0, paYears: 6, co2Factor: 0.2, co2Price: 0,
     // technology comparison (AGS, EGS, CO2-EGS/CPG)
     t_latN: 2, t_latL: 2000, t_capexLat: 30, t_egsFlow: 30, t_egsV: 0.2, t_egsRf: 20, t_egsImp: 0.15, t_capexStim: 60, t_capexWellM: 0.08, t_co2Loss: 5, t_capexCPG: 40, t_heatDemOff: 1000, t_heatDemOn: 5000, t_elecDem: 5000,
     // offshore datum & wells without a host facility
     wd: 0, capexHost: 250,
     // well decision: P&A cost escalation (%/yr), yearly cost of a suspended well (bn VND), CO2 storage efficiency (%)
     paEsc: 3, paHold: 2, t_co2E: 5,
+    // Vietnamese rules (TT 16/2024/TT-BCT): decommissioning fund paid up ('yes'|'no'|''), extension beyond 6 years applied for, one-off preservation work (% of P&A)
+    regFund: '', regExt: 0, paPres: 15,
     // well integrity
     i_wallMin: 70, i_wallFair: 85, i_tWall: 12, i_corrOpen: 0.2, i_corrClosed: 0.05, i_pGood: 95, i_pFair: 70, i_pUnknown: 80, i_insp: 5,
   };
-  const APP_VERSION = 'v0.12.2'; const APP_DATE = '15/11/2026';
-  const PARAM_VER = 3; // 2: industrial heat valued at the displaced gas-boiler heat; 3: integrity is a gate, not a score weight
+  const APP_VERSION = 'v0.13.0'; const APP_DATE = '17/11/2026';
+  const PARAM_VER = 4; // 2: industrial heat valued at the displaced gas-boiler heat; 3: integrity is a gate, not a score weight; 4: suspension ≤ 6 years (TT 16/2024 Đ8)
   const ELEC_PRICE = 2204;
   const PURPOSE_PRICE = { res: 2204, hp: Math.round(2204 / 3) };
   const WELL_COLS = ['id', 'name', 'location', 'depth_m', 'md_m', 'gradient_c100m', 'bht_c', 'bht1_c', 'dt1_h', 'bht2_c', 'dt2_h', 'tc_h', 'integrity', 'distance_km'];
@@ -178,6 +180,7 @@
     if (!(p.paramVer >= PARAM_VER)) {
       if (+p.params.u_heatHigh === 2204) { p.params.u_heatHigh = DEFAULTS.u_heatHigh; setTimeout(() => log(t('msg.paramMig', { v: DEFAULTS.u_heatHigh }), 'warn'), 0); }
       if (+p.params.w_integrity === 0.25) { p.params.w_integrity = 0; setTimeout(() => log(t('msg.intMig'), 'warn'), 0); }
+      if (+p.params.paYears === 10) { p.params.paYears = 6; setTimeout(() => log(t('msg.regMig'), 'warn'), 0); }
       p.paramVer = PARAM_VER;
     }
     S.docs = p.wells.length ? ['decide'] : ['start'];
@@ -498,7 +501,8 @@
       upLoss: Math.min(0.9, Math.max(0, n('upLoss') / 100)), sigmaG: Math.max(0, n('sigmaG')), kMin: Math.max(0.5, k - 0.5), kMax: k + 0.5, mcN: 150,
       maxDist: 20, threshold: n('threshold'),
       eco: { heatPrice: n('heatPrice'), capexOn: n('capexOn'), capexOff: n('capexOff'), pipeCost: n('pipe'), opexPct: n('opex'), pumpKW: n('pump'), hours: n('hours'), rate: n('rate'), life: Math.round(Math.min(50, Math.max(1, n('life')))), elecPrice: ELEC_PRICE,
-        pumpAuto: n('pumpAuto') > 0, paCost: n('paCost'), paYears: n('paYears'), paEsc: n('paEsc'), paHold: Math.max(0, n('paHold')), co2Factor: n('co2Factor'), co2Price: n('co2Price') },
+        pumpAuto: n('pumpAuto') > 0, paCost: n('paCost'), paYears: n('paYears'), paEsc: n('paEsc'), paHold: Math.max(0, n('paHold')), co2Factor: n('co2Factor'), co2Price: n('co2Price'),
+        regFund: ['yes', 'no'].includes(p.regFund) ? p.regFund : '', regExt: n('regExt') > 0, paPres: Math.max(0, n('paPres')) },
       geom: { csgID: n('csgID'), tubOD: n('tubOD'), tubID: n('tubID') },
       weights: { thermal: n('w_thermal'), integrity: n('w_integrity'), distance: n('w_distance'), econ: n('w_econ') },
     };
@@ -635,6 +639,7 @@
       ['pumpAuto', 'p.pumpAuto', 'yesno'], ['csgID', 'p.csgID', 1], ['tubOD', 'p.tubOD', 1], ['tubID', 'p.tubID', 1]]],
     ['pg.econ', [['purpose', 'p.purpose', 'purpose'], ['heatPrice', 'p.heatPrice', 10], ['capexOn', 'p.capexOn', 0.5], ['capexOff', 'p.capexOff', 0.5], ['capexHost', 'p.capexHost', 10], ['pipe', 'p.pipe', 0.1], ['opex', 'p.opex', 0.5], ['pump', 'p.pump', 1], ['hours', 'p.hours', 100], ['rate', 'p.rate', 0.5], ['life', 'p.life', 1],
       ['paCost', 'p.paCost', 1], ['paEsc', 'p.paEsc', 0.5], ['paYears', 'p.paYears', 1], ['paHold', 'p.paHold', 0.5], ['co2Factor', 'p.co2Factor', 0.01], ['co2Price', 'p.co2Price', 10000]]],
+    ['pg.reg', [['regFund', 'rg.fund', 'yn3'], ['regExt', 'rg.ext', 'yesno'], ['paPres', 'rg.pres', 1]]],
     ['pg.score', [['w_thermal', 'p.wT', 0.05], ['w_integrity', 'p.wI', 0.05], ['w_distance', 'p.wD', 0.05], ['w_econ', 'p.wE', 0.05], ['threshold', 'p.threshold', 5]]],
     ['pg.util', [['u_Tamb', 'u.Tamb', 1], ['u_approach', 'u.approach', 1], ['u_Tdry', 'u.Tdry', 5], ['u_elec', 'u.elec', 50], ['u_heatHigh', 'u.heatHigh', 50], ['u_heatLow', 'u.heatLow', 50],
       ['u_capexORC', 'u.capexORC', 5], ['u_capexHX', 'u.capexHX', 0.5], ['u_capexOpen', 'u.capexOpen', 1], ['u_whLoss', 'u.whLoss', 1], ['u_Treinj', 'u.Treinj', 1], ['u_Rf', 'u.Rf', 1],
@@ -1030,6 +1035,15 @@
   }
   /** P&A cost of a well today (bn VND): the well's own value when entered, else the project value. */
   const paCostOf = (well, P) => (well && +well.pa_cost > 0 ? +well.pa_cost : P.eco.paCost || 0);
+  /** Years a well may stay suspended: TT 16/2024 Đ8.1 caps a category-1 suspension at 6 years unless an extension is applied for (Đ8.2). */
+  const deferN = (P) => { const y = Math.max(1, P.eco.paYears || window.AWReg.DEF.maxYears); return P.eco.regExt ? y : Math.min(y, window.AWReg.DEF.maxYears); };
+  const isSubsea = (well, P) => well.location === 'offshore' && P.wd > 0 && well.host !== undefined && well.host !== null && well.host !== '' && +well.host === 0;
+  /** Deferral check and minimum P&A scope for one well under TT 16/2024. */
+  function regOf(well, a, reuse, P, w) {
+    const def = window.AWReg.deferCheck({ years: Math.max(1, P.eco.paYears || window.AWReg.DEF.maxYears), cls: a.cls, scp: a.scp, fund: P.eco.regFund, ext: P.eco.regExt, reuse, subsea: isSubsea(well, P), wd: P.wd });
+    const scope = window.AWReg.paScope({ tvd: w ? w.depth : +well.depth_m, wd: well.location === 'offshore' ? P.wd : 0, offshore: well.location === 'offshore', resZ: +well.res_z || 0, resH: +well.res_h || 0, Tb: w ? w.Tbottom : NaN });
+    return { def, scope };
+  }
   /** Value of moving the P&A spend to the end of the project while its cost escalates. */
   const paDeferral = (well, P) => paCostOf(well, P) * (1 - Math.pow((1 + P.eco.paEsc / 100) / (1 + P.eco.rate / 100), P.eco.life));
   function evalWell(w) {
@@ -1237,9 +1251,10 @@
       const feasC = window.AWInt.feasible(a, 'co2');
       const exC = cs.status === 'ok' && feasC !== 'fail' ? window.AWInt.expected(cs.npv - C * Math.pow(rho, L), -C, a, feasC, IP) : null;
       // decide() subtracts the P&A at the end of service life; pass the expected values so that its total is the expectation
-      const d = window.AWTech.decide({ C, g: P.eco.paEsc / 100, r, n: Math.max(1, P.eco.paYears || 10), hold: P.eco.paHold, L,
-        geo: gv ? gv.ev + C * Math.pow(rho, gv.life) : null, Lgeo: gv ? gv.life : L, co2: exC ? exC.ev + C * Math.pow(rho, L) : null, noDefer: window.AWInt.feasible(a, 'defer') === 'fail' });
-      return Object.assign(x, { cs, d, geoBest, gv, ps, feasC, exC });
+      const reg = regOf(well, a, !!(gv || exC), P, w);
+      const d = window.AWTech.decide({ C, g: P.eco.paEsc / 100, r, n: deferN(P), hold: P.eco.paHold, pres: C * P.eco.paPres / 100, L,
+        geo: gv ? gv.ev + C * Math.pow(rho, gv.life) : null, Lgeo: gv ? gv.life : L, co2: exC ? exC.ev + C * Math.pow(rho, L) : null, noDefer: window.AWInt.feasible(a, 'defer') === 'fail' || reg.def.status === 'fail' });
+      return Object.assign(x, { cs, d, geoBest, gv, ps, feasC, exC, reg });
     });
   }
   /**
@@ -1286,7 +1301,7 @@
     const life = Math.max(1, Math.min(L, lifeT, lifeC === null ? L : Math.floor(lifeC)));
     const lim = life >= L ? 'L' : lifeC !== null && Math.floor(lifeC) <= lifeT ? 'casing' : 'thermal';
     const V = ys.V.map((v, i) => (i < life ? v : 0)), O = ys.O.map((v, i) => (i < life ? v : 0));
-    const ps = Object.assign(window.AWTech.psiStar({ V, O, I0: b.capex, C0: x.C, gC: g, r, L, La: life, n: Math.max(1, P.eco.paYears || 10), H: P.eco.paHold }), { ys });
+    const ps = Object.assign(window.AWTech.psiStar({ V, O, I0: b.capex, C0: x.C, gC: g, r, L, La: life, n: deferN(P), H: P.eco.paHold }), { ys });
     const full = ps.npvOps - x.C * Math.pow(rho, life);
     const ex = window.AWInt.expected(full, -x.C, x.a, feas, IP);
     // P_e: spread of the resource outcome around the base case
@@ -1303,7 +1318,7 @@
   /** Ψ* and the operating NPV of a geothermal option from its yearly series. */
   function psiOf(w, b, P, U, C) {
     const ys = yearlySeries(w, b, P, U);
-    return Object.assign(window.AWTech.psiStar({ V: ys.V, O: ys.O, I0: b.capex, C0: C, gC: P.eco.paEsc / 100, r: P.eco.rate / 100, L: P.eco.life, n: Math.max(1, P.eco.paYears || 10), H: P.eco.paHold }), { ys });
+    return Object.assign(window.AWTech.psiStar({ V: ys.V, O: ys.O, I0: b.capex, C0: C, gC: P.eco.paEsc / 100, r: P.eco.rate / 100, L: P.eco.life, n: deferN(P), H: P.eco.paHold }), { ys });
   }
   const PLAN_K = 4;
   function decidePlan() {
@@ -1343,6 +1358,28 @@
     });
     return { rows, total, indiv: rows.reduce((a, x) => a + x.d.best.gain, 0), shared: Array.from(groups.values()).some((l) => l.length > 1) };
   }
+  const regTip = (def) => def.issues.filter((i) => i.lvl !== 'info').map((i) => `${t('rg.i.' + i.code)} (${i.art})`).join('; ') || t('rg.ok');
+  /** "Vietnamese rules" panel for the selected well: can it be suspended, and the minimum abandonment scope. */
+  function regBox(x, P) {
+    const R = x.reg, D = R.def, Sc = R.scope, ic = { ok: '✓', cond: '⚖', fail: '✗' };
+    const iss = D.issues.map((i) => `<li class="rg-${i.lvl}"><b>${i.lvl === 'fail' ? '✗' : i.lvl === 'cond' ? '⚖' : 'ⓘ'}</b> ${esc(t('rg.i.' + i.code, { y: window.AWReg.DEF.maxYears, n: D.years }))} <small>${i.art}</small></li>`).join('');
+    const plug = (p) => `<tr><td>${esc(t('rg.p.' + p.code))}</td><td class="n">${p.top === null ? '–' : fmt(p.top) + '–' + fmt(p.bot)}</td><td class="n">${fmt(p.len)}</td><td><small>${p.art}</small></td></tr>`;
+    return `<h3 style="margin:22px 0 8px">${t('rg.title')} <small class="muted">${window.AWReg.REF}</small></h3>
+      <div class="dgrid rg">
+        <div class="dcard"><h4><span class="chip rg-${D.status}">${ic[D.status]} ${t('rg.st.' + D.status)}</span> ${t('rg.defer')}</h4>
+          <p class="hint" data-keep="1">${t('rg.catLine', { c: D.cat, n: D.years, k: D.insp })}</p><ul class="rg-list">${iss}</ul></div>
+        <div class="dcard"><h4>${t('rg.scope')}</h4>
+          <table class="sum"><thead><tr><th>${t('rg.plug')}</th><th class="n">${t('rg.depth')}</th><th class="n">${t('rg.len')}</th><th></th></tr></thead><tbody>${Sc.plugs.map(plug).join('')}
+            <tr class="tot"><td>${t('rg.cement')}</td><td></td><td class="n">≥ ${fmt(Sc.cement)}</td><td></td></tr></tbody></table>
+          <ul class="rg-list">
+            <li>${t('rg.cut.' + Sc.cut)} <small>${Sc.cut === 'deep' ? 'Đ26.2đ' : 'Đ10.2–10.3'}</small></li>
+            <li>${t(Sc.hpht ? 'rg.cemH' : 'rg.cem', { T: fmt(x.w.Tbottom) })} <small>Đ19</small></li>
+            <li>${t('rg.test')} <small>Đ17</small></li>
+            ${Sc.survey ? `<li>${t('rg.survey', { r: Sc.survey })} <small>Đ23.2c</small></li>` : ''}
+            <li>${t('rg.plan')} <small>Đ9</small></li>
+          </ul></div>
+      </div><p class="hint">${t('rg.note')}</p>`;
+  }
   function renderDecide(a) {
     const P0 = modelParams();
     const inp = (k, lab, step) => `<label class="qin"><span>${t(lab)}</span><input type="number" step="${step}" data-dp="${k}" value="${S.project.params[k] === undefined ? DEFAULTS[k] : S.project.params[k]}"></label>`;
@@ -1354,12 +1391,13 @@
       if (S.active !== 'decide' || !S.project) return;
       const PL = decidePlan(), rows = PL.rows, body = $('#decBody'); if (!body) return;
       if (!rows.length) { body.innerHTML = `<p class="muted">${t('proj.empty')}</p>`; return; }
-      const n = P0.eco.paYears || 10, cnt = {}; DEC.forEach((k) => { cnt[k] = 0; });
+      const n = deferN(P0), cnt = {}; DEC.forEach((k) => { cnt[k] = 0; });
       rows.forEach((x) => { cnt[x.plan.id]++; });
       const gain = PL.total, liab = rows.reduce((s0, x) => s0 + x.C, 0), evTot = rows.reduce((s0, x) => s0 + x.evpi, 0);
       const cellOf = (x, id) => { const o = x.d.options.find((q) => q.id === id);
         const blocked = (id === 'geo' && x.tr.options.some((q) => q.feas === 'fail') && !x.geoBest) || (id === 'co2' && x.cs.status === 'ok' && x.feasC === 'fail') || (id === 'defer' && !o);
-        if (!o && blocked) return `<td class="n infeas" title="${esc(t('feas.fail') + ' – ' + intTip(x.a))}">✗</td>`;
+        if (!o && blocked) return `<td class="n infeas" title="${esc(id === 'defer' && x.reg.def.status === 'fail' ? regTip(x.reg.def) : t('feas.fail') + ' – ' + intTip(x.a))}">✗</td>`;
+        if (o && id === 'defer' && x.reg.def.status === 'cond') return `<td class="n${x.d.best.id === id ? ' pick' : ''}" title="${esc(regTip(x.reg.def))}">${fmt(o.npv, 0)}<sup class="est">⚖</sup></td>`;
         if (!o) return `<td class="n dim" title="${esc(id === 'co2' ? t(x.cs.status === 'nodata' ? 'tw.noRes' : 'tw.' + (x.cs.why || 'noFeasible')) : '')}">–</td>`; return `<td class="n${x.d.best.id === id ? ' pick' : ''}">${fmt(o.npv, 0)}</td>`; };
       if (!S.decSel || !rows.some((x) => x.w.uid === S.decSel)) S.decSel = rows[0].w.uid;
       body.innerHTML = `${liab > 0 ? '' : `<div class="warnbox">${t('dec.noPa')}</div>`}
@@ -1388,17 +1426,22 @@
         const gb = x.geoBest, cs = x.cs;
         box.innerHTML = `<h3 style="margin:18px 0 8px">${t('dec.calcT', { w: esc(x.w.name || x.w.id) })}</h3><div class="dgrid">
           ${card('now', line(t('dec.l.paNow'), money(-x.C)))}
-          ${card('defer', line(t('dec.l.hold', { n, h: fmt(P.eco.paHold, 1) }), money(-P.eco.paHold * annN)) + paLater(n))}
+          ${card('defer', x.d.options.some((q) => q.id === 'defer') ? line(t('dec.l.pres', { p: fmt(P.eco.paPres, 0) }), money(-x.C * P.eco.paPres / 100)) + line(t('dec.l.hold', { n, h: fmt(P.eco.paHold, 1) }), money(-P.eco.paHold * annN)) + paLater(n) : esc(x.reg.def.status === 'fail' ? regTip(x.reg.def) : t('feas.fail') + ' – ' + intTip(x.a)))}
           ${card('geo', gb && x.gv ? line(t('dec.l.rev') + ` <small>(${esc(t('techs.' + gb.id) + ' · ' + t('tuse.' + gb.use))})</small>`, t('dec.l.y1L', { a: fmt(x.ps.ys.V[0], 1), b: fmt(x.ps.ys.V[x.gv.life - 1], 1), L: x.gv.life })) + line(t('dec.l.pvV', { y: x.gv.life }), money(x.ps.pvV)) + line(t('dec.l.pvO', { y: x.gv.life }), money(-x.ps.pvO)) + line(t('dec.l.capex'), money(-gb.capex)) + paLater(x.gv.life) + line(t('dec.l.ifOk'), money(x.gv.full), 'sub') + (x.gv.insp ? line(t('dec.l.insp'), money(-x.gv.insp)) : '') + line(t('dec.l.ev', { p: fmt(x.gv.Pi * 100, 0) }), fmt(x.gv.Pi, 2) + ' × ' + money(x.gv.full, 0) + ' + ' + fmt(1 - x.gv.Pi, 2) + ' × ' + money(-x.C, 0)) + line(t('dec.l.life', { why: t('lim.' + x.gv.lim) }), fmt(x.gv.life, 0) + ' ' + t('det.yr'), 'note') + line(t('dec.l.ps', { i: fmt(x.gv.Pi * 100, 0), e: fmt(x.gv.Pe * 100, 0) }), fmt(x.gv.Ps * 100, 0) + ' %', 'note') + line(t('dec.l.psi', { e: fmt(x.ps.energyShare * 100, 0) }), 'Ψ* = ' + fmt(x.ps.psi, 2), 'note') : esc(x.tr.options.some((q) => q.feas === 'fail') ? t('feas.fail') + ' – ' + intTip(x.a) : t('tw.noFeasible')))}
           ${card('co2', cs.status === 'ok' ? line(t('dec.l.fee', { t: fmt(cs.rateT / 1000, 1) }), money(cs.revenue, 2) + '/' + t('det.yr')) + line(t('dec.l.opex'), money(-cs.opex, 2) + '/' + t('det.yr')) + line(t('dec.l.pv', { y: L, f: fmt(annL, 2) }), money(cs.yearly * annL)) + line(t('dec.l.capex'), money(-cs.capex)) + paLater(L) + (x.exC && x.exC.insp ? line(t('dec.l.insp'), money(-x.exC.insp)) + line(t('dec.l.ev', { p: fmt(x.a.Pi * 100, 0) }), fmt(x.a.Pi, 2) + ' × … + ' + fmt(1 - x.a.Pi, 2) + ' × ' + money(-x.C, 0)) : '') + line(t('dec.l.cap', { c: fmt(cs.capT / 1000, 0) }), cs.breakEvenFee ? fmt(cs.breakEvenFee / 1000, 0) + ' ' + t('dec.l.feeUnit') : '–', 'note') : t(cs.status === 'nodata' ? 'tw.noRes' : 'tw.' + (cs.why || 'noFeasible')))}
-        </div>`;
+        </div>${regBox(x, P)}`;
       };
       calc();
       $('#decTbl').addEventListener('click', (e) => { const tr = e.target.closest('tbody tr'); if (!tr) return; S.decSel = tr.dataset.u; $$('#decTbl tbody tr').forEach((q) => q.classList.toggle('sel', q === tr)); S.sel = { t: 'well', uid: tr.dataset.u }; renderTree(); renderProps(); renderRibbon(); calc(); });
     }, 30);
   }
+  function regSheet() {
+    return [[t('r.well'), t('rg.defer'), t('rg.yearsAllowed'), t('rg.catS'), t('rg.inspS'), t('rg.issues'), t('rg.cement'), t('rg.bpS'), 'HPHT', t('rg.cutS')]]
+      .concat(decidePlan().rows.map((x) => { const D = x.reg.def, Sc = x.reg.scope;
+        return [x.w.name || x.w.id, t('rg.st.' + D.status), D.years, D.cat, D.insp, D.issues.map((i) => t('rg.i.' + i.code, { y: window.AWReg.DEF.maxYears, n: D.years }) + ' (' + i.art + ')').join('; '), Sc.cement, Math.round(Sc.bp), Sc.hpht ? t('opt.yes') : t('opt.no'), t('rg.cut.' + Sc.cut)]; }));
+  }
   function decideSheet() {
-    const n = modelParams().eco.paYears || 10;
+    const n = deferN(modelParams());
     return [[t('r.well'), t('dec.in.pa'), t('dec.now'), t('dec.deferN', { n }), t('dec.geo'), t('tech.best'), t('dec.co2'), t('dec.l.capShort'), t('dec.l.be'), t('dec.pick'), t('dec.gain'), t('dec.plan'), t('dec.planQ'), t('dec.planGain'), t('dec.evpi'), 'Ψ*', t('dec.psiD'), t('dec.psiE'), t('r.integ'), t('feas.col'), t('dec.pi'), t('dec.pe'), t('dec.ps'), t('dec.life'), t('dec.lim')]]
       .concat(decidePlan().rows.map((x) => { const o = (id) => { const q = x.d.options.find((z) => z.id === id); return q ? +q.npv.toFixed(1) : ''; };
         return [x.w.name || x.w.id, x.C, o('now'), o('defer'), o('geo'), x.geoBest ? t('tech.' + x.geoBest.id) + ' · ' + t('tuse.' + x.geoBest.use) : '', o('co2'), x.cs.capT ? +(x.cs.capT / 1000).toFixed(0) : '', x.cs.breakEvenFee ? Math.round(x.cs.breakEvenFee) : '', t('dec.' + x.d.best.id), +x.d.best.gain.toFixed(1), t('dec.' + x.plan.id) + (x.plan.units ? ' · ' + t('techs.' + x.plan.best.id) : ''), Math.round(x.plan.q), +x.plan.gain.toFixed(1), +x.evpi.toFixed(1), x.ps ? +x.ps.psi.toFixed(3) : '', x.ps ? +x.ps.psiDefer.toFixed(3) : '', x.ps ? +(x.ps.energyShare * 100).toFixed(0) : '', t('int.' + x.a.cls), t('feas.' + feasOf(x.a)), +(x.a.Pi * 100).toFixed(0), x.gv ? +(x.gv.Pe * 100).toFixed(0) : '', x.gv ? +(x.gv.Ps * 100).toFixed(0) : '', x.gv ? x.gv.life : '', x.gv ? t('lim.' + x.gv.lim) : '']; }));
@@ -1563,7 +1606,7 @@
     const resS = [[t('r.well'), t('r2.A'), t('r2.h'), t('r2.phi'), t('r2.z'), t('r2.T'), t('r2.flow'), t('r2.co2'), t('r2.cA'), t('r2.cQ'), t('f.host'), t('f.note')]]
       .concat(S.project.wells.map((w) => [wellLabel(w), w.res_A, w.res_h, w.res_phi, w.res_z, w.res_T, w.res_flow, w.res_co2, t('conf.' + (w.res_cA === 'e' ? 'e' : 'm')), t('conf.' + (w.res_cQ === 'e' ? 'e' : 'm')), t('opt.' + ((w.host === 0 || w.host === '0') ? 'no' : 'yes')), w.res_note || ''].map((v) => (v === undefined || v === null ? '' : v))));
     void P;
-    return [{ name: t('exp.decide'), rows: decideSheet() }, { name: t('exp.integ'), rows: integSheet() }, { name: t('exp.rank'), rows: rank }, { name: t('exp.matrix'), rows: matrix }, { name: t('exp.detail'), rows: detail }, { name: t('exp.eng'), rows: engS }, { name: t('exp.res'), rows: resS }, { name: t('exp.params'), rows: params }];
+    return [{ name: t('exp.decide'), rows: decideSheet() }, { name: t('exp.reg'), rows: regSheet() }, { name: t('exp.integ'), rows: integSheet() }, { name: t('exp.rank'), rows: rank }, { name: t('exp.matrix'), rows: matrix }, { name: t('exp.detail'), rows: detail }, { name: t('exp.eng'), rows: engS }, { name: t('exp.res'), rows: resS }, { name: t('exp.params'), rows: params }];
   }
   /** Minimal SpreadsheetML (Excel 2003 XML): several worksheets in one text file that Excel opens directly. */
   function toSpreadsheetML(sheets) {

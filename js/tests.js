@@ -282,6 +282,28 @@
     return { ok, detail: `${r.map.map((m) => m.old_name + '→' + m.new_id).join(', ')}; còn sót: ${r.leaks.length}` };
   });
 
+  test('TT 16/2024: hoãn tối đa 6 năm; toàn vẹn kém/SCP/quỹ chưa đủ → không được hoãn; chưa rõ → có điều kiện; số lần kiểm tra', () => {
+    const G = window.AWReg;
+    const a = G.deferCheck({ years: 10, cls: 'good', scp: 'no', fund: 'yes', ext: false, reuse: true });
+    const b = G.deferCheck({ years: 10, cls: 'good', scp: 'no', fund: 'yes', ext: true, reuse: true });
+    const c = G.deferCheck({ years: 4, cls: 'poor', fund: 'yes', reuse: true }), d = G.deferCheck({ years: 4, cls: 'good', scp: 'yes', fund: 'yes', reuse: true });
+    const e = G.deferCheck({ years: 4, cls: 'unknown', fund: '', reuse: false }), f = G.deferCheck({ years: 4, cls: 'good', fund: 'no', reuse: true });
+    const ok = a.status === 'ok' && a.years === 6 && a.cat === 1 && a.insp === 6 && b.status === 'cond' && b.years === 10 && c.status === 'fail' && d.status === 'fail' && f.status === 'fail'
+      && e.status === 'cond' && e.issues.some((i) => i.code === 'noReason') && G.inspections(6, 1, true) === 3 && G.inspections(2, 2, false) === 8 && G.inspections(0.5, 3, false) === 6 && G.category(2) === 2;
+    return { ok, detail: `10 năm → ${a.years} năm (${a.insp} lần kiểm tra); gia hạn: ${b.status}; kém: ${c.status}; chưa rõ: ${e.status}` };
+  });
+  test('TT 16/2024 phạm vi hủy giếng: nút khoảng bắn ±30 m, chân ống 100 m, nút cơ học 200 m dưới đáy biển; HPHT; cắt ống', () => {
+    const s = window.AWReg.paScope({ tvd: 3500, wd: 120, offshore: true, resZ: 3000, resH: 40, Tb: 160 }), l = window.AWReg.paScope({ tvd: 2000, offshore: false, Tb: 90 }), dp = window.AWReg.paScope({ tvd: 3000, wd: 600, offshore: true });
+    const ok = s.plugs[0].len === 100 && s.plugs[0].top === 2970 && s.bp === 320 && s.cement === 300 && s.hpht && s.cut === 'seabed' && s.survey === 90 && !l.hpht && l.cut === 'land' && l.bp === 200 && dp.cut === 'deep';
+    return { ok, detail: `xi măng ≥ ${s.cement} m, nút cơ học ở ${s.bp} m, HPHT ${s.hpht}` };
+  });
+  test('Hoãn hủy có chi phí bảo quản ban đầu: NPV hoãn = −bảo quản − giữ giếng − P&A chiết khấu', () => {
+    const d = window.AWTech.decide({ C: 100, g: 0.03, r: 0.1, n: 6, hold: 2, pres: 15, L: 25, geo: null, co2: null });
+    const o = d.options.find((q) => q.id === 'defer'), ann = (1 - Math.pow(1.1, -6)) / 0.1, pv = 100 * Math.pow(1.03 / 1.1, 6);
+    const ok = near(o.npv, -15 - 2 * ann - pv, 1e-9) && o.pres === -15;
+    return { ok, detail: `hoãn 6 năm: ${o.npv.toFixed(1)} tỷ đ so với hủy ngay −100` };
+  });
+
   const tb = document.getElementById('rows'); let pass = 0;
   results.forEach((r, i) => {
     if (r.ok) pass++;

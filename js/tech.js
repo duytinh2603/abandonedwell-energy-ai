@@ -278,7 +278,7 @@
     const opts = [
       { id: 'now', npv: -d.C, pa: -d.C },
     ];
-    if (!d.noDefer) opts.push({ id: 'defer', npv: -d.hold * annN - pv(d.n), pa: -pv(d.n), hold: -d.hold * annN }); // not allowed for an unsafe well
+    if (!d.noDefer) opts.push({ id: 'defer', npv: -(d.pres || 0) - d.hold * annN - pv(d.n), pa: -pv(d.n), hold: -d.hold * annN, pres: -(d.pres || 0) }); // not allowed for an unsafe well; pres = one-off preservation work (TT 16/2024 Đ4)
     const Lg = d.Lgeo || d.L, Lc = d.Lco2 || d.L; // the well is plugged when its service life ends
     if (Number.isFinite(d.geo)) opts.push({ id: 'geo', npv: d.geo - pv(Lg), pa: -pv(Lg), ops: d.geo });
     if (Number.isFinite(d.co2)) opts.push({ id: 'co2', npv: d.co2 - pv(Lc), pa: -pv(Lc), ops: d.co2 });

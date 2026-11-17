@@ -7,7 +7,7 @@ window.GUIDE = {
 <li><a href="#g1">Giao diện</a></li><li><a href="#g2">Tạo và quản lý dự án</a></li><li><a href="#g3">Nhập dữ liệu (LAS, CSV, nhập tay)</a></li>
 <li><a href="#g4">Thuộc tính giếng và nguồn gradient</a></li><li><a href="#g4b">Học máy – mô hình nhiệt độ</a></li><li><a href="#g5">Biểu đồ log</a></li><li><a href="#g6">Sàng lọc và xếp hạng</a></li>
 <li><a href="#g7">Báo cáo giếng</a></li><li><a href="#g8">Phương án sử dụng (ORC, nhiệt trực tiếp, vỉa chứa)</a></li><li><a href="#g9">Độ nhạy</a></li>
-<li><a href="#g10">Thông số dự án</a></li><li><a href="#g11">Bảo mật dữ liệu</a></li><li><a href="#g12">Xử lý sự cố</a></li><li><a href="#g13">Giới hạn của mô hình</a></li><li><a href="#g14">Dự án mẫu mỏ Volve (dữ liệu thật)</a></li><li><a href="#g15">So sánh công nghệ địa nhiệt</a></li><li><a href="#g16">Cập nhật và đồng bộ tự động</a></li><li><a href="#g17">Cơ sở khoa học và mức tin cậy</a></li><li><a href="#g18">Quyết định cho từng giếng</a></li><li><a href="#g19">Toàn vẹn giếng, xác suất, tuổi thọ, kiểm chứng</a></li></ol></nav>
+<li><a href="#g10">Thông số dự án</a></li><li><a href="#g11">Bảo mật dữ liệu</a></li><li><a href="#g12">Xử lý sự cố</a></li><li><a href="#g13">Giới hạn của mô hình</a></li><li><a href="#g14">Dự án mẫu mỏ Volve (dữ liệu thật)</a></li><li><a href="#g15">So sánh công nghệ địa nhiệt</a></li><li><a href="#g16">Cập nhật và đồng bộ tự động</a></li><li><a href="#g17">Cơ sở khoa học và mức tin cậy</a></li><li><a href="#g18">Quyết định cho từng giếng</a></li><li><a href="#g19">Toàn vẹn giếng, xác suất, tuổi thọ, kiểm chứng</a></li><li><a href="#g20">Quy định Việt Nam về hủy, bảo quản giếng</a></li></ol></nav>
 
 <h3 id="g1">1. Giao diện</h3>
 <ul>
@@ -206,6 +206,16 @@ window.GUIDE = {
 <li><b>Địa nhiệt → Kiểm chứng:</b> so nhiệt độ dự đoán với mọi điểm đo (gradient riêng giếng, gradient chung khi bỏ giếng đang xét, học máy khi bỏ giếng) bằng sai lệch, MAE, RMSE, R²; bảng nhập số đo chạy thử giếng kín thật để so với mô hình; số liệu công bố 2.000–2.500 m để so bậc độ lớn.</li>
 </ul>
 <p class="warnbox">Xác suất toàn vẹn, tốc độ ăn mòn, chi phí khảo sát là giả định sàng lọc – sửa trong Thuộc tính dự án → Toàn vẹn giếng – giả định. Mô hình giếng kín chưa được hiệu chuẩn với số đo thật nào của dự án.</p>
+<h3 id="g20">20. Quy định Việt Nam về hủy, bảo quản giếng</h3>
+<p>Căn cứ: <b>Thông tư 16/2024/TT-BCT</b> (hiệu lực 04/11/2024), thay Thông tư 17/2020/TT-BCT và Quyết định 37/2005/QĐ-BCN (Văn bản hợp nhất 10/VBHN-BCT). Web áp dụng như sau:</p>
+<ul>
+<li><b>Hoãn hủy = bảo quản giếng loại 1</b> (Điều 3.2a): tối đa <b>6 năm</b> (Điều 8.1); quá 6 năm phải chứng minh an toàn để xin gia hạn (Điều 8.2) – bật trong Thuộc tính dự án → Quy định Việt Nam.</li>
+<li><b>Không được hoãn</b> khi toàn vẹn kém hoặc có áp suất vành xuyến kéo dài (Điều 3.1a, 25.1a), hoặc quỹ bảo đảm nghĩa vụ thu dọn chưa trích đủ (Điều 25.1d).</li>
+<li><b>Hoãn có điều kiện</b> (⚖) khi toàn vẹn chưa rõ, chưa xác nhận quỹ, hoặc giếng chưa có phương án tái sử dụng làm lý do hoãn (Điều 25.1c).</li>
+<li><b>Chi phí hoãn</b> = bảo quản ban đầu (kéo cần, đặt nút – Điều 4.2, mặc định 15 % chi phí P&A) + chi phí giữ giếng hằng năm (kiểm tra hằng năm; đầu giếng ngầm: sau 1 năm rồi 2 năm/lần – Điều 7) + P&A sau này có trượt giá.</li>
+<li><b>Phạm vi hủy giếng tối thiểu</b> (Điều 10–19): nút qua khoảng bắn ±15–30 m, nút 100 m ở chân ống chống sâu nhất, nút cơ học 200 m dưới đáy biển + 100 m xi măng, cắt ống sát dưới đáy biển (đất liền ≥ 3 m), thử tải 5 tấn, thử áp +500 psi trong 15 phút, xi măng ≥ 3.000 kPa/8 giờ (giếng nhiệt độ cao ≥ 3.500 kPa/48 giờ), khảo sát vật cản bán kính 90 m (Điều 23).</li>
+</ul>
+<p class="warnbox">Đây là sàng lọc. Kế hoạch kết thúc giếng thật phải lập theo Điều 9 và thống nhất với PVN; độ sâu nút chặn lấy theo sơ đồ cấu trúc giếng.</p>
 `,
   en: `
 <h2>AbandonedWell Energy AI – User Guide</h2>
@@ -214,7 +224,7 @@ window.GUIDE = {
 <li><a href="#g1">Interface</a></li><li><a href="#g2">Creating and managing projects</a></li><li><a href="#g3">Importing data (LAS, CSV, manual)</a></li>
 <li><a href="#g4">Well properties and gradient source</a></li><li><a href="#g4b">Machine learning – temperature model</a></li><li><a href="#g5">Log plot</a></li><li><a href="#g6">Screening and ranking</a></li>
 <li><a href="#g7">Well report</a></li><li><a href="#g8">Utilisation options (ORC, direct heat, reservoir)</a></li><li><a href="#g9">Sensitivity</a></li>
-<li><a href="#g10">Project parameters</a></li><li><a href="#g11">Data privacy</a></li><li><a href="#g12">Troubleshooting</a></li><li><a href="#g13">Model limitations</a></li><li><a href="#g14">Volve field case study (real data)</a></li><li><a href="#g15">Geothermal technology comparison</a></li><li><a href="#g16">Automatic updates and sync</a></li><li><a href="#g17">Scientific basis and confidence</a></li><li><a href="#g18">Decision for each well</a></li><li><a href="#g19">Integrity, probability, service life, validation</a></li></ol></nav>
+<li><a href="#g10">Project parameters</a></li><li><a href="#g11">Data privacy</a></li><li><a href="#g12">Troubleshooting</a></li><li><a href="#g13">Model limitations</a></li><li><a href="#g14">Volve field case study (real data)</a></li><li><a href="#g15">Geothermal technology comparison</a></li><li><a href="#g16">Automatic updates and sync</a></li><li><a href="#g17">Scientific basis and confidence</a></li><li><a href="#g18">Decision for each well</a></li><li><a href="#g19">Integrity, probability, service life, validation</a></li><li><a href="#g20">Vietnamese rules on well suspension and abandonment</a></li></ol></nav>
 
 <h3 id="g1">1. Interface</h3>
 <ul>
@@ -413,5 +423,15 @@ window.GUIDE = {
 <li><b>Geothermal → Validation:</b> predicted temperatures against every measured point (own gradient, field gradient leaving the well out, machine learning leaving the well out) with bias, MAE, RMSE, R²; a table for real closed-loop circulation tests against the model; published 2,000–2,500 m results for an order-of-magnitude check.</li>
 </ul>
 <p class="warnbox">Integrity probabilities, corrosion rates and survey cost are screening assumptions – edit under Project properties → Well integrity – assumptions. The closed-loop model is not yet calibrated against any real measurement of this project.</p>
+<h3 id="g20">20. Vietnamese rules on well suspension and abandonment</h3>
+<p>Basis: <b>Circular 16/2024/TT-BCT</b> (in force 04/11/2024), replacing Circular 17/2020/TT-BCT and Decision 37/2005/QĐ-BCN (consolidated text 10/VBHN-BCT). The web applies it as follows:</p>
+<ul>
+<li><b>Deferral = category-1 suspension</b> (Art. 3.2a): at most <b>6 years</b> (Art. 8.1); longer needs proof of safety for an extension (Art. 8.2) – switch on under Project properties → Vietnamese rules.</li>
+<li><b>No deferral</b> with poor integrity or sustained casing pressure (Art. 3.1a, 25.1a), or when the decommissioning fund is not fully paid (Art. 25.1d).</li>
+<li><b>Conditional deferral</b> (⚖) when integrity is unknown, the fund is unconfirmed, or the well has no reuse plan to justify the deferral (Art. 25.1c).</li>
+<li><b>Cost of deferral</b> = initial preservation (pull tubing, set plugs – Art. 4.2, default 15 % of P&A) + yearly holding cost (annual inspection; subsea wellheads after 1 year then every 2 years – Art. 7) + later, escalated P&A.</li>
+<li><b>Minimum abandonment scope</b> (Art. 10–19): plug across perforations ±15–30 m, 100 m plug at the deepest shoe, bridge plug 200 m below the seabed + 100 m cement, casing cut just below the seabed (onshore ≥ 3 m), 5 t tag, +500 psi pressure test for 15 min, cement ≥ 3,000 kPa/8 h (high-temperature wells ≥ 3,500 kPa/48 h), debris survey within 90 m (Art. 23).</li>
+</ul>
+<p class="warnbox">This is screening. The real well termination plan follows Article 9 and is agreed with PVN; plug depths come from the well schematic.</p>
 `,
 };

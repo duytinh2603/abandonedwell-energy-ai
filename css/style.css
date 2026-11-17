@@ -317,3 +317,9 @@ table.integ input[type=number] { width: 72px; } table.integ td.c, table.integ th
 td.fz-ok { color: #2e7d32; font-weight: 700; } td.fz-cond { color: #b26a00; font-weight: 700; } td.fz-fail { color: #c62828; font-weight: 700; }
 table.sum tr.sub td { border-top: 1px dashed var(--line); font-weight: 600; }
 #benchTbl input { font: inherit; font-size: 12.5px; padding: 3px 4px; border: 1px solid var(--line); border-radius: 5px; }
+
+/* Vietnamese rules panel */
+.chip.rg-ok { background: #e8f5e9; color: #2e7d32; } .chip.rg-cond { background: #fff8e1; color: #b26a00; } .chip.rg-fail { background: #ffebee; color: #c62828; }
+.rg-list { margin: 6px 0 0; padding-left: 0; list-style: none; font-size: 13px; }
+.rg-list li { margin: 3px 0; } .rg-list small { color: var(--ink2); } .rg-list .rg-fail b { color: #c62828; } .rg-list .rg-cond b { color: #b26a00; } .rg-list .rg-info b { color: var(--ink2); }
+.dgrid.rg .sum td:last-child { padding-left: 8px; white-space: nowrap; }
