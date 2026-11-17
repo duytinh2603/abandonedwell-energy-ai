@@ -27,7 +27,7 @@
     // well integrity
     i_wallMin: 70, i_wallFair: 85, i_tWall: 12, i_corrOpen: 0.2, i_corrClosed: 0.05, i_pGood: 95, i_pFair: 70, i_pUnknown: 80, i_insp: 5,
   };
-  const APP_VERSION = 'v0.13.0'; const APP_DATE = '17/11/2026';
+  const APP_VERSION = 'v0.13.1'; const APP_DATE = '17/11/2026';
   const PARAM_VER = 4; // 2: industrial heat valued at the displaced gas-boiler heat; 3: integrity is a gate, not a score weight; 4: suspension ≤ 6 years (TT 16/2024 Đ8)
   const ELEC_PRICE = 2204;
   const PURPOSE_PRICE = { res: 2204, hp: Math.round(2204 / 3) };
@@ -1699,7 +1699,16 @@
 
   function renderML(a) {
     const P = modelParams(); const ml = trainML(); S.ml = ml;
-    if (!ml.ok) { a.innerHTML = `<div class="doc"><div class="rep-head"><h2 style="margin:0">${t('doc.ml')}</h2><button class="btn no-print" data-act="ml">${t('b.mlRun')}</button></div><div class="warnbox">${t(ml.reason === 'wells' ? 'ml.needWells' : 'ml.needPts', { n: ml.n })}</div><p class="muted">${t('ml.intro')}</p></div>`; return; }
+    if (!ml.ok) {
+      // not enough measured temperatures: say what is missing and offer the way to add it
+      const withPts = S.project.wells.filter((w) => (w.tempPoints || []).length || +w.bht_c > 0 || (+w.bht1_c > 0 && +w.bht2_c > 0)).length;
+      a.innerHTML = `<div class="doc"><div class="rep-head"><h2 style="margin:0">${t('doc.ml')}</h2><button class="btn no-print" data-act="ml">${t('b.mlRun')}</button></div>
+        <div class="warnbox">${t(ml.reason === 'wells' ? 'ml.needWells' : 'ml.needPts', { n: ml.n })} ${t('ml.have', { n: ml.n || 0, w: withPts })}</div>
+        <h3>${t('ml.howT')}</h3><ol class="ml-steps"><li>${t('ml.how1')} <button class="btn ghost" id="btnDstTpl">${t('ml.tpl')}</button></li><li>${t('ml.how2')} <button class="btn" data-act="importDst">${t('b.importDst')}</button></li><li>${t('ml.how3')}</li><li>${t('ml.how4')}</li></ol>
+        <p class="muted">${t('ml.intro')}</p></div>`;
+      $('#btnDstTpl').onclick = () => download('mau_nhiet_do_DST.csv', toCSV(S.project.wells.slice(0, 3).flatMap((w) => [{ well: wellLabel(w), tvd_m: '', temp_c: '', label: 'DST' }]), ['well', 'tvd_m', 'temp_c', 'label']), 'text/csv');
+      return;
+    }
     const gain = ml.cv.rmseBase > 0 ? (1 - ml.cv.rmseML / ml.cv.rmseBase) * 100 : 0;
     const rows = S.project.wells.map((w) => {
       const pr = ml.predictWell(w), nw = M.normaliseWell(w, P.T0, P.wd), measured = (w.tempPoints || []).length || MEASURED.includes(nw.gSource) || w.gSource === 'dst';
@@ -1722,6 +1731,7 @@
       </div>
       <div class="card" style="margin-top:14px"><div class="rep-head"><h3 style="margin:0">${t('ml.table')}</h3>
         <button class="btn" id="btnMLapply" ${target.length ? '' : 'disabled'}>${t('ml.apply', { n: target.length })}</button></div>
+        ${target.length ? '' : `<p class="hint" data-keep="1">${t('ml.noTarget')}</p>`}
         <div class="tscroll"><table class="tbl"><thead><tr><th>${t('r.well')}</th><th class="n">${t('r.depth')}</th><th>${t('r.src')}</th><th class="n">${t('ml.gNow')}</th><th class="n">${t('ml.gML')}</th><th class="n">P10–P90</th><th class="n">${t('ml.Ttd')}</th><th>${t('ml.logs')}</th></tr></thead><tbody>
         ${rows.map((r) => `<tr><td><b>${esc(wellLabel(r.w))}</b>${r.measured ? '' : ` <span class="src field">${t('ml.noData')}</span>`}</td><td class="n">${fmt(+r.w.depth_m)}</td><td><span class="src ${r.w.gSource || r.nw.gSource}">${t('src.' + (r.w.gSource || r.nw.gSource))}</span></td>
           <td class="n">${fmt(r.nw.G, 2)}</td><td class="n"><b>${r.pr ? fmt(r.pr.g, 2) : '–'}</b></td><td class="n">${r.pr ? `${fmt(r.pr.g10, 2)}–${fmt(r.pr.g90, 2)}` : '–'}</td>

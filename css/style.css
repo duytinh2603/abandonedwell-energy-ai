@@ -323,3 +323,5 @@ table.sum tr.sub td { border-top: 1px dashed var(--line); font-weight: 600; }
 .rg-list { margin: 6px 0 0; padding-left: 0; list-style: none; font-size: 13px; }
 .rg-list li { margin: 3px 0; } .rg-list small { color: var(--ink2); } .rg-list .rg-fail b { color: #c62828; } .rg-list .rg-cond b { color: #b26a00; } .rg-list .rg-info b { color: var(--ink2); }
 .dgrid.rg .sum td:last-child { padding-left: 8px; white-space: nowrap; }
+
+.ml-steps { padding-left: 20px; line-height: 1.6; } .ml-steps li { margin: 6px 0; } .ml-steps .btn { margin-left: 6px; }
