@@ -27,7 +27,7 @@
     // well integrity
     i_wallMin: 70, i_wallFair: 85, i_tWall: 12, i_corrOpen: 0.2, i_corrClosed: 0.05, i_pGood: 95, i_pFair: 70, i_pUnknown: 80, i_insp: 5,
   };
-  const APP_VERSION = 'v0.13.2'; const APP_DATE = '17/11/2026';
+  const APP_VERSION = 'v0.13.3'; const APP_DATE = '17/11/2026';
   const PARAM_VER = 4; // 2: industrial heat valued at the displaced gas-boiler heat; 3: integrity is a gate, not a score weight; 4: suspension ≤ 6 years (TT 16/2024 Đ8)
   const ELEC_PRICE = 2204;
   const PURPOSE_PRICE = { res: 2204, hp: Math.round(2204 / 3) };
@@ -2185,9 +2185,16 @@
       if (!empty && +P.params.T0 !== VOLVE_PARAMS.T0) log(t('volve.t0Warn', { T0: P.params.T0 }), 'warn');
       S.docs = S.docs.filter((d) => d !== 'start'); touch(); renderAll(); openDoc('rank');
     },
+    /** Demo project: the 10-well synthetic field (data/demo_project.json); the small built-in one if the file cannot be read. */
     async demo() {
       if (S.project) await Store.put(S.project);
-      const p = demoProject(); await Store.put(p);
+      let p;
+      try {
+        const r = await fetch('data/demo_project.json', { cache: 'no-cache' }); if (!r.ok) throw new Error(r.status);
+        p = await r.json(); const now = Date.now();
+        Object.assign(p, { id: makeProject('x').id, name: t('demo.name'), created: now, updated: now, source: 'demo' });
+      } catch (e) { p = demoProject(); }
+      await Store.put(p);
       openProject(p);
     },
     toggleTree() { const P = S.project; if (!P) return; const anyOpen = P.wells.some((w) => !S.collapsed['w' + w.uid]); P.wells.forEach((w) => { S.collapsed['w' + w.uid] = anyOpen; }); renderTree(); },
