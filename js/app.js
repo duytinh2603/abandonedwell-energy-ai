@@ -27,7 +27,7 @@
     // well integrity
     i_wallMin: 70, i_wallFair: 85, i_tWall: 12, i_corrOpen: 0.2, i_corrClosed: 0.05, i_pGood: 95, i_pFair: 70, i_pUnknown: 80, i_insp: 5,
   };
-  const APP_VERSION = 'v0.13.1'; const APP_DATE = '17/11/2026';
+  const APP_VERSION = 'v0.13.2'; const APP_DATE = '17/11/2026';
   const PARAM_VER = 4; // 2: industrial heat valued at the displaced gas-boiler heat; 3: integrity is a gate, not a score weight; 4: suspension ≤ 6 years (TT 16/2024 Đ8)
   const ELEC_PRICE = 2204;
   const PURPOSE_PRICE = { res: 2204, hp: Math.round(2204 / 3) };
@@ -298,13 +298,15 @@
       else if (c === delim) { row.push(cell); cell = ''; } else if (c === '\n' || c === '\r') { if (c === '\r' && text[i + 1] === '\n') i++; row.push(cell); rows.push(row); row = []; cell = ''; } else cell += c;
     }
     if (cell !== '' || row.length) { row.push(cell); rows.push(row); }
-    const head = rows.shift().map((h) => h.trim().toLowerCase());
+    // headers are matched without case, then mapped back to the field names the web uses (res_A, res_PI, …)
+    const known = new Map(WELL_COLS.concat(WELL_FIELDS.flatMap(([, f]) => f.map(([k]) => k))).map((k) => [k.toLowerCase(), k]));
+    const head = rows.shift().map((h) => { const l = h.trim().toLowerCase(); return known.get(l) || l; });
     if (!head.includes('depth_m')) throw new Error('depth_m');
     return rows.filter((r) => r.some((c) => c.trim() !== '')).map((r) => {
       const o = {};
       head.forEach((h, i) => {
         const v = (r[i] || '').trim();
-        if (['id', 'name', 'location', 'integrity', 'field'].includes(h)) o[h] = v;
+        if (['id', 'name', 'location', 'integrity', 'field', 'int_cbl', 'int_scp', 'int_cra', 'res_cA', 'res_cQ'].includes(h)) { if (v !== '' || ['id', 'name', 'location', 'integrity', 'field'].includes(h)) o[h] = h.startsWith('int_') || h.startsWith('res_c') ? v.toLowerCase().replace(/^(có|yes|y)$/, 'yes').replace(/^(không|no|n)$/, 'no').replace(/^(tốt)$/, 'good').replace(/^(một phần)$/, 'partial').replace(/^(kém)$/, 'poor') : v; }
         else if (v !== '') o[h] = parseFloat(v.replace(',', '.'));
       });
       o.location = /off|ngoài/i.test(o.location || '') ? 'offshore' : 'onshore';
