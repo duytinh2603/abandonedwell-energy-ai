@@ -27,7 +27,7 @@
     // well integrity
     i_wallMin: 70, i_wallFair: 85, i_tWall: 12, i_corrOpen: 0.2, i_corrClosed: 0.05, i_pGood: 95, i_pFair: 70, i_pUnknown: 80, i_insp: 5,
   };
-  const APP_VERSION = 'v0.13.3'; const APP_DATE = '17/11/2026';
+  const APP_VERSION = 'v0.13.4'; const APP_DATE = '17/11/2026';
   const PARAM_VER = 4; // 2: industrial heat valued at the displaced gas-boiler heat; 3: integrity is a gate, not a score weight; 4: suspension ≤ 6 years (TT 16/2024 Đ8)
   const ELEC_PRICE = 2204;
   const PURPOSE_PRICE = { res: 2204, hp: Math.round(2204 / 3) };
@@ -1294,6 +1294,9 @@
     const P = modelParams(), IP = intParams(), L = P.eco.life, r = P.eco.rate / 100, g = P.eco.paEsc / 100, rho = (1 + g) / (1 + r);
     const feas = window.AWInt.feasible(x.a, b.id); if (feas === 'fail') return null;
     const ys = yearlySeries(x.w, b, P, x.tr.U);
+    // a reuse must at least pay its own running cost; otherwise it is only a long P&A deferral in disguise
+    // (no buyer for the heat), which TT 16/2024 Đ8 does not allow beyond 6 years
+    if (!(ys.V[0] > ys.O[0])) return null;
     // thermal decline of a closed loop: stop when the revenue that once covered the running cost no longer does
     let lifeT = L;
     if ((b.id === 'clgs' || b.id === 'ags') && ys.V[0] >= ys.O[0]) for (let y = 1; y < L; y++) if (ys.V[y] < ys.O[y]) { lifeT = y; break; }
@@ -1400,7 +1403,7 @@
         const blocked = (id === 'geo' && x.tr.options.some((q) => q.feas === 'fail') && !x.geoBest) || (id === 'co2' && x.cs.status === 'ok' && x.feasC === 'fail') || (id === 'defer' && !o);
         if (!o && blocked) return `<td class="n infeas" title="${esc(id === 'defer' && x.reg.def.status === 'fail' ? regTip(x.reg.def) : t('feas.fail') + ' – ' + intTip(x.a))}">✗</td>`;
         if (o && id === 'defer' && x.reg.def.status === 'cond') return `<td class="n${x.d.best.id === id ? ' pick' : ''}" title="${esc(regTip(x.reg.def))}">${fmt(o.npv, 0)}<sup class="est">⚖</sup></td>`;
-        if (!o) return `<td class="n dim" title="${esc(id === 'co2' ? t(x.cs.status === 'nodata' ? 'tw.noRes' : 'tw.' + (x.cs.why || 'noFeasible')) : '')}">–</td>`; return `<td class="n${x.d.best.id === id ? ' pick' : ''}">${fmt(o.npv, 0)}</td>`; };
+        if (!o) return `<td class="n dim" title="${esc(id === 'co2' ? t(x.cs.status === 'nodata' ? 'tw.noRes' : 'tw.' + (x.cs.why || 'noFeasible')) : id === 'geo' && x.geoBest ? t('dec.noSales') : '')}">–</td>`; return `<td class="n${x.d.best.id === id ? ' pick' : ''}">${fmt(o.npv, 0)}</td>`; };
       if (!S.decSel || !rows.some((x) => x.w.uid === S.decSel)) S.decSel = rows[0].w.uid;
       body.innerHTML = `${liab > 0 ? '' : `<div class="warnbox">${t('dec.noPa')}</div>`}
         <div class="kpis">${DEC.map((k) => `<div class="kpi dk-${k}"><span>${t('dec.' + k)}</span><b>${cnt[k]}</b></div>`).join('')}
